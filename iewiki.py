@@ -223,7 +223,11 @@ class MainPage(webapp.RequestHandler):
 		versions = self.initHist(tlr.title);
 	for atl in tls:
 		if getPrior or atl.version == tlr.version:
-			versions = versions + "|" + atl.modified.strftime("%Y-%m-%d %H:%M") + "|" + atl.author.nickname() + "|" + str(atl.version) + '|<<revision "' + atl.title + '" ' + str(atl.version) + '>>|\n'
+			if atl.author != None:
+				by = atl.author.nickname()
+			else:
+				by = "?"
+			versions = versions + "|" + atl.modified.strftime("%Y-%m-%d %H:%M") + "|" + by + "|" + str(atl.version) + '|<<revision "' + atl.title + '" ' + str(atl.version) + '>>|\n'
 		if atl.version >= tlr.version:
 			tlr.version = atl.version + 1
 			tlr.comments = atl.comments;
