@@ -30,6 +30,8 @@ DAMAGE.
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
 
+// But heavily modified for use in this context
+
 //--
 //-- Configuration repository
 //--
@@ -345,6 +347,10 @@ config.commands = {
         text: "preview",
         tooltip: "Preview formattet text"
     },
+    reload: {
+        text: "reload",
+        tooltip: "Reload this tiddler to execute any macros again"
+    },
     tag: {
         text: "tag",
         tooltip: "Add tags"
@@ -455,7 +461,7 @@ config.shadowTiddlers = {
     TabMoreOrphans: '<<list orphans>>',
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > fields syncing permalink references jump|\n|~EditToolbar|+saveTiddler -cancelTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler reload > fields syncing permalink references jump|\n|~EditToolbar|+saveTiddler -cancelTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]",
     SiteTitle: "SiteTitle",
@@ -2606,6 +2612,10 @@ config.commands.preview.handler = function(event, src, title) {
     var te = displayPart(src).childNodes[1].firstChild.firstChild.firstChild;
 	removeChildren(pe);
     wikify(te.value,pe);
+};
+
+config.commands.reload.handler = function(event, src, title) {
+    story.refreshTiddler(title,null,true);
 };
 
 function displayPart(src,id)
@@ -6998,7 +7008,7 @@ function trace(f) {
 http = {
   _methods: [ 
 	"createPage","saveTiddler","deleteTiddler", "tiddlerHistory","tiddlerVersion","getLoginUrl","pageProperties","deletePage","getNewAddress",
-	"submitComment", "getComments", "getNotes", "getMessages", "getTiddler", "getTiddlers", "fileList",
+	"submitComment", "getComments", "getNotes", "getMessages", "getTiddler", "getTiddlers", "fileList", "urlFetch", "evaluate",
 	"getRecentChanges", "siteMap", "getGroups", "createGroup", "getGroupMembers", "addGroupMember", "removeGroupMember" ],
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,'" + m + "')"); },
   _init: function() {
@@ -7139,10 +7149,6 @@ config.macros.recentChanges = {
 	}
 }
 
-function InsertTiddlerText(a,b)
-{
-}
-
 config.macros.fileList = {
 	handler: function(place)
 	{
@@ -7152,5 +7158,25 @@ config.macros.fileList = {
 			createTiddlyElement(place,"br");
 		}
 	}
+}
+
+config.macros.urlFetch = {
+    handler: function(place, macroName, params)
+    {
+        var text = http.urlFetch(
+            { url: params[0] } );
+        var output = createTiddlyElement(place, "span");
+        output.innerHTML = text;
+    }
+}
+
+config.macros.evaluate = {
+    handler: function(place, macroName, params)
+    {
+        var text = http.evaluate(
+            { expression: params[0] } );
+        var output = createTiddlyElement(place, "span");
+        output.innerHTML = text;
+    }
 }
 

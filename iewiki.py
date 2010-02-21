@@ -7,6 +7,7 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
+from google.appengine.api import urlfetch 
 
 class MyError(Exception):
   def __init__(self, value):
@@ -106,13 +107,18 @@ class Comment(db.Model):
   created = db.DateTimeProperty(auto_now_add=True)
   author = db.UserProperty()
   ref = db.StringProperty()
+
+class Include(db.Model):
+  page = db.StringProperty()
+  id = db.StringProperty()
+  version = db.IntegerProperty()
   
 class Note(Comment):
   revision = db.IntegerProperty()
   
 class Message(Comment):
   receiver = db.UserProperty()
-  
+
 class Group(db.Model):
   name = db.StringProperty()
   admin = db.UserProperty()
@@ -227,6 +233,22 @@ class MainPage(webapp.RequestHandler):
 			atl.put()
 	tlr.current = True
 	tlr.put()
+	if tlr.tags == "includes":
+		tls = tlr.text.split("\n")
+		for tlx in tls:
+			if tlx.startswith("[[") and tlx.endswith("]]"):
+				tli = tlx.lstrip('[').rstrip(']').split("|")
+				if tli.count > 1:
+					parts = tli[1].split("#")
+					ltlx = Tiddler.all().filter("page = ", parts[0]).filter("title = ", parts[1]).filter("current = ",True)
+					tlxs = ltlx.fetch(1)
+					for tly in tlxs:
+						incl = Include()
+						incl.page = tlr.page
+						incl.id = tly.id
+						incl.version = tly.version
+						incl.put()
+	
 	xd = self.initXmlResponse()
 	esr = xd.add(xd,'SaveResp')
 	xd.appendChild(esr)
@@ -721,6 +743,23 @@ class MainPage(webapp.RequestHandler):
 			xd.add(re, 'file',f.path,attrs={'mimetype':f.mimetype})
 	self.response.out.write(xd.toxml())
 	
+  def urlFetch(self):
+	result = urlfetch.fetch(self.request.get("url"))
+	if result.status_code == 200:
+		xd = self.initXmlResponse()
+		tv = xd.createElement('Content')
+		xd.appendChild(tv);
+		tv.appendChild(xd.createTextNode(result.content))
+		self.response.out.write(xd.toxml())
+		
+  def evaluate(self):
+	result = eval(self.request.get("expression"))
+	xd = self.initXmlResponse()
+	tv = xd.createElement('Result')
+	xd.appendChild(tv);
+	tv.appendChild(xd.createTextNode(format(result)))
+	self.response.out.write(xd.toxml())
+
   def post(self):
 	try:
 		m = self.request.get("method")
@@ -755,6 +794,18 @@ class MainPage(webapp.RequestHandler):
 				tiddict[id] = t
 		else:
 			tiddict[id] = t
+
+	includes = Include.all().filter("page = ", self.request.path)
+	for t in includes:
+		tv = t.version
+		tiddlers = Tiddler.all().filter("id = ", t.id).filter("version = ", tv)
+		for t in tiddlers:
+			id = t.id
+			if id in tiddict:
+				if t.version > tiddict[id].version:
+					tiddict[id] = t
+			else:
+				tiddict[id] = t
 	
 	# LogEvent("get: " + str(len(tiddict)) , self.request.path)
 	if len(tiddict) == 0:
