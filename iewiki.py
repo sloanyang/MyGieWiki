@@ -262,7 +262,11 @@ class MainPage(webapp.RequestHandler):
 	ide = xd.createElement('id')
 	ide.appendChild(xd.createTextNode(str(tlr.id)))
 
-	versions = versions + "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + tlr.author.nickname() + "|" + str(tlr.version) + '|<<revision "' + tlr.title + '" ' + str(tlr.version) + '>>|\n'
+	if tlr.author != None:
+		by = tlr.author.nickname()
+	else:
+		by = "?"
+	versions = versions + "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + by + "|" + str(tlr.version) + '|<<revision "' + tlr.title + '" ' + str(tlr.version) + '>>|\n'
 	ve = xd.createElement('versions')
 	ve.appendChild(xd.createTextNode(versions))
 	esr.appendChild(we)
