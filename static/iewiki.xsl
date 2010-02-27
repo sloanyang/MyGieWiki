@@ -515,15 +515,20 @@ if (http.deletePage(window.location.href).Success) {
 </div>
 <div title="CreateNewPage" viewTemplate="ViewOnlyTemplate">
     <pre>&lt;script&gt;accessTypes = &quot;all|edit|add|comment|view|none|&quot;
-forms.CreateNewPage = http.createPage({defaults:"get"});
-forms.CreateNewPage.title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"address",CheckNewAddress(v)); }
+var fn = formName(place);
+forms[fn] = http.createPage({defaults:"get"});
+if (fn != "CreateNewPage") {
+	forms[fn].title = fn;
+	forms[fn].address = CheckNewAddress(fn);
+	}
+forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"address",CheckNewAddress(v)); }
 ;&lt;/script&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 70&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 70&gt;&gt;|
 |&gt;|&gt;|Address&lt;br&gt;&lt;&lt;input text address 70&gt;&gt;|
 |&gt;|&gt;|Access permissions|
 |Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes&gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
-|&gt;|&gt;|&lt;script label=&quot;Create new page&quot; title=&quot;Create new page&quot;&gt;OnCreatePage(http.createPage(forms.CreateNewPage));&lt;/script&gt;|</pre>
+|&gt;|&gt;|&lt;script label=&quot;Create new page&quot; title=&quot;Create new page&quot;&gt;OnCreatePage(http.createPage(GetForm(place)));&lt;/script&gt;|</pre>
 </div>
 <div title="DefineGroup" >
 <pre>

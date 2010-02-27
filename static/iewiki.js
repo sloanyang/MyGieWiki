@@ -163,7 +163,7 @@ config.tiddlerTemplates = {
 // More messages (rather a legacy layout that should not really be like this)
 config.views = {
     wikified: {
-        defaultText: "The tiddler '%0' doesn't yet exist. Double-click to create it",
+        defaultText: "The tiddler '%0' doesn't yet exist. Double-click to create it, or to create a new page named %0, <script label=\"click here.\" title=\"Create page\">wikify(store.getTiddlerText(\"CreateNewPage\"), place);</script>",
         defaultModifier: "(missing)",
         shadowModifier: "(special tiddler)",
         dateFormat: "DD MMM YYYY",
@@ -6827,11 +6827,7 @@ function expandFolder(ev)
 		target.src = "/static/minusFolder36.png";
 		sub.div = createTiddlyElement(target.parentNode,"div");
 		SiteMapEntry(sub.div,sub.ca,sub.l,sub.d);
-		break;
-	case "minusFolder36.png":
-		target.src = "/static/plusFolder36.png";
-		target.parentNode.removeChild(sub.div);
-		break;
+		//break;
 	case "plusDoc36.png":
 		target.src = "/static/minusDoc36.png";
 		var div = createTiddlyElement(target.parentNode,"div");
@@ -6842,7 +6838,7 @@ function expandFolder(ev)
 			var any = false;
 			for (var i = 0; i < tl.length; i++) 
 				if (tl[i].search(/SiteTitle|SiteSubtitle|DefaultTiddlers|MainMenu/) == -1) {
-					hr = href + "#" + tl[i];
+					hr = href + "#" + encodeURIComponent(String.encodeTiddlyLink(tl[i]));
 					AddIconPlusLink(div,"/static/plusTiddler36.png",tl[i],hr);
 					siteMap[hr] = {};
 					any = true;
@@ -6851,6 +6847,10 @@ function expandFolder(ev)
 				AddIconPlusLink(div,null,"this page is empty");
 		}
 		sub.div = div;
+		break;
+	case "minusFolder36.png":
+		target.src = "/static/plusFolder36.png";
+		target.parentNode.removeChild(sub.div);
 		break;
 	case "minusDoc36.png":
 		target.src = "/static/plusDoc36.png";
@@ -6908,9 +6908,7 @@ config.macros.image = {
 		else
 			var style = vbs + "width: 100%";
 
-		var path = window.location.pathname.split("/");
-		path[path.length - 1] = params[0];
-		path = path.join("/");
+		var path = params[0];
 		span.innerHTML = '<img src="'.concat(path,'"',tat,' style="', style,'"/>');
 	}	
 }
@@ -7170,7 +7168,7 @@ config.macros.recentChanges = {
 					createTiddlyLink(td, c.title, true);
 				else {
 					var a = createTiddlyElement(td,"a",null,null,c.title);
-					a.href = c.page + "#" + encodeURIComponent(c.title);
+					a.href = c.page + "#" + encodeURIComponent(String.encodeTiddlyLink(c.title));
 					w = c.page;
 				}
 				createTiddlyElement(tr,"td",null,null,w);
