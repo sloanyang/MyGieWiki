@@ -816,6 +816,7 @@ class MainPage(webapp.RequestHandler):
 				tiddict[id] = t
 	
 	# LogEvent("get: " + str(len(tiddict)) , self.request.path)
+	pages = list()
 	if len(tiddict) == 0:
 		file = UploadedFile.all().filter("path =", self.request.path).get()
 		LogEvent("Get file", self.request.path)
@@ -826,34 +827,52 @@ class MainPage(webapp.RequestHandler):
 			return
 		else:
 			LogEvent("No file", self.request.path)
-	# else:
-	# 	LogEvent("Why","not")
-
+	else: # list pages next to this
+		papalen = self.request.path.rfind('/')
+		if papalen == -1:
+			paw = "";
+		else:
+			paw = self.request.path[0:papalen + 1]
+		for p in Page.all():
+			if p.path.startswith(paw):
+				pages.append(p)
+		
 	xd = self.initXmlResponse()
 	pi = xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="/static/iewiki.xsl"')
 	xd.appendChild(pi)
 	sr = xd.createElement("storeArea")
 	xd.appendChild(sr)
-	div = xd.createElement('div')
-	div.setAttribute('title', "_AccessInfo")
+	metaDiv = xd.createElement('div')
+	metaDiv.setAttribute('title', "_MetaData")
 
 	u = users.get_current_user()
 	if u != None:
 		username = u.nickname()
-		div.setAttribute('username',username)
+		metaDiv.setAttribute('username',username)
 	else:
 		username = ""
 		
 	if page != None:
-		div.setAttribute('owner', page.owner.nickname())
-		div.setAttribute('anonaccess',page.access[page.anonAccess]);
-		div.setAttribute('authaccess',page.access[page.authAccess]);
-		div.setAttribute('groupaccess',page.access[page.groupAccess]);
+		metaDiv.setAttribute('owner', page.owner.nickname())
+		metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
+		metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
+		metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
 		if page.groups != None:
-			div.setAttribute('groups',page.groups);
+			metaDiv.setAttribute('groups',page.groups);
 			if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
-				div.setAttribute('groupmember','true')
-	sr.appendChild(div)
+				metaDiv.setAttribute('groupmember','true')
+	sr.appendChild(metaDiv)
+
+	pgse = xd.createElement("div")
+	metaDiv.appendChild(pgse);
+	pgse.setAttribute('title',"pages")
+	for p in pages:
+		xpage = xd.createElement("a")
+		pgse.appendChild(xpage)
+		xpage.setAttribute('title',"page")
+		xpage.setAttribute('href', p.path);
+		xpage.appendChild(xd.createTextNode(p.subtitle))
+	
 	if page == None and u == None: # Main page not defined
 		defaultTiddlers = "LoginDialog"
 		td = Tiddler()
@@ -887,7 +906,7 @@ class MainPage(webapp.RequestHandler):
 			pre.appendChild(xd.createTextNode(t.text))
 			div.appendChild(pre)
 			sr.appendChild(div)
-		
+
 	self.response.out.write(xd.toxml())
 
 

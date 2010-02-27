@@ -466,7 +466,7 @@ config.shadowTiddlers = {
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]",
     SiteTitle: "SiteTitle",
     SiteSubtitle: "",
-    SiteUrl: "http://www.tiddlywiki.com/",
+    SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e !readOnly>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "More" "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
@@ -509,13 +509,30 @@ var installedPlugins = []; // Information filled in when plugins are executed
 var startingUp = false; // Whether we're in the process of starting up
 var pluginInfo, tiddler; // Used to pass information to plugins in loadPlugins()
 
-config.read = function(fields) {
+config.read = function(t) {
+	fields = t.fields;
     this.owner = fields.owner;
     this.anonAccess = fields.anonaccess;
     this.authAccess = fields.authaccess;
     this.groupAccess = fields.groupaccess;
     this.groups = fields.groups;
+    this.pages = this.readPages(t.ace);
     SetUserName(fields.username,fields.groupmember);
+}
+
+config.readPages = function(pgs) {
+	var a = [];
+	if (pgs) 
+	  for (var i=0; i<pgs.length; i++) {
+		if (pgs[i].getAttribute("title")== "pages") {
+		  var pages = pgs[i].children;
+		  for (var j=0; j<pages.length; j++) {
+			var leaf = pages[j].href.split('/').pop();
+			a[leaf] = pages[j];
+		  }
+		}
+	  }
+	return a;
 }
 
 // Starting up
@@ -540,8 +557,7 @@ function main() {
     invokeParamifier(params, "onload");
     readOnly = false;
     
-    config.read(store.fetchTiddler("_AccessInfo").fields);
-    //store.removeTiddler("_AccessInfo");
+    config.read(store.fetchTiddler("_MetaData"));
 
     var pluginProblem = loadPlugins();
     formatter = new Formatter(config.formatters);
@@ -4548,8 +4564,12 @@ function compareVersions(v1, v2) {
 function createTiddlyButton(parent, text, tooltip, action, className, id, accessKey, attribs) {
     var btn = document.createElement("a");
     if (action) {
-        btn.onclick = action;
-        btn.setAttribute("href", "javascript:;");
+        if (typeof action == "string")
+			btn.setAttribute("href", action);
+        else {
+			btn.onclick = action;
+			btn.setAttribute("href", "javascript:;");
+		}
     }
     if (tooltip)
         btn.setAttribute("title", tooltip);
@@ -4573,7 +4593,7 @@ function createTiddlyButton(parent, text, tooltip, action, className, id, access
 function createTiddlyLink(place, title, includeText, className, isStatic, linkedFromTiddler, noToggle) {
     var text = includeText ? title : null;
     var i = getTiddlyLinkInfo(title, className);
-    var btn = isStatic ? createExternalLink(place, store.getTiddlerText("SiteUrl", null) + "#" + title) : createTiddlyButton(place, text, i.subTitle, onClickTiddlerLink, i.classes);
+    var btn = isStatic ? createExternalLink(place, store.getTiddlerText("SiteUrl", null) + "#" + title) : createTiddlyButton(place, text, i.subTitle, i.href || onClickTiddlerLink, i.classes);
     if (isStatic)
         btn.className += ' ' + className;
     btn.setAttribute("refresh", "link");
@@ -4596,11 +4616,18 @@ function refreshTiddlyLink(e, title) {
 
 function getTiddlyLinkInfo(title, currClasses) {
     var classes = currClasses ? currClasses.split(" ") : [];
+    var link;
     classes.pushUnique("tiddlyLink");
     var tiddler = store.fetchTiddler(title);
     var subTitle;
     if (tiddler) {
         subTitle = tiddler.getSubtitle();
+        classes.pushUnique("tiddlyLinkExisting");
+        classes.remove("tiddlyLinkNonExisting");
+        classes.remove("shadow");
+    } else if (config.pages[title]) {
+        subTitle = config.pages[title].innerText;
+        link = config.pages[title].href;
         classes.pushUnique("tiddlyLinkExisting");
         classes.remove("tiddlyLinkNonExisting");
         classes.remove("shadow");
@@ -4617,7 +4644,7 @@ function getTiddlyLinkInfo(title, currClasses) {
     }
     if (typeof config.annotations[title] == "string")
         subTitle = config.annotations[title];
-    return { classes: classes.join(" "), subTitle: subTitle };
+    return { classes: classes.join(" "), subTitle: subTitle, href: link };
 }
 
 function createExternalLink(place, url) {
@@ -6288,6 +6315,9 @@ TW21Loader.prototype.internalizeTiddler = function(tiddler, title, node) {
         text = getNodeText(e).unescapeLineBreaks();
     } else {
         while (e && e.nodeName != "PRE" && e.nodeName != "pre") {
+            if (!tiddler.ace)
+                tiddler.ace = [];
+            tiddler.ace.push(e);
             e = e.nextSibling;
         }
         if (e)
