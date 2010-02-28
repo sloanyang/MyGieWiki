@@ -525,7 +525,7 @@ config.readPages = function(pgs) {
 	if (pgs) 
 	  for (var i=0; i<pgs.length; i++) {
 		if (pgs[i].getAttribute("title")== "pages") {
-		  var pages = pgs[i].children;
+		  var pages = pgs[i].childNodes;
 		  for (var j=0; j<pages.length; j++) {
 			var leaf = pages[j].href.split('/').pop();
 			a[leaf] = pages[j];
@@ -7036,7 +7036,7 @@ function trace(f) {
 http = {
   _methods: [ 
 	"createPage","saveTiddler","deleteTiddler", "tiddlerHistory","tiddlerVersion","getLoginUrl","pageProperties","deletePage","getNewAddress",
-	"submitComment", "getComments", "getNotes", "getMessages", "getTiddler", "getTiddlers", "fileList", "urlFetch", "evaluate",
+	"submitComment", "getComments", "getNotes", "getMessages", "getTiddler", "getTiddlers", "fileList", "urlFetch", "evaluate","saveSiteInfo",
 	"getRecentChanges", "siteMap", "getGroups", "createGroup", "getGroupMembers", "addGroupMember", "removeGroupMember" ],
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,'" + m + "')"); },
   _init: function() {

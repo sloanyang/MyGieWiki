@@ -22,7 +22,7 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <script src="/static/upload.js" />
 <body onload="main()">
 <div id="copyright">
-	Welcome to TiddlyWiki created by Jeremy Ruston, Copyright 2007 UnaMesa Association
+	Based on TiddlyWiki created by Jeremy Ruston, Copyright 2007 UnaMesa Association
 </div>
 <noscript>
 	<div id="javascriptWarning">

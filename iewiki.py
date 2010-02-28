@@ -65,6 +65,10 @@ def xmlArrayOfStrings(xd,te,text,name):
 	se.appendChild(xd.createTextNode(unicode(a)))
   te.setAttribute('type', 'string[]')
 
+class SiteInfo(db.Model):
+  title = db.StringProperty()
+  description = db.StringProperty()
+
 class Tiddler(db.Model):
   title = db.StringProperty()
   page = db.StringProperty()
@@ -761,10 +765,37 @@ class MainPage(webapp.RequestHandler):
 		self.response.out.write(xd.toxml())
 		
   def evaluate(self):
-	result = eval(self.request.get("expression"))
 	xd = self.initXmlResponse()
 	tv = xd.createElement('Result')
 	xd.appendChild(tv);
+	if  users.is_current_user_admin():
+		try:
+			result = eval(self.request.get("expression"))
+		except SyntaxError as sa:
+			result = sa
+	else:
+		result = "Access denied"
+	tv.appendChild(xd.createTextNode(format(result)))
+	self.response.out.write(xd.toxml())
+
+  def saveSiteInfo(self):
+	xd = self.initXmlResponse()
+	tv = xd.createElement('Result')
+	xd.appendChild(tv);
+	if  users.is_current_user_admin():
+		try:
+			data = SiteInfo.all().get()
+			if data != None:
+				data.delete()
+			data = SiteInfo()
+			data.title = self.request.get("title")
+			data.description = self.request.get("description")
+			data.put()
+			result = "Data was saved"
+		except Exception as sa:
+			result = sa
+	else:
+		result = "Access denied"
 	tv.appendChild(xd.createTextNode(format(result)))
 	self.response.out.write(xd.toxml())
 
