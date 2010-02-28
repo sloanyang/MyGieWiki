@@ -51,7 +51,7 @@ class MainRss(webapp.RequestHandler):
 	for tn in ignore:
 		tq = tq.filter("title != ", tn)
 		
-	ts = tq.order("-modified").fetch(10)
+	ts = tq.order("title").order("-modified").fetch(10)
 	authors = set()
 	for t in ts:
 		authors.add(t.author)

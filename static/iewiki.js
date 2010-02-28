@@ -527,8 +527,9 @@ config.readPages = function(pgs) {
 		if (pgs[i].getAttribute("title")== "pages") {
 		  var pages = pgs[i].childNodes;
 		  for (var j=0; j<pages.length; j++) {
-			var leaf = pages[j].href.split('/').pop();
-			a[leaf] = pages[j];
+		    var hr = pages[j].href;
+		    if (hr)
+				a[hr.split('/').pop()] = pages[j];
 		  }
 		}
 	  }
