@@ -43,6 +43,12 @@ def CombinePath(path,fn):
 		path = path + '/'
 	return path + fn
 
+def leafOfPath(path):
+	lp = path.rfind('/')
+	if lp + 1 < len(path):
+		return path[lp + 1:] + '/'
+	return ""
+
 def HasGroupAccess(grps,user):
 	if grps != None:
 		for ga in grps.split(","):
@@ -738,7 +744,7 @@ class MainPage(webapp.RequestHandler):
 	f.data = db.Blob(self.request.get("MyFile"))
 	f.put()
 	u = open('UploadDialog.htm')
-	ut = u.read().replace("UFL",self.request.get("filename")).replace("UFT",f.mimetype).replace("ULR","Uploaded:")
+	ut = u.read().replace("UFL",leafOfPath(self.request.path) + self.request.get("filename")).replace("UFT",f.mimetype).replace("ULR","Uploaded:")
 	self.response.out.write(ut)
 	u.close()
 	

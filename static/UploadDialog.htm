@@ -27,7 +27,7 @@ function init()
 		var fname = upldfndiv.firstChild.nodeValue;
 		var fnsp = fname.lastIndexOf(".");
 		var fnxt = fnsp > 0 ? fname.substr(0,fnsp) : fname;
-		var	text = ftype == "image/jpeg" ? "<<image '" + fname + "' < 50%>>" : "[[" + fname + "|" + fname + "]]";
+		var	text = ftype == "image" ? "<<image '" + fname + "' {3}>>" : "[[" + fname + "|" + fname + "]]";
 		var action = 'InsertTiddlerText("'.concat( fnxt, '","', text, '","',window.location.search.substr(1), '")');
 		pw.setTimeout(action,1);
 
@@ -128,11 +128,11 @@ function fileSelected()
 		</script>
 	</head>
 	<body onload="init();" style="font-family: arial,helvetica; font-size: .75em; background-color:Transparent;">
-	<div id="displayUploadResult" visible="false">ULR</div>
+	<div id="displayUploadResult" visible="false"></div>
 	<form id="upldlg" name="upldlg" method="post" enctype="Multipart/Form-Data" onsubmit="return valid()">
 		<table border=0>
 		<td colspan=3>
-		Select file to upload<br />
+		Select the file to upload<br />
 		<input name="MyFile" type="File" id="MyFile" size="70" onchange="valid()"/><br />
 		</td>
 		<tr>
@@ -146,10 +146,8 @@ function fileSelected()
 		</table>
 		<input name="SubmitNewFile" type="Submit" id="Submit1" value="Upload file" />
 		<!--&nbsp; Existing files:<select name="existing" id="SubmitNewFile" onchange="fileSelected()"><option></option>{1}</select>
-		<input name="SubmitNewVersion" type="Submit" id="SubmitNewVersion" value="Replace existing file" /> -->
+		<input name="SubmitNewVersion" type="Submit" id="SubmitNewVersion" value="Replace existing file" />-->
 		<input name="method" type="hidden" id="method" value="uploadFile" />
 	</form>
-	<div id="uploadedFilename" style="display: none">UFL</div>
-	<div id="uploadedFiletype" style="display: none">UFT</div>
 	</body>
 </html>
