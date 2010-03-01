@@ -771,7 +771,10 @@ class MainPage(webapp.RequestHandler):
 	if  users.is_current_user_admin():
 		try:
 			result = eval(self.request.get("expression"))
-		except SyntaxError as sa:
+# this syntax was introduced in Python 2.6, and is not supported by the google environment:
+#		except Exception as sa:
+# in stead, use:
+		except Exception, sa:
 			result = sa
 	else:
 		result = "Access denied"
@@ -792,7 +795,7 @@ class MainPage(webapp.RequestHandler):
 			data.description = self.request.get("description")
 			data.put()
 			result = "Data was saved"
-		except Exception as sa:
+		except Exception, sa:
 			result = sa
 	else:
 		result = "Access denied"
