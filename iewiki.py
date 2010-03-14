@@ -1,5 +1,6 @@
 import cgi
 import uuid
+from new import instance, classobj
 import xml.dom.minidom
 import datetime
 
@@ -9,6 +10,8 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 from google.appengine.api import urlfetch 
 
+from Plugins import *
+
 class MyError(Exception):
   def __init__(self, value):
 	self.value = value
@@ -16,11 +19,11 @@ class MyError(Exception):
 	return repr(self.value)
 
 def htmlEncode(s):
-	s = s.replace('"','&quot;')
-	s = s.replace('<','&lt;')
-	s = s.replace('>','&gt;')
-	return s
+	return s.replace('"','&quot;').replace('<','&lt;').replace('>','&gt;').replace('\n','<br>')
 
+def HtmlErrorMessage(msg):
+	return "<html><body>" + htmlEncode(msg) + "</body></html>" 
+ 
 def MimetypeFromFilename(fn):
 	fp = fn.rsplit('.',1)
 	if len(fp) == 1:
@@ -56,6 +59,20 @@ def HasGroupAccess(grps,user):
 				return True
 	return False
 	
+def ReadAccessToPage(page,user):
+	if page == None: # Un-cataloged page - restricted access
+		return users.is_current_user_admin()
+	if page.anonAccess >= page.ViewAccess: # anyone can see it
+		return True
+	if user != None:
+		if page.authAccess >= page.ViewAccess: # authenticated users have access
+			return True
+		if page.owner == user: # owner has access, of course
+			return True
+		if page.groupAccess >= page.ViewAccess and HasGroupAccess(page.groups,user.nickname):
+			return True
+	return False
+
 def userWho():
 	u = users.get_current_user()
 	if (u):
@@ -64,23 +81,26 @@ def userWho():
 		return ''
 
 def xmlArrayOfStrings(xd,te,text,name):
-  mas = text.split()
-  for a in mas:
-	se = xd.createElement(name)
-	te.appendChild(se)
-	se.appendChild(xd.createTextNode(unicode(a)))
-  te.setAttribute('type', 'string[]')
+	mas = text.split()
+	for a in mas:
+		se = xd.createElement(name)
+		te.appendChild(se)
+		se.appendChild(xd.createTextNode(unicode(a)))
+	te.setAttribute('type', 'string[]')
 
 class SiteInfo(db.Model):
   title = db.StringProperty()
   description = db.StringProperty()
 
 class Tiddler(db.Model):
+  "Unit of text storage"
   title = db.StringProperty()
   page = db.StringProperty()
   author = db.UserProperty()
+  author_ip = db.StringProperty()
   version = db.IntegerProperty()
   current = db.BooleanProperty()
+  public = db.BooleanProperty()
   text = db.TextProperty()
   created = db.DateTimeProperty(auto_now_add=True)
   modified = db.DateTimeProperty(auto_now_add=True)
@@ -89,6 +109,14 @@ class Tiddler(db.Model):
   comments = db.IntegerProperty(0)
   messages = db.StringProperty()
   notes = db.StringProperty()
+
+def getAuthor(t):
+	if t.author != None:
+		return format(t.author.nickname());
+	elif t.author_ip != None:
+		return format(t.author_ip)
+	else:
+		return "?"
 
 class Page(db.Model):
   NoAccess = 0
@@ -122,6 +150,14 @@ class Include(db.Model):
   page = db.StringProperty()
   id = db.StringProperty()
   version = db.IntegerProperty()
+  @staticmethod
+  def Unique(apage,aid):
+	"Finds or creates instance"
+	ev = Include.all().filter("page =", apage).filter("id =",aid).get()
+	if ev == None:
+		return Include(page = apage, id = aid)
+	return ev
+  # Unique = staticmethod(Unique)
   
 class Note(Comment):
   revision = db.IntegerProperty()
@@ -191,6 +227,7 @@ class MainPage(webapp.RequestHandler):
 	p = Tiddler()
 	p.page = page
 	p.author = users.get_current_user()
+	p.author_ip = self.request.remote_addr
 	p.version = 1
 	p.comments = 0
 	p.current = True
@@ -201,6 +238,7 @@ class MainPage(webapp.RequestHandler):
 	p.save()
 	
   def saveTiddler(self):
+	"http tiddlerName text tags version tiddlerId versions"
 	page = Page.all().filter("path =",self.request.path).get()
 	if page == None:
 		return self.fail("Page does not exist: " + self.request.path);
@@ -211,6 +249,7 @@ class MainPage(webapp.RequestHandler):
 
 	tlr = Tiddler()
 	tlr.page = self.request.path
+	tlr.public = page.anonAccess > page.NoAccess
 	tlr.title = self.request.get("tiddlerName")
 	tlr.text = self.request.get("text")
 	tlr.tags = self.request.get("tags")
@@ -221,8 +260,7 @@ class MainPage(webapp.RequestHandler):
 		tlr.id = str(uuid.uuid4())
 	if users.get_current_user():
 		tlr.author = users.get_current_user()
-	else:
-		tlr.authorName = self.request.get("modifier") # shouldn't really be allowed
+	tlr.author_ip = self.request.remote_addr # ToDo: Get user's sig in stead
 
 	tls = Tiddler.all().filter('id = ', tlr.id).filter('version >= ',tlr.version - 1)
 	
@@ -236,7 +274,7 @@ class MainPage(webapp.RequestHandler):
 			if atl.author != None:
 				by = atl.author.nickname()
 			else:
-				by = "?"
+				by = self.request.remote_addr
 			versions = versions + "|" + atl.modified.strftime("%Y-%m-%d %H:%M") + "|" + by + "|" + str(atl.version) + '|<<revision "' + atl.title + '" ' + str(atl.version) + '>>|\n'
 		if atl.version >= tlr.version:
 			tlr.version = atl.version + 1
@@ -246,22 +284,36 @@ class MainPage(webapp.RequestHandler):
 			tlr.comments = atl.comments
 			atl.put()
 	tlr.current = True
-	tlr.put()
-	if tlr.tags == "includes":
+	if "includes" in tlr.tags.split():
+		tlf = list()
 		tls = tlr.text.split("\n")
 		for tlx in tls:
-			if tlx.startswith("[[") and tlx.endswith("]]"):
-				tli = tlx.lstrip('[').rstrip(']').split("|")
-				if tli.count > 1:
-					parts = tli[1].split("#")
-					ltlx = Tiddler.all().filter("page = ", parts[0]).filter("title = ", parts[1]).filter("current = ",True)
-					tlxs = ltlx.fetch(1)
-					for tly in tlxs:
-						incl = Include()
-						incl.page = tlr.page
-						incl.id = tly.id
-						incl.version = tly.version
-						incl.put()
+			link = tlx.strip(' \r\n\t')
+			if link == "":
+				continue
+				
+			if not (link.startswith("[[") and link.endswith("]]")):
+				link = '[[' + link + "|" + link + ']]'
+
+			tli = link.lstrip('[').rstrip(']').split("|").pop()  # test the URL part
+					
+			parts = tli.split("#")
+			if len(parts) == 2:
+				tlxs = Tiddler.all().filter("page = ", parts[0]).filter("title = ", parts[1]).filter("current = ",True).get()
+				if tlxs != None:
+					incl = Include.Unique(tlr.page,tlxs.id)
+					if "current" in tlr.tags.split():
+						incl.version = tlxs.version
+					else:
+						incl.version = None
+					incl.put()
+					tlf.append(link)
+				else:
+					tlf.append(link + " ''not found''")
+
+		tlr.text = '\n'.join(tlf)
+		
+	tlr.put()
 	
 	xd = self.initXmlResponse()
 	esr = xd.add(xd,'SaveResp')
@@ -275,7 +327,7 @@ class MainPage(webapp.RequestHandler):
 	if tlr.author != None:
 		by = tlr.author.nickname()
 	else:
-		by = "?"
+		by = self.request.remote_addr;
 	versions = versions + "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + by + "|" + str(tlr.version) + '|<<revision "' + tlr.title + '" ' + str(tlr.version) + '>>|\n'
 	ve = xd.createElement('versions')
 	ve.appendChild(xd.createTextNode(versions))
@@ -283,8 +335,9 @@ class MainPage(webapp.RequestHandler):
 	esr.appendChild(ide)
 	esr.appendChild(ve)
 	self.response.out.write(xd.toxml())
-
+	
   def tiddlerHistory(self):
+	"http tiddlerId"
 	xd = self.initXmlResponse()
 	tls = Tiddler.all().filter("id = ", self.request.get("tiddlerId"))
 	eHist = xd.add(xd,'Hist')
@@ -294,7 +347,7 @@ class MainPage(webapp.RequestHandler):
 	for tlr in tls:
 		if text == "":
 			text = self.initHist(tlr.title);
-		text += "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + tlr.author.nickname() + "|" + str(tlr.version) + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
+		text += "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + getAuthor(tlr) + "|" + str(tlr.version) + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
 	
 	eVersions.appendChild(xd.createTextNode(text))
 	self.response.out.write(xd.toxml())
@@ -327,7 +380,7 @@ class MainPage(webapp.RequestHandler):
 
 		te = xd.createElement('modifier')
 		tv.appendChild(te)
-		te.appendChild(xd.createTextNode(tlr.author.nickname()))
+		te.appendChild(xd.createTextNode(getAuthor(tlr)))
 
 		te = xd.createElement('tags')
 		tv.appendChild(te)
@@ -619,10 +672,6 @@ class MainPage(webapp.RequestHandler):
 '</body>'
 '</html>') #,\'' + self.request.get("path") + '\'
 
-  def Eval(self):
-	res = eval(self.request.get("expression"))
-	self.reply({"value":res})
-
   def getTiddlers(self):
 	self.initXmlResponse()
 	xd = XmlDocument()
@@ -808,21 +857,46 @@ class MainPage(webapp.RequestHandler):
 	tv.appendChild(xd.createTextNode(format(result)))
 	self.response.out.write(xd.toxml())
 
-  def post(self):
-	try:
-		m = self.request.get("method")
-		method = getattr(self,m)
-	except AttributeError:
-		return self.fail("Invalid method: " + m)
-	#except MyError as x:
-	#	return self.fail(str(x.value))
-	return method()
+  def expando(self,method):
+	xd = self.initXmlResponse()
+	tv = xd.createElement('Result')
+	xd.appendChild(tv);
+	mt = Tiddler.all().filter("page = ", "/_python/").filter("title = ", method).filter("current = ", True).get()
+	if mt == None:
+		return self.fail("No such method found: " + method)
+	code = compile(mt.text, mt.title, 'exec')
+	exec code in globals(), locals()
+	
+#	tv.appendChild(xd.createTextNode(mt.text))
+#	for a in self.request.arguments:
+#		m = m + "=" + self.request.get(a) + "\n"
+#	tv.appendChild(xd.createTextNode(result))
+	self.response.out.write(xd.toxml())
 
-#lm = str(self.request.path) + "<br>"
-#for an in self.request.arguments():
-#	av = self.request.get(an)
-#	lm = lm + an + " = " + av + "<br>"
-#LogEvent("request",lm)
+  def post(self):
+	m = self.request.get("method") # what do you want
+	if m in dir(self):
+		try:
+			method = getattr(self,m)
+		except AttributeError, a:
+			return self.fail("Invalid method: " + m)
+		except MyError, x:
+			return self.fail(str(x.value))
+		return method()
+	else:
+		try:
+			po = eval(m + "()")
+			method = getattr(po,'public')
+			if method != None:
+				return method(self)
+			else:
+				return self.expando(m)
+		except NameError:
+			return self.expando(m)
+		except Exception, x:
+			return self.fail("Ups!\n" + format(dir(x)))
+
+############################################################################
 
   def get(self):
 	method = self.request.get("method")
@@ -833,8 +907,8 @@ class MainPage(webapp.RequestHandler):
 		
 	tiddict = dict()
 	defaultTiddlers = ""
-	page = Page.all().filter("path =",self.request.path).get()
-	tiddlers = Tiddler.all().filter("page = ", self.request.path).filter("current = ", True)
+	page = Page.all().filter("path",self.request.path).get()
+	tiddlers = Tiddler.all().filter("page", self.request.path).filter("current", True)
 	for t in tiddlers:
 		id = t.id
 		if id in tiddict:
@@ -843,11 +917,16 @@ class MainPage(webapp.RequestHandler):
 		else:
 			tiddict[id] = t
 
-	includes = Include.all().filter("page = ", self.request.path)
+	includes = Include.all().filter("page", self.request.path)
 	for t in includes:
 		tv = t.version
-		tiddlers = Tiddler.all().filter("id = ", t.id).filter("version = ", tv)
-		for t in tiddlers:
+		tq = Tiddler.all().filter("id = ", t.id)
+		if t.version == None:
+			tq = tq.filter("current = ", True)
+		else:
+			tq = tq.filter("version = ", tv)
+		t = tq.get()
+		if t != None:
 			id = t.id
 			if id in tiddict:
 				if t.version > tiddict[id].version:
@@ -856,7 +935,7 @@ class MainPage(webapp.RequestHandler):
 				tiddict[id] = t
 	
 	# LogEvent("get: " + str(len(tiddict)) , self.request.path)
-	pages = list()
+	pages = []
 	if len(tiddict) == 0:
 		file = UploadedFile.all().filter("path =", self.request.path).get()
 		LogEvent("Get file", self.request.path)
@@ -877,67 +956,92 @@ class MainPage(webapp.RequestHandler):
 			if p.path.startswith(paw):
 				pages.append(p)
 		
-	xd = self.initXmlResponse()
-	pi = xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="/static/iewiki.xsl"')
-	xd.appendChild(pi)
-	sr = xd.createElement("storeArea")
-	xd.appendChild(sr)
-	metaDiv = xd.createElement('div')
-	metaDiv.setAttribute('title', "_MetaData")
-
-	u = users.get_current_user()
-	if u != None:
-		username = u.nickname()
-		metaDiv.setAttribute('username',username)
+	user = users.get_current_user()
+	if user != None:
+		username = user.nickname()
 	else:
 		username = ""
-		
-	if page != None:
-		metaDiv.setAttribute('owner', page.owner.nickname())
-		metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
-		metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
-		metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
-		if page.groups != None:
-			metaDiv.setAttribute('groups',page.groups);
-			if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
-				metaDiv.setAttribute('groupmember','true')
-	sr.appendChild(metaDiv)
-
-	pgse = xd.createElement("div")
-	metaDiv.appendChild(pgse);
-	pgse.setAttribute('title',"pages")
-	for p in pages:
-		xpage = xd.createElement("a")
-		pgse.appendChild(xpage)
-		xpage.setAttribute('title',"page")
-		xpage.setAttribute('href', p.path);
-		xpage.appendChild(xd.createTextNode(p.subtitle))
 	
-	if page == None and u == None: # Main page not defined
-		defaultTiddlers = "LoginDialog"
-		td = Tiddler()
-		td.title = "DefaultTiddlers"
-		td.version = 0
-		td.text = defaultTiddlers
-		tiddict["DefaultTiddlers"] = td
+	twd = self.request.get('twd')
+	xsl = self.request.get('xsl')
+	if twd == "" or xsl == "":		# Unless a TiddlyWiki is required or a style sheet is specified
+		xsl = "/static/iewiki.xsl"	# use the default,
+	if xsl != "none":				# except if no CSS is desired
+		xd = self.initXmlResponse()
+		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
+	if twd == "":
+		sr = xd.createElement("storeArea")
+		metaDiv = xd.createElement('div')
+		metaDiv.setAttribute('title', "_MetaData")
+
+		if page != None:
+			metaDiv.setAttribute('username',username)
+			metaDiv.setAttribute('owner', page.owner.nickname())
+			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
+			metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
+			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
+			if page.groups != None:
+				metaDiv.setAttribute('groups',page.groups);
+				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
+					metaDiv.setAttribute('groupmember','true')
+		sr.appendChild(metaDiv)
 		
-	if page != None and (page.anonAccess >= page.ViewAccess or (u != None and (page.authAccess >= page.ViewAccess) or (page.owner.nickname() == username) or ((page.groupAccess >= page.ViewAccess) and HasGroupAccess(page.groups,username)))):
-		# 
+		pgse = xd.createElement("div")
+		metaDiv.appendChild(pgse);
+		pgse.setAttribute('title',"pages")
+		for p in pages:
+			xpage = xd.createElement("a")
+			pgse.appendChild(xpage)
+			xpage.setAttribute('title',"page")
+			xpage.setAttribute('href', p.path);
+			xpage.appendChild(xd.createTextNode(p.subtitle))
+
+		if page == None and user == None: # Main page not defined
+			defaultTiddlers = "LoginDialog"
+			td = Tiddler()
+			td.title = "DefaultTiddlers"
+			td.version = 0
+			td.text = defaultTiddlers
+			tiddict["DefaultTiddlers"] = td
+			
+	else:
+		self.response.headers['Content-Type'] = 'text/html'
+		sr = xd.createElement("div")
+		sr.setAttribute("id",'storeArea')
+
+	xd.appendChild(sr) # the root element
+	
+	if ReadAccessToPage(page,user):
 		for id, t in tiddict.iteritems():
+			if t.page.startswith("/_python/") and t.page != self.request.path:
+				if t.tags == 'HttpMethod':
+					t.text= "{{{\n" + t.text + "\n}}}"
+				else:
+					try:
+						code = compile(t.text, t.title, 'exec')
+						exec code in globals(), locals()
+						t.text = "{{{\n" + t.text + "\n}}}"
+					except Exception, x:
+						t.text = format(x)
+
 			div = xd.createElement('div')
 			div.setAttribute('id', id)
 			div.setAttribute('title', t.title)
+			if t.page != self.request.path:
+				div.setAttribute('from',t.page)
+				div.setAttribute('readOnly',"true")
+				
 			if t.modified != None:
 				div.setAttribute('modified', t.modified.strftime("%Y%m%d%H%M%S"))
-			if t.author != None:
-				div.setAttribute('modifier', t.author.nickname())
+			div.setAttribute('modifier', getAuthor(t))
+				
 			div.setAttribute('version', str(t.version))
 			div.setAttribute('comments', str(t.comments))
-			if t.notes != None and u != None:
-				if t.notes.find(u.nickname()) >= 0:
+			if t.notes != None and user != None:
+				if t.notes.find(user.nickname()) >= 0:
 					div.setAttribute('notes', "true")
-			if t.messages != None and u != None:
-				msgCnt = t.messages.count("|" + u.nickname())
+			if t.messages != None and user != None:
+				msgCnt = t.messages.count("|" + user.nickname())
 				if msgCnt > 0:
 					div.setAttribute('messages', str(msgCnt))
 			if t.tags != None:
@@ -947,8 +1051,35 @@ class MainPage(webapp.RequestHandler):
 			div.appendChild(pre)
 			sr.appendChild(div)
 
-	self.response.out.write(xd.toxml())
+	text = xd.toxml()
+	if twd != "":
+		twdtext = None
+		if twd.startswith('http:'):
+			try:
+				twdres = urlfetch.fetch(twd)
+				if twdres.status_code == 200:
+					twdtext = twdres.content
+				else:
+					text = HtmlErrorMessage("Failed to retrieve " + twd + ":\nHTTP Error " + format(twdres.status_code))
+			except Exception, x:
+				text = HtmlErrorMessage("Cannot retrive " + twd + ":\n" + format(x))			
+		else:
+			try:
+				ftwd = open(twd)
+				twdtext = ftwd.read();
+				ftwd.close()
+			except Exception, x:
+				text = HtmlErrorMessage("Cannot read " + twd + ":\n" + format(x))
+		if twdtext != None:
+			xmldecl = '<?xml version="1.0" ?>' # strip off this
+			if text.startswith(xmldecl):
+				text = text[len(xmldecl):]
+			text = twdtext.replace('<div id="storeArea">\n</div>',text) # insert text into body
+		
+	# last, but no least
+	self.response.out.write(text)
 
+############################################################################
 
 application = webapp.WSGIApplication( [('/.*', MainPage)], debug=True)
 

@@ -56,5 +56,7 @@
     <Content Include="static\scratch.htm" />
     <Content Include="static\scratch.js" />
     <Content Include="static\upload.js" />
+    <Content Include="static\UploadDialog.htm" />
+    <Content Include="UploadDialog.htm" />
   </ItemGroup>
 </Project>

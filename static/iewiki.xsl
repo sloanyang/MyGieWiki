@@ -19,7 +19,6 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 </head>
 <script src="/static/iewiki.js" />
 <script src="/static/inlinescript.js" />
-<script src="/static/upload.js" />
 <body onload="main()">
 <div id="copyright">
 	Based on TiddlyWiki created by Jeremy Ruston, Copyright 2007 UnaMesa Association
@@ -469,14 +468,14 @@ tiddler|File list|file list|list of uploaded files|f
 <div title="OptionsPanel">
 <pre>
 These options are saved in your browser
-
 &lt;&lt;option chkRegExpSearch&gt;&gt; RegExpSearch
 &lt;&lt;option chkCaseSensitiveSearch&gt;&gt; CaseSensitiveSearch
 &lt;&lt;option chkAnimate&gt;&gt; EnableAnimations
 
+See also the AdvancedOptions
 ----
-Also see AdvancedOptions
-	</pre>
+&lt;&lt;downloadAsTiddlyWiki&gt;&gt;
+</pre>
 </div>
 <div title="LoginDialog" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;&lt;loginDialog&gt;&gt;</pre>

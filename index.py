@@ -26,6 +26,7 @@ class Tiddler(db.Model):
   author = db.UserProperty()
   version = db.IntegerProperty()
   current = db.BooleanProperty()
+  public = db.BooleanProperty()
   text = db.TextProperty()
   created = db.DateTimeProperty(auto_now_add=True)
   modified = db.DateTimeProperty(auto_now_add=True)
@@ -47,14 +48,16 @@ class MainRss(webapp.RequestHandler):
 			si.description = tnr.subtitle
 			si.language = "en"
 			
-	tq = Tiddler.all().filter("current = ",True)
+	tq = Tiddler.all().filter("public",True).filter("current",True)
 	for tn in ignore:
 		tq = tq.filter("title != ", tn)
 		
 	ts = tq.order("title").order("-modified").fetch(10)
 	authors = set()
 	for t in ts:
-		authors.add(t.author)
+		if t.author != None:
+			authors.add(t.author)
+
 	if len(authors) > 0:
 		aux = authors.pop()
 		copyright = "Copyright " + t.modified.strftime("%Y") + " " + aux.nickname()

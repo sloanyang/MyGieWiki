@@ -38,7 +38,6 @@ var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new 
 
 // Miscellaneous options
 var config = {
-    numRssItems: 20, // Number of items in the RSS feed
     animDuration: 400, // Duration of UI animations in milliseconds
     cascadeFast: 20, // Speed for cascade animations (higher == slower)
     cascadeSlow: 60, // Speed for EasterEgg cascade animations
@@ -127,8 +126,8 @@ config.options = {
     txtMainTab: "tabTimeline",
     txtMoreTab: "moreTabAll",
     txtMaxEditRows: "30",
-    txtFileSystemCharSet: "UTF-8",
     txtTheme: "",
+    txtEmptyTiddlyWiki: "http://localhost/static/empty.html", // Template for stand-alone export
     txtUserName: ""
 };
 
@@ -148,8 +147,8 @@ config.optionsDesc = {
     chkConfirmDelete: "Require confirmation before deleting tiddlers",
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
     txtBackupFolder: "Name of folder to use for backups",
-    txtMaxEditRows: "Maximum number of rows in edit boxes",
-    txtFileSystemCharSet: "Default character set for saving changes (Firefox/Mozilla only)"
+    txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
+    txtMaxEditRows: "Maximum number of rows in edit boxes"
 };
 
 // Default tiddler templates
@@ -453,6 +452,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
+    HttpMethods: "createPage\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddler\ngetTiddlers\nfileList\ngetRecentChanges\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -524,13 +524,20 @@ config.readPages = function(pgs) {
 	var a = [];
 	if (pgs) 
 	  for (var i=0; i<pgs.length; i++) {
-		if (pgs[i].getAttribute("title")== "pages") {
-		  var pages = pgs[i].childNodes;
-		  for (var j=0; j<pages.length; j++) {
-		    var hr = pages[j].href;
-		    if (hr)
+		try {
+		switch (pgs[i].getAttribute("title")) {
+		  case "pages":
+			var pages = pgs[i].childNodes;
+			for (var j=0; j<pages.length; j++) {
+			  var hr = pages[j].href;
+			  if (hr)
 				a[hr.split('/').pop()] = pages[j];
+			}
+			break;
 		  }
+		}
+		catch (ex)
+		{
 		}
 	  }
 	return a;
@@ -539,7 +546,6 @@ config.readPages = function(pgs) {
 // Starting up
 function main() {
     startingUp = true;
-    http._init();
     window.onbeforeunload = function(e) { if (window.confirmExit) return confirmExit(); };
     params = getParameters();
     if (params)
@@ -559,6 +565,7 @@ function main() {
     readOnly = false;
     
     config.read(store.fetchTiddler("_MetaData"));
+    http._init(store.getTiddlerText("HttpMethods").split('\n'));
 
     var pluginProblem = loadPlugins();
     formatter = new Formatter(config.formatters);
@@ -2561,6 +2568,10 @@ config.commands.editTiddler.handler = function(event, src, title) {
     clearMessage();
     var tiddlerElem = story.getTiddler(title);
     var fields = tiddlerElem.getAttribute("tiddlyFields");
+    var st = store.getTiddler(title);
+    if (st.from)
+		if (confirm("This tiddler is included from " + st.from) == false)
+			return;
     story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, fields);
     story.focusTiddler(title, config.options.txtEditorFocus || "text");
     return false;
@@ -2897,7 +2908,7 @@ Tiddler.prototype.getSubtitle = function() {
 };
 
 Tiddler.prototype.isReadOnly = function() {
-    return readOnly || config.access == "add" && this.modifier != config.views.wikified.defaultModifier && this.modifier != config.options.txtUserName;
+    return readOnly || this.readOnly || config.access == "add" && this.modifier != config.views.wikified.defaultModifier && this.modifier != config.options.txtUserName;
 };
 
 Tiddler.prototype.autoLinkWikiWords = function() {
@@ -6337,6 +6348,7 @@ TW21Loader.prototype.internalizeTiddler = function(tiddler, title, node) {
     tiddler.comments = parseInt(node.getAttribute("comments"));
     tiddler.notes = node.getAttribute("notes");
     tiddler.messages = node.getAttribute("messages");
+    tiddler.from = node.getAttribute("from");
     
     try { tiddler.id = node.getAttribute("id"); } catch (e) { this.id = ""; }
     try { tiddler.includedFrom = node.getAttribute("includedFrom"); } catch (e) { }
@@ -6557,10 +6569,8 @@ function CheckNewAddress(title) {
 var forms = [];
 
 function formName(e) {
-    for (var p = e.parentNode; p; p = p.parentNode) {
-        var t = p.getAttribute("tiddler");
-        if (t) return t;
-    }
+    if (!e) var e = resolveTarget(window.event);
+    return story.findContainingTiddler(e).getAttribute("tiddler");
 }
 
 function GetForm(fn) {
@@ -6682,6 +6692,12 @@ config.macros.input = {
             displayMessage(x.message);
         }
     }
+}
+
+config.macros.localDiv = {
+	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
+		createTiddlyElement(place,params[1] || "div",formName(place) + params[0]);
+   }
 }
 
 //function onClickCommandButton(e) {
@@ -7035,17 +7051,12 @@ function trace(f) {
 }
 
 http = {
-  _methods: [ 
-	"createPage","saveTiddler","deleteTiddler", "tiddlerHistory","tiddlerVersion","getLoginUrl","pageProperties","deletePage","getNewAddress",
-	"submitComment", "getComments", "getNotes", "getMessages", "getTiddler", "getTiddlers", "fileList", "urlFetch", "evaluate","saveSiteInfo",
-	"getRecentChanges", "siteMap", "getGroups", "createGroup", "getGroupMembers", "addGroupMember", "removeGroupMember" ],
-  _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,'" + m + "')"); },
-  _init: function() {
-    for (var i = 0; i < http._methods.length; i++) {
-      var m = http._methods[i]; http[m] = new Function("a","return HttpGet(a,'" + m + "')");
-      }
-  }
-};
+  _methods: [],
+  _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,'" + m + "')"); }
+}
+
+http._init = function(ms) { for (var i=0; i < ms.length; i++) http._addMethod(ms[i]); }
+
 
 function OnCreatePage(reply)
 {
@@ -7199,13 +7210,90 @@ config.macros.urlFetch = {
     }
 }
 
-config.macros.evaluate = {
+config.macros.downloadAsTiddlyWiki = {
     handler: function(place, macroName, params)
     {
-        var text = http.evaluate(
-            { expression: params[0] } );
-        var output = createTiddlyElement(place, "span");
-        output.innerHTML = text;
+		if (window.location.protocol == "file:") 
+			return;
+		var link = document.createElement("a");
+		link.href = location.pathname + "?twd=" + config.options.txtEmptyTiddlyWiki; 
+		link.title = "Right-click to download this page as a Tiddlywiki";
+		createTiddlyText(link, "Download TiddlyWiki");
+		place.appendChild(link);
     }
 }
 
+
+config.macros.uploadFile = {
+	onClick: function()
+	{
+		story.displayTiddler(null,"UploadDialog", DEFAULT_VIEW_TEMPLATE);
+		return false;
+	},
+	handler: function(place)
+	{
+		if(!readOnly)
+			createTiddlyButton(place,"upload file","Upload one or more files",this.onClick);
+	}
+}
+
+config.macros.uploadDialog = {
+	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
+	{
+		createUploadFrame(place,"");
+		createTiddlyElement(place,"DIV","displayUploadResult");
+		createTiddlyElement(place,"DIV","displayUploads");
+	}
+}
+
+function createUploadFrame(place, qs, id)
+{
+	var theFrame = document.createElement("IFRAME");
+	var ts = new Date();
+	theFrame.src = "/static/UploadDialog.htm?" + qs + "#" + window.location.pathname;
+	theFrame.height = 196;
+	theFrame.width = "100%";
+	theFrame.frameBorder = 0;
+	if (id)
+	    theFrame.id = id;
+	place.appendChild(theFrame);
+}
+
+function InsertTiddlerText(title, text, parentId)
+{
+	if (parentId)
+	{
+		var parent = document.getElementById(parentId);
+		if (parent)
+		{
+			var ta = FindChildTextarea(parent);
+			if (ta)
+			{
+				ta.focus();
+				if (document.selection) //IE
+					document.selection.createRange().text = text;
+				else // firefox
+					ta.value = ta.value.substr(0,ta.selectionStart) + text + ta.value.substr(ta.selectionStart);
+				var fid = document.getElementById(parentId + "iFrame");
+				fid.parentNode.removeChild(fid);
+				return;
+			}
+		}
+	}
+	var curtx = store.getTiddlerText(title);
+	if (!curtx)
+		store.saveTiddler(title,title,text,config.options["txtUserName"],new Date(), "");
+	story.displayTiddler(null,title);
+}
+
+function FindChildTextarea(ac)
+{
+	if (ac.tagName == "TEXTAREA")
+		return ac;
+
+	for (var i=0; i<ac.childNodes.length; i++)
+	{
+		var e = FindChildTextarea(ac.childNodes[i]);
+		if (e) return e;
+	}
+}
