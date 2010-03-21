@@ -495,6 +495,25 @@ if (http.deletePage(window.location.href).Success) {
 	}&lt;/script&gt;
 </pre>
 </div>
+<div title="DebugConsole">
+<pre>&lt;script label="Python"&gt;
+	var re = document.getElementById(formName() + 'output');
+	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
+	re.appendChild(document.createTextNode(http.evaluate(GetForm(place))));
+	createTiddlyElement(re,'br')
+&lt;/script&gt; &lt;script label="Javascript"&gt;
+	debugger
+	var re = document.getElementById(formName() + 'output');
+	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
+	var exp = GetForm(place).expression;
+	var text = eval(exp);
+	debugger;
+	if (typeof(text) == 'object') if (text.output) text=text.output;
+	re.appendChild(document.createTextNode(text)); createTiddlyElement(re,'br')
+&lt;/script&gt;
+|&gt;|&lt;&lt;localDiv output&gt;&gt;|
+|&gt;|&gt;|Evaluate&lt;br&gt;&lt;&lt;input textarea expression 20*70&gt;&gt;|
+</pre>></div>
 <div title="UploadDialog" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;&lt;uploadDialog&gt;&gt;</pre>
 </div>

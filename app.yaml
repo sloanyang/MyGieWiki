@@ -11,10 +11,6 @@ handlers:
   static_files: static/favicon.ico
   upload: static/favicon.ico
 
-- url: /empty.html
-  static_files: empty.html
-  upload: empty.html
-
 - url: /index.xml
   script: index.py
 

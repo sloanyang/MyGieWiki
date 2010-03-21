@@ -1,5 +1,6 @@
 import cgi
 import uuid
+import urllib
 from new import instance, classobj
 import xml.dom.minidom
 import datetime
@@ -23,12 +24,15 @@ def htmlEncode(s):
 
 def HtmlErrorMessage(msg):
 	return "<html><body>" + htmlEncode(msg) + "</body></html>" 
- 
-def MimetypeFromFilename(fn):
-	fp = fn.rsplit('.',1)
+
+def Filetype(filename):
+	fp = filename.rsplit('.',1)
 	if len(fp) == 1:
-		return "application/octet-stream"
-	ft = fp[1].lower()
+		return None
+	else:
+		return fp[1].lower()
+
+def MimetypeFromFiletype(ft):
 	if ft == "txt":
 		return "text/plain"
 	if ft == "htm" or ft == "html":
@@ -782,20 +786,112 @@ class MainPage(webapp.RequestHandler):
 	gmu = GroupMember.all().filter("group =",grp).filter("name =",user).get()
 	gmu.delete()
 	self.reply({"Success": True})
+
+  def tiddlerChanged(self,et,nt):
+	if et.tags != nt.tags:
+		self.status = "tags changed: " + et.tags + " <> " + nt.tags
+		return True
+	if et.text != nt.text:
+		self.status = "text changed: " + et.text + " <> " + nt.text
+		return True
+	if et.title != nt.title:
+		self.status =  "title changed: " + et.title + " <> " + nt.title
+		return True
+	return False  
+  
+  def uploadTiddlersFrom(self,storeArea):
+	try:
+		self.response.out.write("<ul>");
+		for te in storeArea.childNodes:
+			# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else str(te.nodeType)) + "&gt;");
+			if te.nodeType == xml.dom.Node.ELEMENT_NODE:
+				id = None
+				try:
+					title = te.getAttribute('title')
+					id = te.getAttribute('id')
+					v = te.getAttribute('version')
+					version = eval(v) if v != None and v != "" else 1
+				except Exception, x:
+					self.response.out.write("Attr missing...: " + format(x));
+					return
+					
+				nt = Tiddler(page = self.request.path, title = title, id = id, version = version)
+				nt.current = True
+				nt.tags = te.getAttribute('tags')
+				nt.author = users.get_current_user()
+				for ce in te.childNodes:
+					if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'pre':
+						nt.text = ce.firstChild.nodeValue
+						break
+				page = Page.all().filter("path =",nt.page).get()
+				if page == None:
+					self.response.out.write("<li>Page " + nt.page + " doesn't exist (page properties are not undefined)!</li></ul>")
+					return
+				nt.public = page.anonAccess > page.NoAccess
+				#self.response.out.write("<br>Upload tiddler: " + nt.title + " | " + nt.id + " | version " + str(nt.version) + nt.text + "<br>")
+				
+				et = Tiddler.all().filter('id',nt.id).filter("current",True).get() if nt.id != "" else None
+				if et == None:
+					et = Tiddler.all().filter('page',self.request.path).filter('title',nt.title).filter("current",True).get()
+					
+				# self.response.out.write("Not found " if et == None else ("Found v# " + format(et.version)))
+				if et == None:
+					self.status = ' - added';
+					nt.id = str(uuid.uuid4())
+					nt.comments = 0
+				elif et.version != nt.version:
+					self.response.out.write("<li>" + nt.title + " - version " + str(nt.version) + \
+											" <b>not</b> uploaded; it is already at version " + str(et.version) + "</li>")
+					continue
+				elif self.tiddlerChanged(et,nt):
+					nt.id = et.id
+					nt.version = nt.version + 1
+					nt.comments = et.comments
+					et.current = False
+					et.put()
+				else:
+					self.response.out.write("<li>" + nt.title + " - no changes</li>")
+					continue
+				nt.put()
+				self.response.out.write('<li><a href="' + self.request.path + "#" + urllib.quote(nt.title) + '">' + nt.title + "<a> " + self.status + "</li>");
+	except Exception,x:
+		self.response.out.write("<br>---- " + format(x))
+	self.response.out.write("</ul>");
+
+  def uploadTiddlyWikiDoc(self,filename,filedata):
+	try:
+		dom = xml.dom.minidom.parseString(filedata)
+		doce = dom.documentElement
+		if doce.tagName == "html":
+			for ace in doce.childNodes:
+				if ace.nodeType == xml.dom.Node.ELEMENT_NODE and ace.tagName == "body":
+					for bce in ace.childNodes:
+						if bce.nodeType == xml.dom.Node.ELEMENT_NODE:
+							if bce.getAttribute("id") == "storeArea":
+								self.uploadTiddlersFrom(bce);
+		
+	except Exception,x:
+		self.response.out.write("Oops: " + format(x))
 	
   def uploadFile(self):
-	f = UploadedFile()
-	f.owner = users.get_current_user()
-	f.path = CombinePath(self.request.path, self.request.get("filename"))
-	f.mimetype = self.request.get("mimetype")
-	if f.mimetype == None or f.mimetype == "":
-		f.mimetype = MimetypeFromFilename(self.request.get("filename"))
-	f.data = db.Blob(self.request.get("MyFile"))
-	f.put()
-	u = open('UploadDialog.htm')
-	ut = u.read().replace("UFL",leafOfPath(self.request.path) + self.request.get("filename")).replace("UFT",f.mimetype).replace("ULR","Uploaded:")
-	self.response.out.write(ut)
-	u.close()
+	filename = self.request.get("filename")
+	filedata = self.request.get("MyFile")
+	filetype = Filetype(filename)
+	if filetype == 'twd':
+		return self.uploadTiddlyWikiDoc(filename,filedata)
+	else:
+		f = UploadedFile()
+		f.owner = users.get_current_user()
+		f.path = CombinePath(self.request.path, filename)
+		f.mimetype = self.request.get("mimetype")
+		if f.mimetype == None or f.mimetype == "":
+			f.mimetype = MimetypeFromFiletype(filetype)
+		f.data = db.Blob(filedata)
+		f.put()
+		u = open('UploadDialog.htm')
+		ut = u.read().replace("UFL",leafOfPath(self.request.path) + self.request.get("filename")).replace("UFT",f.mimetype).replace("ULR","Uploaded:")
+		self.response.out.write(ut)
+		u.close()
 	
   def fileList(self):
 	files = UploadedFile.all()
@@ -859,19 +955,15 @@ class MainPage(webapp.RequestHandler):
 
   def expando(self,method):
 	xd = self.initXmlResponse()
-	tv = xd.createElement('Result')
-	xd.appendChild(tv);
+	result = xd.createElement('Result')
 	mt = Tiddler.all().filter("page = ", "/_python/").filter("title = ", method).filter("current = ", True).get()
 	if mt == None:
 		return self.fail("No such method found: " + method)
 	code = compile(mt.text, mt.title, 'exec')
 	exec code in globals(), locals()
-	
-#	tv.appendChild(xd.createTextNode(mt.text))
-#	for a in self.request.arguments:
-#		m = m + "=" + self.request.get(a) + "\n"
-#	tv.appendChild(xd.createTextNode(result))
-	self.response.out.write(xd.toxml())
+	if result.childNodes.count > 0:
+		xd.appendChild(result)
+		self.response.out.write(xd.toxml())
 
   def post(self):
 	m = self.request.get("method") # what do you want
@@ -884,11 +976,11 @@ class MainPage(webapp.RequestHandler):
 			return self.fail(str(x.value))
 		return method()
 	else:
-		try:
-			po = eval(m + "()")
-			method = getattr(po,'public')
+		try: # Any class that has a 'public(self,page)' method handle method named by class
+			po = eval(m + "()") # construct class
+			method = getattr(po,'public') # does it support the public interface?
 			if method != None:
-				return method(self)
+				return method(self) # i.e. po->public(self)
 			else:
 				return self.expando(m)
 		except NameError:
@@ -897,7 +989,34 @@ class MainPage(webapp.RequestHandler):
 			return self.fail("Ups!\n" + format(dir(x)))
 
 ############################################################################
-
+  def BuildTiddlerDiv(self,xd,id,t,user):
+	div = xd.createElement('div')
+	div.setAttribute('id', id)
+	div.setAttribute('title', t.title)
+	if t.page != self.request.path:
+		div.setAttribute('from',t.page)
+		div.setAttribute('readOnly',"true")
+		
+	if t.modified != None:
+		div.setAttribute('modified', t.modified.strftime("%Y%m%d%H%M%S"))
+	div.setAttribute('modifier', getAuthor(t))
+		
+	div.setAttribute('version', str(t.version))
+	div.setAttribute('comments', str(t.comments))
+	if t.notes != None and user != None:
+		if t.notes.find(user.nickname()) >= 0:
+			div.setAttribute('notes', "true")
+	if t.messages != None and user != None:
+		msgCnt = t.messages.count("|" + user.nickname())
+		if msgCnt > 0:
+			div.setAttribute('messages', str(msgCnt))
+	if t.tags != None:
+		div.setAttribute('tags', t.tags);
+	pre = xd.createElement('pre')
+	pre.appendChild(xd.createTextNode(t.text))
+	div.appendChild(pre)
+	return div
+  
   def get(self):
 	method = self.request.get("method")
 
@@ -933,10 +1052,16 @@ class MainPage(webapp.RequestHandler):
 					tiddict[id] = t
 			else:
 				tiddict[id] = t
-	
+
+	httpMethodTiddler = None
+	for id, t in tiddict.iteritems():
+		if t.title == 'HttpMethods':
+			httpMethodTiddler = tiddict.pop(id)
+			break
+		
 	# LogEvent("get: " + str(len(tiddict)) , self.request.path)
 	pages = []
-	if len(tiddict) == 0:
+	if len(tiddict) == 0: # Not an existing page, perhaps an uploaded file ?
 		file = UploadedFile.all().filter("path =", self.request.path).get()
 		LogEvent("Get file", self.request.path)
 		if file != None:
@@ -969,11 +1094,11 @@ class MainPage(webapp.RequestHandler):
 	if xsl != "none":				# except if no CSS is desired
 		xd = self.initXmlResponse()
 		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
-	if twd == "":
+	if twd == "": # normal giewiki output
 		sr = xd.createElement("storeArea")
 		metaDiv = xd.createElement('div')
 		metaDiv.setAttribute('title', "_MetaData")
-
+		metaDiv.setAttribute('admin', "true" if users.is_current_user_admin() else "false")
 		if page != None:
 			metaDiv.setAttribute('username',username)
 			metaDiv.setAttribute('owner', page.owner.nickname())
@@ -1004,7 +1129,7 @@ class MainPage(webapp.RequestHandler):
 			td.text = defaultTiddlers
 			tiddict["DefaultTiddlers"] = td
 			
-	else:
+	else: # TiddlyWiki output
 		self.response.headers['Content-Type'] = 'text/html'
 		sr = xd.createElement("div")
 		sr.setAttribute("id",'storeArea')
@@ -1012,44 +1137,33 @@ class MainPage(webapp.RequestHandler):
 	xd.appendChild(sr) # the root element
 	
 	if ReadAccessToPage(page,user):
+		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
 		for id, t in tiddict.iteritems():
+			# pages at /_python/ are executable script...
 			if t.page.startswith("/_python/") and t.page != self.request.path:
+				# ...either to be called from a http (XmlHttpRequest) method
 				if t.tags == 'HttpMethod':
+					if httpMethods != None:
+						httpMethods.append(t.title)
+					else:
+						t.text = "No proxy for:\n"
 					t.text= "{{{\n" + t.text + "\n}}}"
-				else:
+				else: # ...or immediately
 					try:
+						if t.tags == "test":
+							text = "{{{\n" + t.text + "\n}}}\n"
 						code = compile(t.text, t.title, 'exec')
 						exec code in globals(), locals()
-						t.text = "{{{\n" + t.text + "\n}}}"
+						if t.tags == "test":
+							t.text = text + t.text
 					except Exception, x:
 						t.text = format(x)
 
-			div = xd.createElement('div')
-			div.setAttribute('id', id)
-			div.setAttribute('title', t.title)
-			if t.page != self.request.path:
-				div.setAttribute('from',t.page)
-				div.setAttribute('readOnly',"true")
-				
-			if t.modified != None:
-				div.setAttribute('modified', t.modified.strftime("%Y%m%d%H%M%S"))
-			div.setAttribute('modifier', getAuthor(t))
-				
-			div.setAttribute('version', str(t.version))
-			div.setAttribute('comments', str(t.comments))
-			if t.notes != None and user != None:
-				if t.notes.find(user.nickname()) >= 0:
-					div.setAttribute('notes', "true")
-			if t.messages != None and user != None:
-				msgCnt = t.messages.count("|" + user.nickname())
-				if msgCnt > 0:
-					div.setAttribute('messages', str(msgCnt))
-			if t.tags != None:
-				div.setAttribute('tags', t.tags);
-			pre = xd.createElement('pre')
-			pre.appendChild(xd.createTextNode(t.text))
-			div.appendChild(pre)
-			sr.appendChild(div)
+			sr.appendChild(self.BuildTiddlerDiv(xd,id,t,user))
+
+		if httpMethods != None:
+			httpMethodTiddler.text = '\n'.join(httpMethods)
+			sr.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,user))
 
 	text = xd.toxml()
 	if twd != "":
@@ -1062,7 +1176,7 @@ class MainPage(webapp.RequestHandler):
 				else:
 					text = HtmlErrorMessage("Failed to retrieve " + twd + ":\nHTTP Error " + format(twdres.status_code))
 			except Exception, x:
-				text = HtmlErrorMessage("Cannot retrive " + twd + ":\n" + format(x))			
+				text = HtmlErrorMessage("Cannot retrive " + format(twd) + ":\n" + format(x))			
 		else:
 			try:
 				ftwd = open(twd)

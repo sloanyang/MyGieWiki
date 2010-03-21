@@ -43,6 +43,9 @@
   <ItemGroup>
     <Content Include="iewiki.py" />
     <Content Include="index.py" />
+    <Content Include="Hello.py" />
+    <Content Include="Plugins.py" />
+    <Content Include="empty.html" />
     <Content Include="static\favicon.ico" />
     <Content Include="static\iewiki.js" />
     <Content Include="static\iewiki.xsl" />

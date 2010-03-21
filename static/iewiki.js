@@ -56,7 +56,7 @@ config.parsers = {};
 config.annotations = {};
 
 // Custom fields to be automatically added to new tiddlers
-config.defaultCustomFields = { id: "0" };
+config.defaultCustomFields = { cache: "-1" };
 
 // Messages
 config.messages = {
@@ -121,7 +121,6 @@ config.options = {
     chkInsertTabs: false,
     chkUsePreForStorage: true, // Whether to use <pre> format for storage
     chkDisplayInstrumentation: false,
-    txtBackupFolder: "",
     txtEditorFocus: "text",
     txtMainTab: "tabTimeline",
     txtMoreTab: "moreTabAll",
@@ -146,7 +145,6 @@ config.optionsDesc = {
     chkForceMinorUpdate: "Don't update modifier username and date when editing tiddlers",
     chkConfirmDelete: "Require confirmation before deleting tiddlers",
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
-    txtBackupFolder: "Name of folder to use for backups",
     txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
     txtMaxEditRows: "Maximum number of rows in edit boxes"
 };
@@ -511,6 +509,9 @@ var pluginInfo, tiddler; // Used to pass information to plugins in loadPlugins()
 
 config.read = function(t) {
 	fields = t.fields;
+    this.admin = eval(fields.admin);
+    if (this.admin)
+		http._addMethod("evaluate");
     this.owner = fields.owner;
     this.anonAccess = fields.anonaccess;
     this.authAccess = fields.authaccess;
@@ -3693,14 +3694,14 @@ Story.prototype.displayTiddler = function(srcElement, tiddler, template, animate
     if (animationSrc && typeof animationSrc !== "string") {
         srcElement = animationSrc;
     }
+    if (!startingUp && title != "LoginDialog")
+        this.permaView();
     if (srcElement && typeof srcElement !== "string") {
         if (config.options.chkAnimate && (animate == undefined || animate == true) && anim && typeof Zoomer == "function" && typeof Scroller == "function")
             anim.startAnimating(new Zoomer(title, srcElement, tiddlerElem), new Scroller(tiddlerElem));
         else
             window.scrollTo(0, ensureVisible(tiddlerElem));
     }
-    if (!startingUp && title != "LoginDialog")
-        this.permaView();
 };
 
 Story.prototype.positionTiddler = function(srcElement) {
