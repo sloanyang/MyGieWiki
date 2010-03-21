@@ -126,7 +126,7 @@ config.options = {
     txtMoreTab: "moreTabAll",
     txtMaxEditRows: "30",
     txtTheme: "",
-    txtEmptyTiddlyWiki: "http://localhost/static/empty.html", // Template for stand-alone export
+    txtEmptyTiddlyWiki: "empty.html", // Template for stand-alone export
     txtUserName: ""
 };
 
@@ -607,10 +607,9 @@ function loadShadowTiddlers() {
 		t.modified = null; 
 		return t; 
 	} 
-    store.loadFromDiv("shadowArea", "shadows", true, ms);
-    for(t in config.shadowTiddlers) {
+    for(t in config.shadowTiddlers)
 		store.addTiddler(ms(new Tiddler(t,0,config.shadowTiddlers[t])));
-	}
+    store.loadFromDiv("shadowArea", "shadows", true, ms);
 }
 
 function loadPlugins() {

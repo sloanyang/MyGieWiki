@@ -564,9 +564,12 @@ forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"a
 
 </pre>
 </div>
+<xsl:for-each select="document/shadowArea/div">
+	<xsl:copy-of select="."/>
+</xsl:for-each>
 </div>
 	<div id="storeArea">
-		<xsl:for-each select="storeArea/div">
+		<xsl:for-each select="document/storeArea/div">
 			<xsl:copy-of select="."/>
 		</xsl:for-each>
 	</div>

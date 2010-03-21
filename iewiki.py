@@ -113,6 +113,11 @@ class Tiddler(db.Model):
   comments = db.IntegerProperty(0)
   messages = db.StringProperty()
   notes = db.StringProperty()
+  
+class ShadowTiddler(db.Model):
+  tiddler = db.ReferenceProperty(Tiddler)
+  path = db.StringProperty()
+  id = db.StringProperty()
 
 def getAuthor(t):
 	if t.author != None:
@@ -141,6 +146,22 @@ class Page(db.Model):
   authAccess = db.IntegerProperty()
   groupAccess = db.IntegerProperty()
   groups = db.StringProperty()
+  
+  def Update(self,tiddler):
+	if tiddler.title == "SiteTitle":
+		self.title = tiddler.text
+	elif tiddler.title == "SiteSubtitle":
+		self.subtitle = tiddler.text
+	else:
+		return
+	self.put()
+	
+  def UpdateViolation(self):
+	if users.get_current_user() == None and self.anonAccess < 6:
+		return "You cannot change this page"
+	if users.get_current_user() != self.owner and self.authAccess < 6 and (self.groupAccess < 6 or HasGroupAccess(self.groups,userWho()) == False):
+		return "Edit access is restricted"
+	return None
 
 class Comment(db.Model):
   tiddler = db.StringProperty()
@@ -245,12 +266,13 @@ class MainPage(webapp.RequestHandler):
 	"http tiddlerName text tags version tiddlerId versions"
 	page = Page.all().filter("path =",self.request.path).get()
 	if page == None:
-		return self.fail("Page does not exist: " + self.request.path);
-	if users.get_current_user() == None and page.anonAccess < 6:
-		return self.fail("You cannot change this page")
-	if users.get_current_user() != page.owner and page.authAccess < 6 and (page.groupAccess < 6 or HasGroupAccess(page.groups,userWho()) == False):
-		return self.fail("Edit access is restricted")
-
+		error = "Page does not exist: " + self.request.path
+	else:
+		error = page.UpdateViolation()
+		
+	if error!= None:
+		return self.fail(error)
+		
 	tlr = Tiddler()
 	tlr.page = self.request.path
 	tlr.public = page.anonAccess > page.NoAccess
@@ -316,8 +338,23 @@ class MainPage(webapp.RequestHandler):
 					tlf.append(link + " ''not found''")
 
 		tlr.text = '\n'.join(tlf)
-		
+	
 	tlr.put()
+	if page != None:
+		page.Update(tlr)
+
+	tags = tlr.tags.split()
+	isShared = True if ("shadowTiddler" in tags or "sharedTiddler" in tags) else False
+	st = ShadowTiddler.all().filter('id',tlr.id).get()
+	if st != None:
+		if isShared:
+			st.tiddler = tlr
+		else:
+			st.delete()
+		
+	if isShared and st == None:
+		s = ShadowTiddler(tiddler = tlr, path = tlr.page, id = tlr.id)
+		s.put()
 	
 	xd = self.initXmlResponse()
 	esr = xd.add(xd,'SaveResp')
@@ -400,11 +437,14 @@ class MainPage(webapp.RequestHandler):
 
   def deleteTiddler(self):
 	self.initXmlResponse()
-	tls = Tiddler.all().filter('id = ', self.request.get("tiddlerId"))
+	tid = self.request.get("tiddlerId")
+	tls = Tiddler.all().filter('id', tid)
 	any = False
 	for tlr in tls:
 		tlr.delete()
 		any = True
+	for st in ShadowTiddler.all().filter('id',tid):
+		st.delete()
 		
 	xd = xml.dom.minidom.Document()
 	tv = xd.createElement('TiddlerDelete')
@@ -485,7 +525,6 @@ class MainPage(webapp.RequestHandler):
 		xd.add(ace, "version", ac.version)
 	self.sendXmlResponse(xd)
 	
-	
   def pageProperties(self):
 	if users.get_current_user() == None:
 		return self.fail("You are not logged in");
@@ -518,7 +557,7 @@ class MainPage(webapp.RequestHandler):
 			page.groups = self.request.get("groups")
 			page.put()
 			self.reply({"Success": True })
-  	else: # Get
+	else: # Get
 		self.reply({ 
 			"title": page.title,
 			"subtitle": page.subtitle,
@@ -800,78 +839,86 @@ class MainPage(webapp.RequestHandler):
 	return False  
   
   def uploadTiddlersFrom(self,storeArea):
-	try:
-		self.response.out.write("<ul>");
-		for te in storeArea.childNodes:
-			# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else str(te.nodeType)) + "&gt;");
-			if te.nodeType == xml.dom.Node.ELEMENT_NODE:
-				id = None
-				try:
-					title = te.getAttribute('title')
-					id = te.getAttribute('id')
-					v = te.getAttribute('version')
-					version = eval(v) if v != None and v != "" else 1
-				except Exception, x:
-					self.response.out.write("Attr missing...: " + format(x));
-					return
-					
-				nt = Tiddler(page = self.request.path, title = title, id = id, version = version)
-				nt.current = True
-				nt.tags = te.getAttribute('tags')
-				nt.author = users.get_current_user()
-				for ce in te.childNodes:
-					if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'pre':
+	page = Page.all().filter("path",self.request.path).get()
+	if page == None:
+		error = "Page " + nt.page + " doesn't exist (page properties are not undefined)!"
+	else:
+		error = page.UpdateViolation()
+	if error != None:
+		self.response.out.write(error)
+		return
+
+	self.response.out.write("<ul>");
+	for te in storeArea.childNodes:
+		# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else str(te.nodeType)) + "&gt;");
+		if te.nodeType == xml.dom.Node.ELEMENT_NODE:
+			id = None
+			try:
+				title = te.getAttribute('title')
+				id = te.getAttribute('id')
+				v = te.getAttribute('version')
+				version = eval(v) if v != None and v != "" else 1
+			except Exception, x:
+				self.response.out.write("Attr missing...: " + format(x));
+				return
+				
+			nt = Tiddler(page = self.request.path, title = title, id = id, version = version)
+			nt.current = True
+			nt.tags = te.getAttribute('tags')
+			nt.author = users.get_current_user()
+			for ce in te.childNodes:
+				if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'pre':
+					if ce.firstChild != None and ce.firstChild.nodeValue != None:
 						nt.text = ce.firstChild.nodeValue
 						break
-				page = Page.all().filter("path =",nt.page).get()
-				if page == None:
-					self.response.out.write("<li>Page " + nt.page + " doesn't exist (page properties are not undefined)!</li></ul>")
-					return
-				nt.public = page.anonAccess > page.NoAccess
-				#self.response.out.write("<br>Upload tiddler: " + nt.title + " | " + nt.id + " | version " + str(nt.version) + nt.text + "<br>")
+			if nt.text == None:
+				nt.text = ""
+
+			nt.public = page.anonAccess > page.NoAccess
+			#self.response.out.write("<br>Upload tiddler: " + nt.title + " | " + nt.id + " | version " + str(nt.version) + nt.text + "<br>")
+			
+			et = Tiddler.all().filter('id',nt.id).filter("current",True).get() if nt.id != "" else None
+			if et == None:
+				et = Tiddler.all().filter('page',self.request.path).filter('title',nt.title).filter("current",True).get()
 				
-				et = Tiddler.all().filter('id',nt.id).filter("current",True).get() if nt.id != "" else None
-				if et == None:
-					et = Tiddler.all().filter('page',self.request.path).filter('title',nt.title).filter("current",True).get()
-					
-				# self.response.out.write("Not found " if et == None else ("Found v# " + format(et.version)))
-				if et == None:
-					self.status = ' - added';
-					nt.id = str(uuid.uuid4())
-					nt.comments = 0
-				elif et.version != nt.version:
-					self.response.out.write("<li>" + nt.title + " - version " + str(nt.version) + \
-											" <b>not</b> uploaded; it is already at version " + str(et.version) + "</li>")
-					continue
-				elif self.tiddlerChanged(et,nt):
-					nt.id = et.id
-					nt.version = nt.version + 1
-					nt.comments = et.comments
-					et.current = False
-					et.put()
-				else:
-					self.response.out.write("<li>" + nt.title + " - no changes</li>")
-					continue
-				nt.put()
-				self.response.out.write('<li><a href="' + self.request.path + "#" + urllib.quote(nt.title) + '">' + nt.title + "<a> " + self.status + "</li>");
-	except Exception,x:
-		self.response.out.write("<br>---- " + format(x))
+			# self.response.out.write("Not found " if et == None else ("Found v# " + format(et.version)))
+			if et == None:
+				self.status = ' - added';
+				nt.id = str(uuid.uuid4())
+				nt.comments = 0
+			elif et.version > nt.version:
+				self.response.out.write("<li>" + nt.title + " - version " + str(nt.version) + \
+										" <b>not</b> uploaded; it is already at version " + str(et.version) + "</li>")
+				continue
+			elif self.tiddlerChanged(et,nt):
+				nt.id = et.id
+				nt.version = nt.version + 1
+				nt.comments = et.comments
+				et.current = False
+				et.put()
+			else:
+				self.response.out.write("<li>" + nt.title + " - no changes</li>")
+				continue
+			nt.put()
+			self.response.out.write('<li><a href="' + self.request.path + "#" + urllib.quote(nt.title) + '">' + nt.title + "<a> " + self.status + "</li>");
+			page.Update(nt)
 	self.response.out.write("</ul>");
 
   def uploadTiddlyWikiDoc(self,filename,filedata):
 	try:
 		dom = xml.dom.minidom.parseString(filedata)
-		doce = dom.documentElement
-		if doce.tagName == "html":
-			for ace in doce.childNodes:
-				if ace.nodeType == xml.dom.Node.ELEMENT_NODE and ace.tagName == "body":
-					for bce in ace.childNodes:
-						if bce.nodeType == xml.dom.Node.ELEMENT_NODE:
-							if bce.getAttribute("id") == "storeArea":
-								self.uploadTiddlersFrom(bce);
-		
 	except Exception,x:
 		self.response.out.write("Oops: " + format(x))
+		return
+	doce = dom.documentElement
+	if doce.tagName == "html":
+		for ace in doce.childNodes:
+			if ace.nodeType == xml.dom.Node.ELEMENT_NODE and ace.tagName == "body":
+				for bce in ace.childNodes:
+					if bce.nodeType == xml.dom.Node.ELEMENT_NODE:
+						if bce.getAttribute("id") == "storeArea":
+							self.uploadTiddlersFrom(bce);
+		
 	
   def uploadFile(self):
 	filename = self.request.get("filename")
@@ -1026,7 +1073,13 @@ class MainPage(webapp.RequestHandler):
 		
 	tiddict = dict()
 	defaultTiddlers = ""
+	
 	page = Page.all().filter("path",self.request.path).get()
+	
+	for st in ShadowTiddler.all():
+		if self.request.path.startswith(st.path):
+			tiddict[st.tiddler.id] = st.tiddler
+	
 	tiddlers = Tiddler.all().filter("page", self.request.path).filter("current", True)
 	for t in tiddlers:
 		id = t.id
@@ -1088,14 +1141,20 @@ class MainPage(webapp.RequestHandler):
 		username = ""
 	
 	twd = self.request.get('twd')
-	xsl = self.request.get('xsl')
-	if twd == "" or xsl == "":		# Unless a TiddlyWiki is required or a style sheet is specified
+	# xsl = self.request.get('xsl')
+	if twd == "" or twd == "":		# Unless a TiddlyWiki is required or a style sheet is specified
 		xsl = "/static/iewiki.xsl"	# use the default,
-	if xsl != "none":				# except if no CSS is desired
-		xd = self.initXmlResponse()
+
+	xd = self.initXmlResponse()
+	if twd == "":					# except if no CSS is desired
 		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
-	if twd == "": # normal giewiki output
-		sr = xd.createElement("storeArea")
+
+	elDoc = xd.createElement("document")
+	xd.appendChild(elDoc)
+		
+	if twd == "" or twd == "none": # normal giewiki output
+		elStArea = xd.createElement("storeArea")
+		elShArea = xd.createElement("shadowArea")
 		metaDiv = xd.createElement('div')
 		metaDiv.setAttribute('title', "_MetaData")
 		metaDiv.setAttribute('admin', "true" if users.is_current_user_admin() else "false")
@@ -1109,7 +1168,7 @@ class MainPage(webapp.RequestHandler):
 				metaDiv.setAttribute('groups',page.groups);
 				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
 					metaDiv.setAttribute('groupmember','true')
-		sr.appendChild(metaDiv)
+		elStArea.appendChild(metaDiv)
 		
 		pgse = xd.createElement("div")
 		metaDiv.appendChild(pgse);
@@ -1131,10 +1190,13 @@ class MainPage(webapp.RequestHandler):
 			
 	else: # TiddlyWiki output
 		self.response.headers['Content-Type'] = 'text/html'
-		sr = xd.createElement("div")
-		sr.setAttribute("id",'storeArea')
+		elStArea = xd.createElement("div")
+		elStArea.setAttribute("id",'storeArea')
+		elShArea = xd.createElement("div")
+		elShArea.setAttribute("id",'shadowArea')
 
-	xd.appendChild(sr) # the root element
+	elDoc.appendChild(elStArea) # the root element
+	elDoc.appendChild(elShArea)
 	
 	if ReadAccessToPage(page,user):
 		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
@@ -1159,14 +1221,21 @@ class MainPage(webapp.RequestHandler):
 					except Exception, x:
 						t.text = format(x)
 
-			sr.appendChild(self.BuildTiddlerDiv(xd,id,t,user))
+			if "shadowTiddler" in t.tags.split():
+				if t.page != self.request.path: # remove tag if not the source page
+					tags = t.tags.split()
+					tags.remove("shadowTiddler")
+					t.tags = ' '.join(tags)
+				elShArea.appendChild(self.BuildTiddlerDiv(xd,id,t,user))
+			else:
+				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,user))
 
 		if httpMethods != None:
 			httpMethodTiddler.text = '\n'.join(httpMethods)
-			sr.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,user))
+			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,user))
 
 	text = xd.toxml()
-	if twd != "":
+	if twd != "" and twd != "none":
 		twdtext = None
 		if twd.startswith('http:'):
 			try:
@@ -1188,7 +1257,7 @@ class MainPage(webapp.RequestHandler):
 			xmldecl = '<?xml version="1.0" ?>' # strip off this
 			if text.startswith(xmldecl):
 				text = text[len(xmldecl):]
-			text = twdtext.replace('<div id="storeArea">\n</div>',text) # insert text into body
+			text = twdtext.replace('<div id="storeArea">\n</div>',elStArea.toxml()).replace('<div id="shadowArea">',elShArea.toxml()[:-6]) # insert text into body
 		
 	# last, but no least
 	self.response.out.write(text)
