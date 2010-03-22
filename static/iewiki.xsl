@@ -353,7 +353,7 @@ table.listView th, table.listView td, table.listView tr {padding:0px 3px 0px 3px
 .zoomer {font-size:1.1em; position:absolute; overflow:hidden;}
 .zoomer div {padding:1em;}
 
-.commentTable {width:100%}
+.commentTable {width:100%; font-size:1.0em;}
 .commentTable td {vertical-align:text-top;}
 .commentArea {border:0px; width:100%; font:inherit;}
 .commentToolbar { padding-bottom:5px;}
@@ -502,12 +502,10 @@ if (http.deletePage(window.location.href).Success) {
 	re.appendChild(document.createTextNode(http.evaluate(GetForm(place))));
 	createTiddlyElement(re,'br')
 &lt;/script&gt; &lt;script label="Javascript"&gt;
-	debugger
 	var re = document.getElementById(formName() + 'output');
 	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
 	var exp = GetForm(place).expression;
 	var text = eval(exp);
-	debugger;
 	if (typeof(text) == 'object') if (text.output) text=text.output;
 	re.appendChild(document.createTextNode(text)); createTiddlyElement(re,'br')
 &lt;/script&gt;

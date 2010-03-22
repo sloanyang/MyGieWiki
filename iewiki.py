@@ -781,6 +781,29 @@ class MainPage(webapp.RequestHandler):
 	xd.add(re,"Success",True)
 	self.sendXmlResponse(xd)
 
+  def getRecentComments(self):
+	xd = self.initXmlResponse()
+	re = xd.add(xd,'result')
+	xd.add(re,"Success",True)
+	cs = Comment.all().order("-created").fetch(10)
+	ca = xd.add(re,"comments",attrs={'type':'object[]'})
+	dt = dict()
+	for ac in cs:
+		rt = xd.add(ca,"comment")
+		xd.add(rt,"text",ac.text)
+		xd.add(rt,"who",ac.author)
+		xd.add(rt,"time",ac.created)
+		xd.add(rt,"ref",ac.ref)
+		xd.add(rt,"tiddler",ac.tiddler)
+		if dt.has_key(ac.tiddler) == False:
+			dt[ac.tiddler] = Tiddler.all().filter('id',ac.tiddler).filter('current',True).get()
+	ta = xd.add(re,"tiddlers",attrs={'type':'object[]'})
+	for (id,tn) in dt.iteritems():
+		ti = xd.add(ta,"tiddler", attrs={'id':id})
+		xd.add(ti,"title",tn.title)
+	xd.add(re,"Success",True)
+	self.sendXmlResponse(xd)
+
   def createGroup(self):
 	name = self.request.get("name")
 	if Group.all().filter("name =", name).get() == None:
