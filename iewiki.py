@@ -121,9 +121,9 @@ class ShadowTiddler(db.Model):
 
 def getAuthor(t):
 	if t.author != None:
-		return format(t.author.nickname());
+		return str(t.author.nickname());
 	elif t.author_ip != None:
-		return format(t.author_ip)
+		return str(t.author_ip)
 	else:
 		return "?"
 
@@ -887,7 +887,7 @@ class MainPage(webapp.RequestHandler):
 				v = te.getAttribute('version')
 				version = eval(v) if v != None and v != "" else 1
 			except Exception, x:
-				self.response.out.write("Attr missing...: " + format(x));
+				self.response.out.write("Attr missing...: " + str(x));
 				return
 				
 			nt = Tiddler(page = self.request.path, title = title, id = id, version = version)
@@ -909,7 +909,7 @@ class MainPage(webapp.RequestHandler):
 			if et == None:
 				et = Tiddler.all().filter('page',self.request.path).filter('title',nt.title).filter("current",True).get()
 				
-			# self.response.out.write("Not found " if et == None else ("Found v# " + format(et.version)))
+			# self.response.out.write("Not found " if et == None else ("Found v# " + str(et.version)))
 			if et == None:
 				self.status = ' - added';
 				nt.id = str(uuid.uuid4())
@@ -936,7 +936,7 @@ class MainPage(webapp.RequestHandler):
 	try:
 		dom = xml.dom.minidom.parseString(filedata)
 	except Exception,x:
-		self.response.out.write("Oops: " + format(x))
+		self.response.out.write("Oops: " + str(x))
 		return
 	doce = dom.documentElement
 	if doce.tagName == "html":
@@ -1004,7 +1004,7 @@ class MainPage(webapp.RequestHandler):
 			result = sa
 	else:
 		result = "Access denied"
-	tv.appendChild(xd.createTextNode(format(result)))
+	tv.appendChild(xd.createTextNode(str(result)))
 	self.response.out.write(xd.toxml())
 
   def saveSiteInfo(self):
@@ -1025,7 +1025,7 @@ class MainPage(webapp.RequestHandler):
 			result = sa
 	else:
 		result = "Access denied"
-	tv.appendChild(xd.createTextNode(format(result)))
+	tv.appendChild(xd.createTextNode(str(result)))
 	self.response.out.write(xd.toxml())
 
   def expando(self,method):
@@ -1061,7 +1061,7 @@ class MainPage(webapp.RequestHandler):
 		except NameError:
 			return self.expando(m)
 		except Exception, x:
-			return self.fail("Ups!\n" + format(dir(x)))
+			return self.fail("Ups!\n" + str(dir(x)))
 
 ############################################################################
   def BuildTiddlerDiv(self,xd,id,t,user):
@@ -1247,7 +1247,7 @@ class MainPage(webapp.RequestHandler):
 						if t.tags == "test":
 							t.text = text + t.text
 					except Exception, x:
-						t.text = format(x)
+						t.text = str(x)
 
 			if "shadowTiddler" in t.tags.split():
 				if t.page != self.request.path: # remove tag if not the source page
@@ -1271,16 +1271,16 @@ class MainPage(webapp.RequestHandler):
 				if twdres.status_code == 200:
 					twdtext = twdres.content
 				else:
-					text = HtmlErrorMessage("Failed to retrieve " + twd + ":\nHTTP Error " + format(twdres.status_code))
+					text = HtmlErrorMessage("Failed to retrieve " + twd + ":\nHTTP Error " + str(twdres.status_code))
 			except Exception, x:
-				text = HtmlErrorMessage("Cannot retrive " + format(twd) + ":\n" + format(x))			
+				text = HtmlErrorMessage("Cannot retrive " + str(twd) + ":\n" + str(x))			
 		else:
 			try:
 				ftwd = open(twd)
 				twdtext = ftwd.read();
 				ftwd.close()
 			except Exception, x:
-				text = HtmlErrorMessage("Cannot read " + twd + ":\n" + format(x))
+				text = HtmlErrorMessage("Cannot read " + twd + ":\n" + str(x))
 		if twdtext != None:
 			xmldecl = '<?xml version="1.0" ?>' # strip off this
 			if text.startswith(xmldecl):
