@@ -770,7 +770,9 @@ class MainPage(webapp.RequestHandler):
   def getRecentChanges(self):
 	xd = self.initXmlResponse()
 	re = xd.add(xd,'result')
-	ts = Tiddler.all().order("-modified").fetch(10)
+	offset = eval(self.request.get('offset'))
+	limit = eval(self.request.get('limit'))
+	ts = Tiddler.all().order("-modified").fetch(limit,offset)
 	ta = xd.add(re,"changes",attrs={'type':'object[]'})
 	for t in ts:
 		rt = xd.add(ta,"tiddler")
@@ -784,8 +786,9 @@ class MainPage(webapp.RequestHandler):
   def getRecentComments(self):
 	xd = self.initXmlResponse()
 	re = xd.add(xd,'result')
-	xd.add(re,"Success",True)
-	cs = Comment.all().order("-created").fetch(10)
+	offset = eval(self.request.get('offset'))
+	limit = eval(self.request.get('limit'))
+	cs = Comment.all().order("-created").fetch(limit,offset)
 	ca = xd.add(re,"comments",attrs={'type':'object[]'})
 	dt = dict()
 	for ac in cs:
@@ -799,8 +802,10 @@ class MainPage(webapp.RequestHandler):
 			dt[ac.tiddler] = Tiddler.all().filter('id',ac.tiddler).filter('current',True).get()
 	ta = xd.add(re,"tiddlers",attrs={'type':'object[]'})
 	for (id,tn) in dt.iteritems():
-		ti = xd.add(ta,"tiddler", attrs={'id':id})
+		ti = xd.add(ta,"tiddler")
+		xd.add(ti,"page",tn.page)
 		xd.add(ti,"title",tn.title)
+		xd.add(ti,"id",id);
 	xd.add(re,"Success",True)
 	self.sendXmlResponse(xd)
 

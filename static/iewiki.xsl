@@ -483,9 +483,6 @@ See also the AdvancedOptions
 <div title="SiteMap" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;&lt;siteMap&gt;&gt;</pre>
 </div>
-<div title="RecentChanges">
-	<pre>&lt;&lt;recentChanges&gt;&gt;</pre>
-</div>
 <div title="DeletePage" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;script&gt;if (!confirm("Do you really want to delete this page?")) return;
 if (http.deletePage(window.location.href).Success) {

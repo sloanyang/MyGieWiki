@@ -30,7 +30,9 @@ DAMAGE.
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
 
-// But heavily modified for use in this context
+// Modified by Poul Staugaard, poul [dot] staugaard [at] gmail [dot] com
+// Portions with spaces for tabs are mostly original, while portions with
+// tabs for tabs are mine. Set tab size to 4 characters.
 
 //--
 //-- Configuration repository
@@ -459,9 +461,11 @@ config.shadowTiddlers = {
     TabMoreOrphans: '<<list orphans>>',
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
+    RecentChanges: '<<recentChanges>>',
+    RecentComments: '<<recentComments>>',
     ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler reload > fields syncing permalink references jump|\n|~EditToolbar|+saveTiddler -cancelTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
-    MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]",
+    MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
     SiteTitle: "SiteTitle",
     SiteSubtitle: "",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -7165,10 +7169,14 @@ function OnAddMember(reply)
 config.macros.recentChanges = {
 	handler: function(place)
 	{
-		var rcl = http.getRecentChanges();
+		var ta = createTiddlyElement(place,"table");
+		var tbody = createTiddlyElement(ta,"tbody");
+		this.fill(tbody,0,10);
+	},
+	fill: function(tbody,off,max)
+	{
+		var rcl = http.getRecentChanges({ offset: off, limit: max });
 		if (rcl.Success) {
-			var ta = createTiddlyElement(place,"table");
-			var tbody = createTiddlyElement(ta,"tbody");
 			for (var i = 0; i < rcl.changes.length; i++) {
 				var c = rcl.changes[i];
 				var tr = createTiddlyElement(tbody,"tr",null,i % 2 ? "evenRow":"oddRow");
@@ -7185,8 +7193,75 @@ config.macros.recentChanges = {
 				}
 				createTiddlyElement(tr,"td",null,null,w);
 			}
+			tr = createTiddlyElement(tbody,"tr");
+			td = createTiddlyElement(tr, "td",null,null,null,{"colspan":"4"});
+			if (rcl.changes.length == max)
+			  createTiddlyButton(td,"<<","Earlier changes", function(ev) { 
+				var ce = clearParent(resolveTarget(ev || window.event),"tbody");
+				config.macros.recentChanges.fill(ce,off + max,max); 
+				});
+			if (off > 0)
+			  createTiddlyButton(td,">>","Later changes", function(ev) { 
+				var ce = clearParent(resolveTarget(ev || window.event),"tbody");
+				config.macros.recentChanges.fill(ce,off - max,max); 
+				});
 		}
 	}
+}
+
+config.macros.recentComments = {
+	handler: function(place)
+	{
+		var ta = createTiddlyElement(place,"table");
+		var tbody = createTiddlyElement(ta,"tbody");
+		this.fill(tbody, 0,10);
+	}
+	,
+	fill: function(tbody,off,max)
+	{
+		var rcl = http.getRecentComments({ offset: off, limit: max });
+		if (rcl.Success) {
+			var tiddlers = rcl.tiddlers;
+			var tiddict = [];
+			for (var j = 0; j < tiddlers.length; j++)
+				tiddict[tiddlers[j].id] = tiddlers[j];
+			for (var i = 0; i < rcl.comments.length; i++) {
+				var c = rcl.comments[i];
+				var tr = createTiddlyElement(tbody,"tr",null,i % 2 ? "evenRow":"oddRow");
+				createTiddlyElement(tr,"td",null,null,c.time.substr(0,16));
+				createTiddlyElement(tr,"td",null,null,c.who);
+				var tdl = createTiddlyElement(tr,"td");
+				var tiddlr = tiddict[c.tiddler];
+				if (tiddlr.page != window.location.pathname) {
+					var a = createExternalLink(tdl,tiddlr.page + "#" + encodeURIComponent(String.encodeTiddlyLink(tiddlr.title)));
+					a.appendChild(document.createTextNode(tiddlr.title));
+				}
+				else
+					createTiddlyLink(tdl,tiddlr.title,true);
+				createTiddlyElement(tr,"td",null,null,c.text);
+			}
+			tr = createTiddlyElement(tbody,"tr");
+			td = createTiddlyElement(tr, "td",null,null,null,{"colspan":"4"});
+			if (rcl.comments.length == max)
+			  createTiddlyButton(td,"<<","Earlier comments", function(ev) { 
+				var ce = clearParent(resolveTarget(ev || window.event),"tbody");
+				config.macros.recentComments.fill(ce,off + max,max); 
+				});
+			if (off > 0)
+			  createTiddlyButton(td,">>","Later comments", function(ev) { 
+				var ce = clearParent(resolveTarget(ev || window.event),"tbody");
+				config.macros.recentComments.fill(ce,off - max,max); 
+				});
+		}
+	}
+}
+
+function clearParent(ce, pt)
+{
+	while (ce.tagName.toLowerCase() != pt)
+		ce = ce.parentNode;
+	removeChildren(ce);
+	return ce;
 }
 
 config.macros.fileList = {
