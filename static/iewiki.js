@@ -1,4 +1,4 @@
-/* Based on TiddlyWiki created by Jeremy Ruston, (jeremy [at] osmosoft [dot] com)
+/* Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
 Copyright (c) UnaMesa Association 2004-2009
 
@@ -29,8 +29,9 @@ DAMAGE.
 */
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
+var giewikiVersion = { title: "giewiki", major: 1, minor: 2, revision: 2, date: new Date("Mar 25, 2010"), extensions: {} };
 
-// Modified by Poul Staugaard, poul [dot] staugaard [at] gmail [dot] com
+// Modified by Poul Staugaard, (poul [dot] staugaard [at] gmail [dot] com)
 // Portions with spaces for tabs are mostly original, while portions with
 // tabs for tabs are mine. Set tab size to 4 characters.
 
@@ -193,6 +194,7 @@ config.views = {
 config.macros = {
     today: {},
     version: {},
+    giewikiversion: {},
     search: {
         sizeTextbox: 15,
         label: "search",
@@ -452,7 +454,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddler\ngetTiddlers\nfileList\ngetRecentChanges\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember",
+    HttpMethods: "createPage\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddler\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -1635,6 +1637,10 @@ config.macros.version.handler = function(place) {
     createTiddlyElement(place, "span", null, null, formatVersion());
 };
 
+config.macros.giewikiversion.handler = function(place) {
+    createTiddlyElement(place, "span", null, null, formatVersion(giewikiVersion));
+};
+
 config.macros.list.handler = function(place, macroName, params) {
     var type = params[0] || "all";
     var list = document.createElement("ul");
@@ -2573,7 +2579,7 @@ config.commands.editTiddler.handler = function(event, src, title) {
     var tiddlerElem = story.getTiddler(title);
     var fields = tiddlerElem.getAttribute("tiddlyFields");
     var st = store.getTiddler(title);
-    if (st.from)
+    if (st && st.from)
 		if (confirm("This tiddler is included from " + st.from) == false)
 			return;
     story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, fields);
@@ -6833,18 +6839,46 @@ function AddIconPlusLink(place,img,title,url)
 		im.align = "top";
 		im.alt = "Click to expand";
 	}
-	createTiddlyElement(li,url?"a":"i",null,null,title,{ href: url });
+	var ats = {}
+	if (url && url.startsWith("#")) {
+		createTiddlyLink(li,url.substring(1),true);
+		return li;
+	}
+	else if (url == window.location.pathname) {
+		ats.href = "javascript:;";
+		ats.title = url;
+	}
+	else if (url) {
+		ats.href = url;
+		ats.title = url;
+	}
+	createTiddlyElement(li,url?"a":"i",null,null,title, ats);
 	return li;
+}
+
+function findTiddlyLink(e)
+{
+	a = e.getAttribute && e.getAttribute("tiddlyLink");
+	if (a) return a;
+	for (var c = e.firstChild; c != null; c = c.nextSibling) {
+		if (c.nodeType == 1) {
+			a = findTiddlyLink(c);
+			if (a) return a;
+		}
+	}
 }
 
 function expandFolder(ev)
 {
-    var target = resolveTarget(ev || window.event);
-    var href = target.parentNode.childNodes[1].getAttribute("href");
+	var target = resolveTarget(ev || window.event);
+	var href = target.parentNode.childNodes[1].getAttribute("title");
+	if (!href.startsWith('/')) {
+		href = "#" + findTiddlyLink(target.parentNode);
+	}
 	var sub = siteMap[href];
-    switch(leaf(target.src))
-    {
-    case "plusFolder36.png":
+	switch(leaf(target.src))
+	{
+	case "plusFolder36.png":
 		target.src = "/static/minusFolder36.png";
 		sub.div = createTiddlyElement(target.parentNode,"div");
 		SiteMapEntry(sub.div,sub.ca,sub.l,sub.d);
@@ -6859,7 +6893,10 @@ function expandFolder(ev)
 			var any = false;
 			for (var i = 0; i < tl.length; i++) 
 				if (tl[i].search(/SiteTitle|SiteSubtitle|DefaultTiddlers|MainMenu/) == -1) {
-					hr = href + "#" + encodeURIComponent(String.encodeTiddlyLink(tl[i]));
+					if (href != window.location.pathname)
+						hr = href + "#" + encodeURIComponent(String.encodeTiddlyLink(tl[i]));
+					else
+						hr = "#" + tl[i];
 					AddIconPlusLink(div,"/static/plusTiddler36.png",tl[i],hr);
 					siteMap[hr] = {};
 					any = true;
@@ -6879,10 +6916,10 @@ function expandFolder(ev)
 		break;
 	case "plusTiddler36.png":
 		target.src = "/static/minusTiddler36.png";
-		var td = http.getTiddler({url:href});
+		var tdtext = href.startsWith("/") ? http.getTiddler({url:href}).text : store.getTiddlerText(href.substring(1));
 		var li = createTiddlyElement(target.parentNode,"div",null,null);
 		li.style.marginLeft = "1.25em";
-		wikify(td.text,li);
+		wikify(tdtext,li);
 		sub.div = li;
 		break;
 	case "minusTiddler36.png":
