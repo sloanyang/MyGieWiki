@@ -14,6 +14,14 @@ indexes:
   - name: id
   - name: version
 
+- kind: Tiddler
+  properties:
+  - name: current
+  - name: public
+  - name: title
+  - name: modified
+    direction: desc
+
 - kind: GroupMember
   properties:
   - name: group
