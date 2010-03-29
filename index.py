@@ -63,7 +63,7 @@ class MainRss(webapp.RequestHandler):
 		copyright = "Copyright " + t.modified.strftime("%Y") + " " + aux.nickname()
 		pdate = t.modified
 		for aux in authors:
-			copyright = copyright + ", " + aux.nickname
+			copyright = copyright + ", " + aux.nickname()
 			if pdate < aux.modified:
 				pdate = aux.modified
 	else:
