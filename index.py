@@ -53,22 +53,29 @@ class MainRss(webapp.RequestHandler):
 		tq = tq.filter("title != ", tn)
 		
 	ts = tq.order("title").order("-modified").fetch(10)
-	authors = set()
+	authors = dict()
 	for t in ts:
 		if t.author != None:
-			authors.add(t.author)
+			authors[t.author.nickname()] = t.modified
 
 	if len(authors) > 0:
-		aux = authors.pop()
-		copyright = "Copyright " + t.modified.strftime("%Y") + " " + aux.nickname()
-		pdate = t.modified
-		for aux in authors:
-			copyright = copyright + ", " + aux.nickname()
-			if pdate < aux.modified:
-				pdate = aux.modified
+		pdate = max(authors.itervalues())
+		copyright = ', '.join(authors.keys())
 	else:
 		copyright = ""
 		pdate = datetime.datetime.now()
+			
+	#for au,mt in authors.iteritems():
+	#	if pdate == None or pdate < mt:
+	#		pdate = mt
+	#	if copyright != "":
+	#		copyright = copyright + ", "
+	#	copyright = copyright + au.nickname()
+	#	if pdate < aux[0]:
+	#		pdate = aux[0]
+	#if pdate == None:
+		
+	copyright = "Copyright " + pdate.strftime("%Y") + " " + copyright
 	
 	self.response.out.write('\
 <?xml version="1.0"?>\
