@@ -1,0 +1,4 @@
+﻿cron:
+- description: clean up
+  url: /_tasks?method=cleanup
+  schedule: every 24 hours

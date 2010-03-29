@@ -1,9 +1,10 @@
 import cgi
 import uuid
 import urllib
+
+from datetime import *
 from new import instance, classobj
 import xml.dom.minidom
-import datetime
 
 from google.appengine.api import users
 from google.appengine.ext import webapp
@@ -82,8 +83,14 @@ def userWho():
 	if (u):
 		return u.nickname()
 	else:
-		return ''
+		return ""
 
+def userNameOrAddress(u,a):
+	if u != None:
+		return u.nickname()
+	else:
+		return a
+  
 def xmlArrayOfStrings(xd,te,text,name):
 	mas = text.split()
 	for a in mas:
@@ -118,6 +125,13 @@ class ShadowTiddler(db.Model):
   tiddler = db.ReferenceProperty(Tiddler)
   path = db.StringProperty()
   id = db.StringProperty()
+  
+class EditLock(db.Model):
+  id = db.StringProperty(Tiddler)
+  user = db.UserProperty()
+  user_ip = db.StringProperty()
+  time = db.DateTimeProperty(auto_now_add=True)
+  duration = db.IntegerProperty()
 
 def getAuthor(t):
 	if t.author != None:
@@ -261,26 +275,92 @@ class MainPage(webapp.RequestHandler):
 	p.tags = ""
 	p.id = str(uuid.uuid4())
 	p.save()
-	
-  def saveTiddler(self):
-	"http tiddlerName text tags version tiddlerId versions"
-	page = Page.all().filter("path =",self.request.path).get()
+
+  def lock(self,t,usr):
+	try:
+		minutes = int(self.request.get("duration"))
+	except:
+		minutes = 0
+		
+	el = EditLock( id = t.id, user = usr, user_ip = self.request.remote_addr, duration = minutes)
+	ek = el.put()
+	until = el.time + timedelta(0,60*eval(str(el.duration)))
+	return {"Success": True, "now": el.time, "until": until, "key": str(ek), "title": t.title, "text": t.text, "tags": t.tags }
+  
+  def editTiddler(self):
+	"http version tiddlerId"
+	page = Page.all().filter("path",self.request.path).get()
 	if page == None:
 		error = "Page does not exist: " + self.request.path
 	else:
 		error = page.UpdateViolation()
-		
+	if error == None:
+		t = Tiddler.all().filter("id", self.request.get("id")).filter("current",True).get()
+		if t == None:
+			error = "Tiddler doesnt' exist"
+		else:
+			usr = users.get_current_user()
+			el = EditLock().all().filter("id",t.id).get() # get existing lock, if any
+			if el == None: # tiddler is not locked
+				return self.reply(self.lock(t,usr))
+			until = el.time + timedelta(0,60*eval(str(el.duration)))
+			if (usr == el.user if usr != None else el.self.request.remote_addr == user_ip):
+				# possibly we should extend the lock duration
+				return self.fail("already locked by you", { "key": str(el.key()) })
+			elif datetime.utcnow() < until:
+				error = "already locked by " + userNameOrAddress(el.user, el.user_ip) + \
+						" until " + str(until) + "( another " + str(until -  datetime.utcnow()) + ")"
+			else:
+				el.delete()
+				reply = self.lock(t,usr)
+				reply['until'] = until
+				return self.warn( "Lock broken", reply)
+	self.fail(error)
+
+  def unlock(self,key):
+	lock = EditLock.get(key)
+	if lock != None:
+		lock.delete()
+		return True
+	else:
+		return self.fail("Lock was not held")
+	
+  def unlockTiddler(self):
+	if self.unlock(self.request.get("key")):
+		self.reply({})
+
+  def saveTiddler(self):
+	"http tiddlerName text tags version tiddlerId versions"
+	tlr = Tiddler()
+	tlr.page = self.request.path
+	tlr.id = self.request.get("tiddlerId")
+	page = Page.all().filter("path",tlr.page).get()
+	if page == None:
+		error = "Page does not exist: " + tlr.page
+	else:
+		error = page.UpdateViolation()
+
+	if tlr.id != "":
+		key = self.request.get("key")
+		if key == "":
+			t = Tiddler.all().filter("id", tlr.id).get()
+			if t == None:
+				error = "Tiddler doesnt' exist"
+			else:
+				el = EditLock().all().filter("id",t.id).get() # locked by someone else?
+				if el != None:
+					error = "Locked by " + userNameOrAddress(el.user,el.user_ip)
+		elif self.unlock(key) == False:
+			return
+			
 	if error!= None:
 		return self.fail(error)
 		
-	tlr = Tiddler()
-	tlr.page = self.request.path
 	tlr.public = page.anonAccess > page.NoAccess
 	tlr.title = self.request.get("tiddlerName")
 	tlr.text = self.request.get("text")
 	tlr.tags = self.request.get("tags")
 	tlr.version = eval(self.request.get("version"))
-	tlr.id = self.request.get("tiddlerId")
 	tlr.comments = 0
 	if (tlr.id == ""):
 		tlr.id = str(uuid.uuid4())
@@ -676,8 +756,21 @@ class MainPage(webapp.RequestHandler):
 	xd.appendChild(tv)
 	self.response.out.write(xd.toxml())
 
-  def fail(self, msg):
-	self.reply( {"Message": msg, "Success": False})
+  def fail(self, msg, aux = None):
+	if aux == None:
+		aux = {}
+	aux["Message"] = msg
+	aux["Success"] = False
+	self.reply(aux)
+	return False
+
+  def warn(self, msg, aux = None):
+	if aux == None:
+		aux = {}
+	aux["Message"] = msg
+	aux["Success"] = True
+	self.reply(aux)
+	return True
 
   def reply(self, values, de="reply"):
 	self.initXmlResponse()
@@ -692,6 +785,7 @@ class MainPage(webapp.RequestHandler):
 			v = "true" if v else "false"
 		av.appendChild(xd.createTextNode(unicode(v)))
 	self.response.out.write(xd.toxml())
+	return True
 	
   def LoginDone(self,path):
 	page = Page.all().filter("path =",path).get()
@@ -1091,13 +1185,25 @@ class MainPage(webapp.RequestHandler):
 	pre.appendChild(xd.createTextNode(t.text))
 	div.appendChild(pre)
 	return div
-  
+
+  def cleanup(self):
+	for el in EditLock.all():
+		until = el.time + timedelta(0,60*eval(str(el.duration)))
+		if until < datetime.utcnow():
+			el.delete()
+	  
+  def task(self,method):
+	if method == 'cleanup':
+		return self.cleanup()
+		
   def get(self):
 	method = self.request.get("method")
 
 	if method == "LoginDone":
-		self.LoginDone(self.request.get("path"))
-		return
+		return self.LoginDone(self.request.get("path"))
+		
+	if self.request.path == "/_tasks":
+		return self.task(method)
 		
 	tiddict = dict()
 	defaultTiddlers = ""

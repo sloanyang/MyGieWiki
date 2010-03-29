@@ -6,4 +6,4 @@ class Hello(db.Model):
   def public(self,page):
 	self.name = page.request.get('name')
 	self.put()
-	page.reply( {"output": "Good morning, " + page.request.get('name'), "Success": True})
+	page.reply( {"Message": "Good morning, " + page.request.get('name'), "Success": False})

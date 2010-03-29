@@ -130,6 +130,7 @@ config.options = {
     txtMaxEditRows: "30",
     txtTheme: "",
     txtEmptyTiddlyWiki: "empty.html", // Template for stand-alone export
+    txtLockDuration: "60",
     txtUserName: ""
 };
 
@@ -149,7 +150,8 @@ config.optionsDesc = {
     chkConfirmDelete: "Require confirmation before deleting tiddlers",
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
     txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
-    txtMaxEditRows: "Maximum number of rows in edit boxes"
+    txtMaxEditRows: "Maximum number of rows in edit boxes",
+    txtLockDuration: "Lock for edit (if so, duration in minutes)"
 };
 
 // Default tiddler templates
@@ -454,7 +456,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddler\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddler\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -2582,6 +2584,23 @@ config.commands.editTiddler.handler = function(event, src, title) {
     if (st && st.from)
 		if (confirm("This tiddler is included from " + st.from) == false)
 			return;
+    if (st && st.id && config.options.txtLockDuration != "") {
+		debugger
+		var reply = http.editTiddler({id: st.id, duration: config.options.txtLockDuration });
+		st.key = reply.key;
+		if (reply.Success) {
+			st.lock = reply.now;
+			st.until = reply.until;
+			st.title = reply.title;
+			st.text = reply.text;
+			st.tags = reply.tags.split("|")
+		}
+		else {
+			if (!window.confirm(reply.Message + " - proceed anyway?")) {
+				return;
+			}
+		}
+	}
     story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, fields);
     story.focusTiddler(title, config.options.txtEditorFocus || "text");
     return false;
@@ -2599,6 +2618,9 @@ config.commands.cancelTiddler.handler = function(event, src, title) {
         if (!confirm(this.warning.format([title])))
             return false;
     }
+    var t = store.getTiddler(title);
+    if (t && t.key && t.until))
+		http.unlockTiddler({"key": t.key});
     story.setDirty(title, false);
     story.displayTiddler(null, title);
     return false;
@@ -3239,8 +3261,18 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
         tiddler = new Tiddler(null,1);
     }
     tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
-
-    var result = http.saveTiddler({ tiddlerId: tiddler.id, tiddlerName: newTitle, text: newBody, tags: tags, version: tiddler.currentVer, modifier: modifier, versions: versions, shadow: tiddler.hasShadow ? 1 : 0 });
+	var m = { 
+		tiddlerId: tiddler.id, 
+		tiddlerName: newTitle, 
+		text: newBody, 
+		tags: tags, 
+		version: tiddler.currentVer, 
+		modifier: modifier, 
+		versions: versions, 
+		shadow: tiddler.hasShadow ? 1 : 0 }
+	if (tiddler.key)
+		m.key = tiddler.key;
+    var result = http.saveTiddler(m);
 
     if (result.error)
         displayMessage(result.error);
@@ -6445,7 +6477,7 @@ function HttpGet(args, method) {
     }
     var rs = HttpRequest(fields.join("&"));
     var rp = HttpReply(rs);
-    if (rp && rp.Success == false && rp.Message)
+    if (rp && rp.Message)
     	displayMessage(rp.Message);
   	return rp || rs;
 }
