@@ -368,7 +368,7 @@ class MainPage(webapp.RequestHandler):
 		tlr.author = users.get_current_user()
 	tlr.author_ip = self.request.remote_addr # ToDo: Get user's sig in stead
 
-	tls = Tiddler.all().filter('id = ', tlr.id).filter('version >= ',tlr.version - 1)
+	tls = Tiddler.all().filter('id', tlr.id).filter('version >=',tlr.version - 1)
 	
 	versions = self.request.get("versions")
 	getPrior = False
@@ -405,7 +405,7 @@ class MainPage(webapp.RequestHandler):
 					
 			parts = tli.split("#")
 			if len(parts) == 2:
-				tlxs = Tiddler.all().filter("page = ", parts[0]).filter("title = ", parts[1]).filter("current = ",True).get()
+				tlxs = Tiddler.all().filter("page", parts[0]).filter("title", parts[1]).filter("current",True).get()
 				if tlxs != None:
 					incl = Include.Unique(tlr.page,tlxs.id)
 					if "current" in tlr.tags.split():
@@ -460,7 +460,7 @@ class MainPage(webapp.RequestHandler):
   def tiddlerHistory(self):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
-	tls = Tiddler.all().filter("id = ", self.request.get("tiddlerId"))
+	tls = Tiddler.all().filter("id", self.request.get("tiddlerId"))
 	eHist = xd.add(xd,'Hist')
 	eVersions = xd.createElement('versions')
 	eHist.appendChild(eVersions)
@@ -475,7 +475,7 @@ class MainPage(webapp.RequestHandler):
 
   def tiddlerVersion(self):
 	self.initXmlResponse()
-	tls = Tiddler.all().filter('id = ', self.request.get("tiddlerId")).filter('version = ',int(self.request.get("version")))
+	tls = Tiddler.all().filter('id', self.request.get("tiddlerId")).filter('version',int(self.request.get("version")))
 	xd = xml.dom.minidom.Document()
 	tv = xd.createElement('TiddlerVersion')
 	xd.appendChild(tv)
@@ -536,7 +536,7 @@ class MainPage(webapp.RequestHandler):
 	
 
   def submitComment(self):
-	tls = Tiddler.all().filter('id = ', self.request.get("tiddler")).filter('current == ',True).get()
+	tls = Tiddler.all().filter('id', self.request.get("tiddler")).filter('current',True).get()
 	if tls == None:
 		return self.reply({"Success": False, "Message": "No such tiddler!"})
 	t = self.request.get("type")
@@ -563,7 +563,7 @@ class MainPage(webapp.RequestHandler):
 		tls.notes = tls.notes + '|' + comment.author.nickname() if tls.notes != None else comment.author.nickname()
 		
 	tls.save()
-	self.reply({"Success": True, "Comments": tls.comments, "author": users.get_current_user(), "text": comment.text,"created": datetime.datetime.now() })
+	self.reply({"Success": True, "Comments": tls.comments, "author": users.get_current_user(), "text": comment.text,"created": datetime.now() })
 		
   def getComments(self):
 	cs = Comment.all().filter("tiddler = ",self.request.get("tiddlerId"))
