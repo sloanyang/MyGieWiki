@@ -304,7 +304,7 @@ class MainPage(webapp.RequestHandler):
 			if el == None: # tiddler is not locked
 				return self.reply(self.lock(t,usr))
 			until = el.time + timedelta(0,60*eval(str(el.duration)))
-			if (usr == el.user if usr != None else el.self.request.remote_addr == user_ip):
+			if (usr == el.user if usr != None else self.request.remote_addr == el.user_ip):
 				# possibly we should extend the lock duration
 				return self.fail("already locked by you", { "key": str(el.key()) })
 			elif datetime.utcnow() < until:
@@ -314,7 +314,7 @@ class MainPage(webapp.RequestHandler):
 				el.delete()
 				reply = self.lock(t,usr)
 				reply['until'] = until
-				return self.warn( "Lock broken", reply)
+				return self.warn( "Lock held by " + userNameOrAddress(el.user, el.user_ip) + " broken", reply)
 	self.fail(error)
 
   def unlock(self,key):

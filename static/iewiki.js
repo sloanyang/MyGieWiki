@@ -2585,7 +2585,6 @@ config.commands.editTiddler.handler = function(event, src, title) {
 		if (confirm("This tiddler is included from " + st.from) == false)
 			return;
     if (st && st.id && config.options.txtLockDuration != "") {
-		debugger
 		var reply = http.editTiddler({id: st.id, duration: config.options.txtLockDuration });
 		st.key = reply.key;
 		if (reply.Success) {
@@ -2619,7 +2618,7 @@ config.commands.cancelTiddler.handler = function(event, src, title) {
             return false;
     }
     var t = store.getTiddler(title);
-    if (t && t.key && t.until))
+    if (t && t.key && t.until)
 		http.unlockTiddler({"key": t.key});
     story.setDirty(title, false);
     story.displayTiddler(null, title);
