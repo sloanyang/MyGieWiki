@@ -332,7 +332,8 @@ a.tiddlyLinkNonExisting.shadow {font-weight:bold;}
 .viewer blockquote {line-height:1.5em; padding-left:0.8em;margin-left:2.5em;}
 .viewer ul, .viewer ol {margin-left:0.5em; padding-left:1.5em;}
 
-.viewer table, table.twtable {border-collapse:collapse; margin:0.8em 1.0em;}
+.viewer table, table.twtable {border-collapse:collapse; margin:0em 0em; 0em; 0em; font-size:1.0em;}
+
 .viewer th, .viewer td, .viewer tr,.viewer caption,.twtable th, .twtable td, .twtable tr,.twtable caption {padding:3px;}
 table.listView {font-size:0.85em; margin:0.8em 1.0em;}
 table.listView th, table.listView td, table.listView tr {padding:0px 3px 0px 3px;}
@@ -538,7 +539,7 @@ forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"a
 ;&lt;/script&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 70&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 70&gt;&gt;|
-|&gt;|&gt;|Address&lt;br&gt;&lt;&lt;input text address 70&gt;&gt;|
+|&gt;|&gt;|Address (end with a / to make a folder)&lt;br&gt;&lt;&lt;input text address 70&gt;&gt;|
 |&gt;|&gt;|Access permissions|
 |Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes&gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
 |&gt;|&gt;|&lt;script label=&quot;Create new page&quot; title=&quot;Create new page&quot;&gt;OnCreatePage(http.createPage(GetForm(place)));&lt;/script&gt;|</pre>

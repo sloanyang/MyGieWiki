@@ -5,6 +5,7 @@ import urllib
 from datetime import *
 from new import instance, classobj
 import xml.dom.minidom
+from os import path
 
 from google.appengine.api import users
 from google.appengine.ext import webapp
@@ -12,241 +13,30 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 from google.appengine.api import urlfetch 
 
+from Tiddler import *
 from Plugins import *
-
-class MyError(Exception):
-  def __init__(self, value):
-	self.value = value
-  def __str__(self):
-	return repr(self.value)
-
-def htmlEncode(s):
-	return s.replace('"','&quot;').replace('<','&lt;').replace('>','&gt;').replace('\n','<br>')
-
-def HtmlErrorMessage(msg):
-	return "<html><body>" + htmlEncode(msg) + "</body></html>" 
-
-def Filetype(filename):
-	fp = filename.rsplit('.',1)
-	if len(fp) == 1:
-		return None
-	else:
-		return fp[1].lower()
-
-def MimetypeFromFiletype(ft):
-	if ft == "txt":
-		return "text/plain"
-	if ft == "htm" or ft == "html":
-		return "text/html"
-	if ft == "xml":
-		return "text/xml"
-	if ft == "jpg" or ft == "jpeg":
-		return "image/jpeg"
-	if ft == "gif":
-		return "image/gif"
-	return "application/octet-stream"
-	
-def CombinePath(path,fn):
-	if path.rfind('/') != len(path) - 1:
-		path = path + '/'
-	return path + fn
-
-def leafOfPath(path):
-	lp = path.rfind('/')
-	if lp + 1 < len(path):
-		return path[lp + 1:] + '/'
-	return ""
-
-def HasGroupAccess(grps,user):
-	if grps != None:
-		for ga in grps.split(","):
-			if GroupMember.all().filter("group =",ga).filter("name =",user).get():
-				return True
-	return False
-	
-def ReadAccessToPage(page,user):
-	if page == None: # Un-cataloged page - restricted access
-		return users.is_current_user_admin()
-	if page.anonAccess >= page.ViewAccess: # anyone can see it
-		return True
-	if user != None:
-		if page.authAccess >= page.ViewAccess: # authenticated users have access
-			return True
-		if page.owner == user: # owner has access, of course
-			return True
-		if page.groupAccess >= page.ViewAccess and HasGroupAccess(page.groups,user.nickname):
-			return True
-	return False
-
-def userWho():
-	u = users.get_current_user()
-	if (u):
-		return u.nickname()
-	else:
-		return ""
-
-def userNameOrAddress(u,a):
-	if u != None:
-		return u.nickname()
-	else:
-		return a
-  
-def xmlArrayOfStrings(xd,te,text,name):
-	mas = text.split()
-	for a in mas:
-		se = xd.createElement(name)
-		te.appendChild(se)
-		se.appendChild(xd.createTextNode(unicode(a)))
-	te.setAttribute('type', 'string[]')
-
-class SiteInfo(db.Model):
-  title = db.StringProperty()
-  description = db.StringProperty()
-
-class Tiddler(db.Model):
-  "Unit of text storage"
-  title = db.StringProperty()
-  page = db.StringProperty()
-  author = db.UserProperty()
-  author_ip = db.StringProperty()
-  version = db.IntegerProperty()
-  current = db.BooleanProperty()
-  public = db.BooleanProperty()
-  text = db.TextProperty()
-  created = db.DateTimeProperty(auto_now_add=True)
-  modified = db.DateTimeProperty(auto_now_add=True)
-  tags = db.StringProperty()
-  id = db.StringProperty()
-  comments = db.IntegerProperty(0)
-  messages = db.StringProperty()
-  notes = db.StringProperty()
-  
-class ShadowTiddler(db.Model):
-  tiddler = db.ReferenceProperty(Tiddler)
-  path = db.StringProperty()
-  id = db.StringProperty()
-  
-class EditLock(db.Model):
-  id = db.StringProperty(Tiddler)
-  user = db.UserProperty()
-  user_ip = db.StringProperty()
-  time = db.DateTimeProperty(auto_now_add=True)
-  duration = db.IntegerProperty()
-
-def getAuthor(t):
-	if t.author != None:
-		return str(t.author.nickname());
-	elif t.author_ip != None:
-		return str(t.author_ip)
-	else:
-		return "?"
-
-class Page(db.Model):
-  NoAccess = 0
-  ViewAccess = 2
-  CommentAccess = 4
-  AddAccess = 6
-  EditAccess = 8
-  AllAccess = 10
-  access = { "all":10, "edit":8, "add":6, "comment":4, "view":2, "none":0,
-             10:"all", 8:"edit", 6:"add", 4:"comment", 2:"view", 0:"none" }
-    
-  path = db.StringProperty()
-  owner = db.UserProperty()
-  title = db.StringProperty()
-  subtitle = db.StringProperty()
-  locked = db.BooleanProperty()
-  anonAccess = db.IntegerProperty()
-  authAccess = db.IntegerProperty()
-  groupAccess = db.IntegerProperty()
-  groups = db.StringProperty()
-  
-  def Update(self,tiddler):
-	if tiddler.title == "SiteTitle":
-		self.title = tiddler.text
-	elif tiddler.title == "SiteSubtitle":
-		self.subtitle = tiddler.text
-	else:
-		return
-	self.put()
-	
-  def UpdateViolation(self):
-	if users.get_current_user() == None and self.anonAccess < 6:
-		return "You cannot change this page"
-	if users.get_current_user() != self.owner and self.authAccess < 6 and (self.groupAccess < 6 or HasGroupAccess(self.groups,userWho()) == False):
-		return "Edit access is restricted"
-	return None
-
-class Comment(db.Model):
-  tiddler = db.StringProperty()
-  version = db.IntegerProperty()
-  text = db.TextProperty()
-  created = db.DateTimeProperty(auto_now_add=True)
-  author = db.UserProperty()
-  ref = db.StringProperty()
-
-class Include(db.Model):
-  page = db.StringProperty()
-  id = db.StringProperty()
-  version = db.IntegerProperty()
-  @staticmethod
-  def Unique(apage,aid):
-	"Finds or creates instance"
-	ev = Include.all().filter("page =", apage).filter("id =",aid).get()
-	if ev == None:
-		return Include(page = apage, id = aid)
-	return ev
-  # Unique = staticmethod(Unique)
-  
-class Note(Comment):
-  revision = db.IntegerProperty()
-  
-class Message(Comment):
-  receiver = db.UserProperty()
-
-class Group(db.Model):
-  name = db.StringProperty()
-  admin = db.UserProperty()
-  
-class GroupMember(db.Model):
-  name = db.StringProperty()
-  group = db.StringProperty()
-
-class UploadedFile(db.Model):
-  owner = db.UserProperty()
-  path = db.StringProperty()
-  mimetype = db.StringProperty()
-  data = db.BlobProperty()
-  date = db.DateTimeProperty(auto_now_add=True)
-  
-class LogEntry(db.Model):
-	when = db.DateTimeProperty(auto_now_add=True)
-	what = db.StringProperty()
-	text = db.StringProperty()
-	
-def LogEvent(what,text):
-	le = LogEntry()
-	le.what = what
-	le.text = text
-	le.put()
-
-class XmlDocument(xml.dom.minidom.Document):
-	def add(self,parent,name,text=None,attrs=None):
-		e = self.createElement(name);
-		parent.appendChild(e);
-		if attrs != None:
-			for n,v in attrs.iteritems():
-				e.setAttribute(n,str(v))
-		if text != None:
-			e.appendChild(self.createTextNode(unicode(text)))
-		return e;
-	def addArrayOfObjects(self,name,parent=None):
-		if parent == None:
-			parent = self
-		return self.add(parent,name, attrs={'type':'object[]'})
-	
+from giewikilib import *
 
 class MainPage(webapp.RequestHandler):
+  "Serves wiki pages and updates"
+
+  def getSubdomain(self):
+	hostc = self.request.host.split('.')
+	if len(hostc) > 3: # e.g. subdomain.giewiki.appspot.com
+		pos = len(hostc) - 4
+	elif len(hostc) > 1 and hostc[len(hostc) - 1].startswith('localhost'): # e.g. sd.localhost:port
+		pos = len(hostc) - 2
+	else:
+		self.merge = False
+		self.subdomain = None
+		return
+
+	self.subdomain = hostc[pos]
+	self.merge = False
+	if pos > 1:
+		if pos[0] == 'merge':
+			self.merge = True
+
   def initXmlResponse(self):
 	self.response.headers['Content-Type'] = 'text/xml'
 	self.response.headers['Cache-Control'] = 'no-cache'
@@ -265,6 +55,7 @@ class MainPage(webapp.RequestHandler):
   def SaveNewTiddler(self,page,name,value):
 	p = Tiddler()
 	p.page = page
+	p.sub = self.subdomain 
 	p.author = users.get_current_user()
 	p.author_ip = self.request.remote_addr
 	p.version = 1
@@ -388,8 +179,11 @@ class MainPage(webapp.RequestHandler):
 		if atl.current:
 			atl.current = False
 			tlr.comments = atl.comments
+			tlr.sub = atl.sub
 			atl.put()
 	tlr.current = True
+	if tlr.version == 1:
+		tlr.sub = self.subdomain
 	if "includes" in tlr.tags.split():
 		tlf = list()
 		tls = tlr.text.split("\n")
@@ -604,16 +398,25 @@ class MainPage(webapp.RequestHandler):
 		xd.add(ace, "created", ac.created)
 		xd.add(ace, "version", ac.version)
 	self.sendXmlResponse(xd)
+
+  def getMacro(self):
+	try:
+		ftwm = open(path.normcase( self.request.get('macro') + '.js'))
+		self.reply({'text': ftwm.read()})
+		ftwm.close()
+	except Exception,x:
+		self.fail(str(x))
 	
   def pageProperties(self):
 	if users.get_current_user() == None:
 		return self.fail("You are not logged in");
 	path = self.request.path
-	page = Page.all().filter("path =",path).get()
+	page = Page.all().filter("path =",path).filter("sub",self.subdomain).get()
 	if page == None:
 		if path == "/" and users.get_current_user() != None: # Root page
 			page = Page()
 			page.path = "/"
+			page.sub = self.subdomain
 			page.title = ""
 			page.subtitle = ""
 			page.locked = False
@@ -663,7 +466,7 @@ class MainPage(webapp.RequestHandler):
 	self.reply({"Success": True, "Address": npt })
 	
   def siteMap(self):
-	pal = Page.all().order('path')
+	pal = Page.all().filter('sub',self.subdomain).order('path')
 	xd = XmlDocument()
 	xroot = xd.add(xd,'SiteMap', attrs={'type':'object[]'})
 	for p in pal:
@@ -683,6 +486,7 @@ class MainPage(webapp.RequestHandler):
 			if parent == "/" and users.get_current_user() != None:
 				pad = Page()
 				pad.path = "/"
+				pad.sub = self.subdomain
 				pad.owner = users.get_current_user()
 				pad.locked = False
 				pad.anonAccess = Page.access[self.request.get("anonymous")]
@@ -708,6 +512,7 @@ class MainPage(webapp.RequestHandler):
 	if page == None:
 		page = Page()
 		page.path = url
+		page.sub = self.subdomain
 		page.owner = users.get_current_user()
 		page.title = self.request.get("title")
 		page.subtitle = self.request.get("subtitle")
@@ -841,12 +646,34 @@ class MainPage(webapp.RequestHandler):
 
 
   def getTiddler(self):
-	url = self.request.get("url").split("#",1)
-	t = Tiddler.all().filter("page = ", url[0]).filter("title = ",url[1]).filter("current = ", True).get()
-	if t == None:
-		self.reply({"success": False, "Message": "No such tiddler!" })
+	title = self.request.get("title")
+	if title == "":
+		url = self.request.get("url").split("#",1)
+		if len(url) < 2:
+			return LogEvent("getTiddler:", self.request.get("url"))
+		title = url[1]
+		page = url[0]
 	else:
-		self.reply({"success": True, "text": t.text })
+		page = self.request.path
+		
+	t = Tiddler.all().filter("page", page).filter("title",title).filter("current", True).get()
+	if t == None:
+		self.reply({"success": False })
+	else:
+		if t.public or ReadAccessToPage(t.page):
+			self.reply({ \
+			'success': True, \
+			'id': t.id, \
+			'title': t.title, \
+			'text': t.text, \
+			'tags': t.tags, \
+			'created': t.created.strftime("%Y%m%d%H%M%S"),
+			'modifier': userNameOrAddress(t.author,t.author_ip),
+			'modified': t.modified.strftime("%Y%m%d%H%M%S"),
+			'version': t.version
+			})
+		else:
+			self.reply({"success": False, "Message": "No access" })
 		
   def getGroups(self):
 	groups = Group.all().filter("admin =", users.get_current_user())
@@ -866,7 +693,7 @@ class MainPage(webapp.RequestHandler):
 	re = xd.add(xd,'result')
 	offset = eval(self.request.get('offset'))
 	limit = eval(self.request.get('limit'))
-	ts = Tiddler.all().order("-modified").fetch(limit,offset)
+	ts = Tiddler.all().filter("sub",self.subdomain).order("-modified").fetch(limit,offset)
 	ta = xd.add(re,"changes",attrs={'type':'object[]'})
 	for t in ts:
 		rt = xd.add(ta,"tiddler")
@@ -974,28 +801,9 @@ class MainPage(webapp.RequestHandler):
 	for te in storeArea.childNodes:
 		# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else str(te.nodeType)) + "&gt;");
 		if te.nodeType == xml.dom.Node.ELEMENT_NODE:
-			id = None
-			try:
-				title = te.getAttribute('title')
-				id = te.getAttribute('id')
-				v = te.getAttribute('version')
-				version = eval(v) if v != None and v != "" else 1
-			except Exception, x:
-				self.response.out.write("Attr missing...: " + str(x));
+			nt = TiddlerFromXml(te,self.request.path)
+			if nt == None:
 				return
-				
-			nt = Tiddler(page = self.request.path, title = title, id = id, version = version)
-			nt.current = True
-			nt.tags = te.getAttribute('tags')
-			nt.author = users.get_current_user()
-			for ce in te.childNodes:
-				if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'pre':
-					if ce.firstChild != None and ce.firstChild.nodeValue != None:
-						nt.text = ce.firstChild.nodeValue
-						break
-			if nt.text == None:
-				nt.text = ""
-
 			nt.public = page.anonAccess > page.NoAccess
 			#self.response.out.write("<br>Upload tiddler: " + nt.title + " | " + nt.id + " | version " + str(nt.version) + nt.text + "<br>")
 			
@@ -1041,12 +849,40 @@ class MainPage(webapp.RequestHandler):
 						if bce.getAttribute("id") == "storeArea":
 							self.uploadTiddlersFrom(bce);
 		
-	
+  def ImportDb(self,filedata):
+	try:
+		dom = xml.dom.minidom.parseString(filedata)
+		doce = dom.documentElement
+		if doce.tagName == "giewiki":
+			for ace in doce.childNodes:
+				if ace.nodeType == xml.dom.Node.ELEMENT_NODE:
+					mc = None
+					if ace.tagName == "tiddlers":
+						mc = Tiddler
+					if mc != None:
+						for ice in ace.childNodes:
+							mi = mc()
+							self.response.out.write('t-<br>')
+							for mce in ice.childNodes:
+								if mce.firstChild != None:
+									v = mce.firstChild.nodeValue
+									self.response.out.write(mce.tagName + str(mce.firstChild.nodeValue))
+									if mce.tagName == 'created':
+										v = datetime(v)
+									setattr(mi,mce.tagName,mce.firstChild.nodeValue)
+							mi.put()
+				
+	except Exception,x:
+		self.response.out.write("Oops: " + str(x))
+		return
+
   def uploadFile(self):
 	filename = self.request.get("filename")
 	filedata = self.request.get("MyFile")
 	filetype = Filetype(filename)
-	if filetype == 'twd':
+	if filename == '_export.xml' and users.is_current_user_admin():
+		self.ImportDb(filedata)
+	elif filetype == 'twd':
 		return self.uploadTiddlyWikiDoc(filename,filedata)
 	else:
 		f = UploadedFile()
@@ -1135,6 +971,7 @@ class MainPage(webapp.RequestHandler):
 		self.response.out.write(xd.toxml())
 
   def post(self):
+	self.getSubdomain()
 	m = self.request.get("method") # what do you want
 	if m in dir(self):
 		try:
@@ -1196,33 +1033,61 @@ class MainPage(webapp.RequestHandler):
 	if method == 'cleanup':
 		return self.cleanup()
 		
-  def get(self):
-	method = self.request.get("method")
+  def export(self):
+	self.initXmlResponse()
+	xd = xml.dom.minidom.Document()
+	xr = xd.createElement("giewiki")
+	xd.appendChild(xr)
+	exportTable(xd,xr,Tiddler,'tiddlers','tiddler')
+	exportTable(xd,xr,ShadowTiddler,'shadowtiddlers','shadowtiddler')
+	exportTable(xd,xr,Page,'pages','page')
+	exportTable(xd,xr,Comment,'comments','comment')
+	exportTable(xd,xr,Note,'notes','note')
+	exportTable(xd,xr,Message,'messages','message')
+	exportTable(xd,xr,SiteInfo,'siteinfo','siteinfo')
+	exportTable(xd,xr,Group,'groups','group')
+	exportTable(xd,xr,GroupMember,'groupmembers','groupmember')
+	self.response.out.write(xd.toxml())
 
+  def get(self):
+	self.getSubdomain()
+	method = self.request.get("method")
+	LogEvent('get', method)
+	
 	if method == "LoginDone":
 		return self.LoginDone(self.request.get("path"))
 		
 	if self.request.path == "/_tasks":
 		return self.task(method)
+	elif self.request.path == "/_export.xml" and users.is_current_user_admin():
+		return self.export()
 		
 	tiddict = dict()
 	defaultTiddlers = ""
 	
 	page = Page.all().filter("path",self.request.path).get()
 	
+	for tn in self.request.get("include").split():
+		try:
+			txd = xml.dom.minidom.parse(tn)
+			tde = txd.documentElement
+			tdo = TiddlerFromXml(tde,self.request.path)
+			tiddict[tdo.id] = tdo;
+		except Exception, x:
+			self.response.out.write("<html>Error including " + tn + ":<br>" + str(x))
+			return
+	
 	for st in ShadowTiddler.all():
 		if self.request.path.startswith(st.path):
 			tiddict[st.tiddler.id] = st.tiddler
 	
-	tiddlers = Tiddler.all().filter("page", self.request.path).filter("current", True)
-	for t in tiddlers:
-		id = t.id
-		if id in tiddict:
-			if t.version > tiddict[id].version:
-				tiddict[id] = t
-		else:
-			tiddict[id] = t
-
+	tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",self.subdomain).filter("current", True)
+	mergeDict(tiddict, tiddlers)
+	
+	if self.merge == True:
+		tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",None).filter("current", True)
+		mergeDict(tiddict,tiddlers)
+	
 	includes = Include.all().filter("page", self.request.path)
 	for t in includes:
 		tv = t.version
@@ -1383,7 +1248,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			try:
 				ftwd = open(twd)
-				twdtext = ftwd.read();
+				twdtext = ftwd.read()
 				ftwd.close()
 			except Exception, x:
 				text = HtmlErrorMessage("Cannot read " + twd + ":\n" + str(x))

@@ -1,6 +1,7 @@
 from google.appengine.ext import db
+from Tiddler import Tiddler
 
-class Hello(db.Model):
+class Hello(Tiddler):
   name = db.StringProperty()
   # address = db.StringProperty()
   def public(self,page):

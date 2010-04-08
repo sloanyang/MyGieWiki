@@ -456,7 +456,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddler\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -467,6 +467,7 @@ config.shadowTiddlers = {
     AdvancedOptions: '<<options>>',
     RecentChanges: '<<recentChanges>>',
     RecentComments: '<<recentComments>>',
+    PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
     ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler reload > fields syncing permalink references jump|\n|~EditToolbar|+saveTiddler -cancelTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
@@ -517,7 +518,7 @@ var pluginInfo, tiddler; // Used to pass information to plugins in loadPlugins()
 
 config.read = function(t) {
 	fields = t.fields;
-    this.admin = eval(fields.admin);
+    this.admin = window.eval(fields.admin);
     if (this.admin)
 		http._addMethod("evaluate");
     this.owner = fields.owner;
@@ -555,10 +556,13 @@ config.readPages = function(pgs) {
 // Starting up
 function main() {
     startingUp = true;
+    if (window.location.search == "?Debugger") 
+		debugger;
     window.onbeforeunload = function(e) { if (window.confirmExit) return confirmExit(); };
     params = getParameters();
     if (params)
         params = params.parseParams("open", null, false);
+    http._addMethod("getTiddler");
     store = new TiddlyWiki();
     invokeParamifier(params, "oninit");
     story = new Story("tiddlerDisplay", "tiddler");
@@ -577,6 +581,7 @@ function main() {
     http._init(store.getTiddlerText("HttpMethods").split('\n'));
 
     var pluginProblem = loadPlugins();
+    loadShadowTiddlers();
     formatter = new Formatter(config.formatters);
     invokeParamifier(params, "onconfig");
     story.switchTheme(config.options.txtTheme);
@@ -584,6 +589,8 @@ function main() {
     restart();
     refreshDisplay();
     if (pluginProblem) {
+		if (!config.macros.plugins)
+			window.location = UrlInclude("PluginManager.xml");
         story.displayTiddler(null, "PluginManager");
         displayMessage(config.messages.customConfigError);
     }
@@ -615,8 +622,10 @@ function loadShadowTiddlers() {
 		t.modified = null; 
 		return t; 
 	} 
-    for(t in config.shadowTiddlers)
+    for(t in config.shadowTiddlers) {
 		store.addTiddler(ms(new Tiddler(t,0,config.shadowTiddlers[t])));
+		delete config.shadowTiddlers[t];
+	}
     store.loadFromDiv("shadowArea", "shadows", true, ms);
 }
 
@@ -2584,7 +2593,19 @@ config.commands.editTiddler.handler = function(event, src, title) {
     if (st && st.from)
 		if (confirm("This tiddler is included from " + st.from) == false)
 			return;
-    if (st && st.id && config.options.txtLockDuration != "") {
+	if (!st) {
+		st = http.getTiddler({'title': title});
+		if (st && st.success) {
+			var t = new Tiddler();
+			t.assign(st.title,st.text,st.modifier,
+				Date.convertFromYYYYMMDDHHMM(st.modified),st.tags,
+				Date.convertFromYYYYMMDDHHMM(st.created),
+				null, parseInt(st.version));
+			t.currentVer = t.version;
+			store.addTiddler(t);
+		}
+	}
+	if (st && st.id && config.options.txtLockDuration != "") {
 		var reply = http.editTiddler({id: st.id, duration: config.options.txtLockDuration });
 		st.key = reply.key;
 		if (reply.Success) {
@@ -2808,23 +2829,6 @@ Tiddler.prototype.isTouched = function() {
     return changeCount > 0;
 };
 
-// Return the tiddler as an RSS item
-Tiddler.prototype.toRssItem = function(uri) {
-    var s = [];
-    s.push("<title" + ">" + this.title.htmlEncode() + "</title" + ">");
-    s.push("<description>" + wikifyStatic(this.text, null, this).htmlEncode() + "</description>");
-    for (var t = 0; t < this.tags.length; t++)
-        s.push("<category>" + this.tags[t] + "</category>");
-    s.push("<link>" + uri + "#" + encodeURIComponent(String.encodeTiddlyLink(this.title)) + "</link>");
-    s.push("<pubDate>" + this.modified.toGMTString() + "</pubDate>");
-    return s.join("\n");
-};
-
-// Format the text for storage in an RSS item
-Tiddler.prototype.saveToRss = function(uri) {
-    return "<item>\n" + this.toRssItem(uri) + "\n</item>";
-};
-
 // Stash a version
 Tiddler.prototype.stashVersion = function() {
     var version = this.version;
@@ -2966,7 +2970,7 @@ Tiddler.prototype.display = function(target,fields,toggling) {
     try {
         if (this.isTagged("javaScript") && !toggling) {
             try {
-                var a = eval(this.text);
+                var a = window.eval(this.text);
                 if (a != "undefined") {
                     var t = this.text;
                     this.text = a;
@@ -3299,6 +3303,7 @@ TiddlyWiki.prototype.loadFromDiv = function(src, idPrefix, noUpdate, fn) {
     if (!storeElem)
         return;
     var tiddlers = this.getLoader().loadTiddlers(this, storeElem.childNodes, fn);
+    removeChildren(storeElem);
     this.setDirty(false);
     if (!noUpdate) {
         for (var i = 0; i < tiddlers.length; i++)
@@ -6424,7 +6429,7 @@ function JsoFromXml(rce) {
             v = parseInt(v);
             break;
         case "bool":
-            v = eval(v);
+            v = window.eval(v);
             break;
         case "datetime":
             try {
@@ -7358,12 +7363,20 @@ config.macros.downloadAsTiddlyWiki = {
     {
 		if (window.location.protocol == "file:") 
 			return;
+		createTiddlyText(place, "Download ");
 		var link = document.createElement("a");
 		link.href = location.pathname + "?twd=" + config.options.txtEmptyTiddlyWiki; 
 		link.title = "Right-click to download this page as a Tiddlywiki";
-		createTiddlyText(link, "Download TiddlyWiki");
+		createTiddlyText(link, "TiddlyWiki");
 		place.appendChild(link);
-    }
+		if (config.admin && window.location.pathname == "/") {
+			var link = document.createElement("a");
+			link.href = "/_export.xml"; 
+			link.title = "Right-click to export site to XML";
+			createTiddlyText(link, " Backup");
+			place.appendChild(link);
+		}
+	}
 }
 
 
@@ -7439,4 +7452,29 @@ function FindChildTextarea(ac)
 		var e = FindChildTextarea(ac.childNodes[i]);
 		if (e) return e;
 	}
+}
+
+function UrlInclude(what) {
+	var q = window.location.search;
+	var h = window.location.hash;
+	var tp = q ? q : h;
+	var path = window.location.href;
+	if (tp)
+		path = path.substring(0,path.indexOf(tp))
+	if (q) {
+		var qs = q.substring(1).split('&');
+		var qf = false;
+		for (var iq = 0; iq < qs.length; iq++) {
+			if (qs[iq].startsWith('include=')) {
+				qs[iq] = qs[iq] + "+" + what;
+				qf = true;
+			}
+		}
+		if (!qf)
+			qs.push('include=' + what);
+		q = '?' + qs.join('&');
+	}
+	else
+		q = "?include=" + what;
+	return path + q + h;
 }
