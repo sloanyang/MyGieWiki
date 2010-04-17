@@ -33,8 +33,8 @@ class MainPage(webapp.RequestHandler):
 
 	self.subdomain = hostc[pos]
 	self.merge = False
-	if pos > 1:
-		if pos[0] == 'merge':
+	if pos > 0:
+		if hostc[0] == 'merge':
 			self.merge = True
 
   def initXmlResponse(self):
@@ -98,9 +98,9 @@ class MainPage(webapp.RequestHandler):
 			if (usr == el.user if usr != None else self.request.remote_addr == el.user_ip):
 				# possibly we should extend the lock duration
 				return self.fail("already locked by you", { "key": str(el.key()) })
-			elif datetime.utcnow() < until:
+			elif datetime.datetime.utcnow() < until:
 				error = "already locked by " + userNameOrAddress(el.user, el.user_ip) + \
-						" until " + str(until) + "( another " + str(until -  datetime.utcnow()) + ")"
+						" until " + str(until) + "( another " + str(until -  datetime.datetime.utcnow()) + ")"
 			else:
 				el.delete()
 				reply = self.lock(t,usr)
@@ -119,6 +119,15 @@ class MainPage(webapp.RequestHandler):
   def unlockTiddler(self):
 	if self.unlock(self.request.get("key")):
 		self.reply({})
+
+  def lockTiddler(self):
+	t = Tiddler.all().filter('id',self.request.get("tiddlerId")).filter('current',True).get()
+	if t != None:
+		t.locked = self.request.get("lock") == 'true'
+		t.put()
+		self.reply({"Success": True})
+	else:
+		self.fail('no such tiddler')
 
   def saveTiddler(self):
 	"http tiddlerName text tags version tiddlerId versions"
@@ -357,7 +366,7 @@ class MainPage(webapp.RequestHandler):
 		tls.notes = tls.notes + '|' + comment.author.nickname() if tls.notes != None else comment.author.nickname()
 		
 	tls.save()
-	self.reply({"Success": True, "Comments": tls.comments, "author": users.get_current_user(), "text": comment.text,"created": datetime.now() })
+	self.reply({"Success": True, "Comments": tls.comments, "author": users.get_current_user(), "text": comment.text,"created": datetime.datetime.now() })
 		
   def getComments(self):
 	cs = Comment.all().filter("tiddler = ",self.request.get("tiddlerId"))
@@ -428,7 +437,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			return self.fail("Page does not exist")
 	if self.request.get("title") != "": # Put
-		if users.get_current_user() != page.owner:
+		if users.get_current_user() != page.owner and users.is_current_user_admin() == False:
 			self.fail("You cannot change the properties of this pages")
 		else:
 			page.title = self.request.get("title")
@@ -857,19 +866,56 @@ class MainPage(webapp.RequestHandler):
 			for ace in doce.childNodes:
 				if ace.nodeType == xml.dom.Node.ELEMENT_NODE:
 					mc = None
+					deleteKey = None
+					deleteMatch = None
 					if ace.tagName == "tiddlers":
 						mc = Tiddler
+					elif ace.tagName == "shadowtiddlers":
+						mc = ShadowTiddler
+					elif ace.tagName == "siteinfos":
+						mc = ShadowTiddler
+					elif ace.tagName == "pages":
+						mc = Page
+						deleteKey = "path"
+					elif ace.tagName == "comments":
+						mc = Comment
+					elif ace.tagName == "messages":
+						mc = Message
+					elif ace.tagName == "notes":
+						mc = Note
+					elif ace.tagName == "groups":
+						mc = Group
+					elif ace.tagName == "groupmember":
+						mc = GroupMember
 					if mc != None:
 						for ice in ace.childNodes:
 							mi = mc()
-							self.response.out.write('t-<br>')
+							self.response.out.write('<br>class ' + mc.__name__ + '()<br>')
 							for mce in ice.childNodes:
+								field = mce.tagName
+								dtype = mce.getAttribute('type')
 								if mce.firstChild != None:
+									self.response.out.write(field + '(' + dtype + ') ')
 									v = mce.firstChild.nodeValue
-									self.response.out.write(mce.tagName + str(mce.firstChild.nodeValue))
-									if mce.tagName == 'created':
-										v = datetime(v)
-									setattr(mi,mce.tagName,mce.firstChild.nodeValue)
+									# self.response.out.write(field + str(mce.firstChild.nodeValue))
+									if dtype == 'datetime':
+										if len(v) == 19:
+											v = datetime.datetime.strptime(v,'%Y-%m-%d %H:%M:%S')
+										else:
+											v = datetime.datetime.strptime(v,'%Y-%m-%d %H:%M:%S.%f')
+										setattr(mi,field,v)
+									elif dtype == 'long' or dtype == 'int' or dtype == 'bool':
+										setattr(mi,field,eval(v))
+									elif dtype == 'User':
+										setattr(mi,field,users.User(email=v))
+									else:
+										setattr(mi,field,unicode(v))
+								if field == deleteKey:
+									deleteMatch = v
+							if deleteMatch != None:
+								oldrec = mc.all().filter(deleteKey,deleteMatch).get()
+								if oldrec != None:
+									oldrec.delete()
 							mi.put()
 				
 	except Exception,x:
@@ -970,6 +1016,13 @@ class MainPage(webapp.RequestHandler):
 		xd.appendChild(result)
 		self.response.out.write(xd.toxml())
 
+  def truncateAll(self):
+	if users.is_current_user_admin():
+		truncateAllData()
+		self.fail('Data was truncated')
+	else:
+		self.fail('Access denied')
+
   def post(self):
 	self.getSubdomain()
 	m = self.request.get("method") # what do you want
@@ -999,10 +1052,12 @@ class MainPage(webapp.RequestHandler):
 	div = xd.createElement('div')
 	div.setAttribute('id', id)
 	div.setAttribute('title', t.title)
-	if t.page != self.request.path:
+	if t.locked:
+		div.setAttribute('readonly','true')
+	elif t.page != self.request.path:
 		div.setAttribute('from',t.page)
-		div.setAttribute('readOnly',"true")
-		
+		div.setAttribute('readonly','true')
+
 	if t.modified != None:
 		div.setAttribute('modified', t.modified.strftime("%Y%m%d%H%M%S"))
 	div.setAttribute('modifier', getAuthor(t))
@@ -1026,7 +1081,7 @@ class MainPage(webapp.RequestHandler):
   def cleanup(self):
 	for el in EditLock.all():
 		until = el.time + timedelta(0,60*eval(str(el.duration)))
-		if until < datetime.utcnow():
+		if until < datetime.datetime.utcnow():
 			el.delete()
 	  
   def task(self,method):
@@ -1037,6 +1092,7 @@ class MainPage(webapp.RequestHandler):
 	self.initXmlResponse()
 	xd = xml.dom.minidom.Document()
 	xr = xd.createElement("giewiki")
+	xr.setAttribute('timestamp',str(datetime.datetime.now()))
 	xd.appendChild(xr)
 	exportTable(xd,xr,Tiddler,'tiddlers','tiddler')
 	exportTable(xd,xr,ShadowTiddler,'shadowtiddlers','shadowtiddler')
@@ -1156,10 +1212,11 @@ class MainPage(webapp.RequestHandler):
 		elShArea = xd.createElement("shadowArea")
 		metaDiv = xd.createElement('div')
 		metaDiv.setAttribute('title', "_MetaData")
-		metaDiv.setAttribute('admin', "true" if users.is_current_user_admin() else "false")
+		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
 		if page != None:
 			metaDiv.setAttribute('username',username)
 			metaDiv.setAttribute('owner', page.owner.nickname())
+			metaDiv.setAttribute('access', AccessToPage(page,user))
 			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
 			metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
 			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
@@ -1167,6 +1224,8 @@ class MainPage(webapp.RequestHandler):
 				metaDiv.setAttribute('groups',page.groups);
 				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
 					metaDiv.setAttribute('groupmember','true')
+			if page.locked:
+				metaDiv.setAttribute('locked','true')
 		elStArea.appendChild(metaDiv)
 		
 		pgse = xd.createElement("div")
@@ -1220,7 +1279,7 @@ class MainPage(webapp.RequestHandler):
 					except Exception, x:
 						t.text = str(x)
 
-			if "shadowTiddler" in t.tags.split():
+			if t.tags != None and "shadowTiddler" in t.tags.split():
 				if t.page != self.request.path: # remove tag if not the source page
 					tags = t.tags.split()
 					tags.remove("shadowTiddler")
@@ -1244,7 +1303,7 @@ class MainPage(webapp.RequestHandler):
 				else:
 					text = HtmlErrorMessage("Failed to retrieve " + twd + ":\nHTTP Error " + str(twdres.status_code))
 			except Exception, x:
-				text = HtmlErrorMessage("Cannot retrive " + str(twd) + ":\n" + str(x))			
+				text = HtmlErrorMessage("Cannot retrive " + str(twd) + ":\n" + str(x))
 		else:
 			try:
 				ftwd = open(twd)

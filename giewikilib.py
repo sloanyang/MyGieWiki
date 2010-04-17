@@ -1,4 +1,7 @@
 ﻿import xml.dom.minidom
+import datetime
+
+from google.appengine.api import users
 
 from Tiddler import *
 
@@ -44,29 +47,6 @@ def leafOfPath(path):
 	if lp + 1 < len(path):
 		return path[lp + 1:] + '/'
 	return ""
-
-def HasGroupAccess(grps,user):
-	if grps != None:
-		for ga in grps.split(","):
-			if GroupMember.all().filter("group =",ga).filter("name =",user).get():
-				return True
-	return False
-	
-def ReadAccessToPage( page, user = users.get_current_user()):
-	if page.__class__ == unicode:
-		page = Page.all().filter("path =",page).get()
-	if page == None: # Un-cataloged page - restricted access
-		return users.is_current_user_admin()
-	if page.anonAccess >= page.ViewAccess: # anyone can see it
-		return True
-	if user != None:
-		if page.authAccess >= page.ViewAccess: # authenticated users have access
-			return True
-		if page.owner == user: # owner has access, of course
-			return True
-		if page.groupAccess >= page.ViewAccess and HasGroupAccess(page.groups,user.nickname):
-			return True
-	return False
 
 def userWho():
 	u = users.get_current_user()
@@ -120,8 +100,12 @@ def exportTable(xd,xr,c,wnn,enn):
 			te = xd.createElement(enn)
 			tr.appendChild(te)
 			for (tan,tav) in d.iteritems():
+				if tav == None:
+					continue
 				tae = xd.createElement(tan)
 				te.appendChild(tae)
+				if tav.__class__ != unicode:
+					tae.setAttribute('type',unicode(tav.__class__.__name__))
 				tae.appendChild(xd.createTextNode(unicode(tav)))
 			n = n + 1
 		if n < 1000:

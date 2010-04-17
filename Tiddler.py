@@ -11,6 +11,7 @@ class Tiddler(db.Model):
   version = db.IntegerProperty()
   current = db.BooleanProperty()
   public = db.BooleanProperty()
+  locked = db.BooleanProperty()
   text = db.TextProperty()
   created = db.DateTimeProperty(auto_now_add=True)
   modified = db.DateTimeProperty(auto_now_add=True)
@@ -27,6 +28,7 @@ class Tiddler(db.Model):
 	d['version'] = s.version
 	d['current'] = s.current
 	d['public'] = s.public
+	d['locked'] = s.locked
 	d['text'] = s.text
 	d['created'] = s.created
 	d['modified'] = s.modified
@@ -81,7 +83,7 @@ class Page(db.Model):
   groups = db.StringProperty()
   def todict(s,d):
 	d['path'] = s.path
-	d['owner'] = s.owner.nickname() if s.owner != None else s.ownername
+	d['owner'] = s.owner
 	d['title'] = s.title
 	d['subtitle'] = s.subtitle
 	d['locked'] = s.locked
@@ -172,3 +174,54 @@ class LogEntry(db.Model):
 	what = db.StringProperty()
 	text = db.StringProperty()
 	
+def truncateModel(m):
+	while m.all().get() != None:
+		db.delete(m.all())
+
+def truncateAllData():
+	truncateModel(Message)
+	truncateModel(Note)
+	truncateModel(Comment)
+	truncateModel(Include)
+	truncateModel(EditLock)
+	truncateModel(Page)
+	truncateModel(ShadowTiddler)
+	truncateModel(Tiddler)
+	truncateModel(UploadedFile)
+	truncateModel(LogEntry)
+	
+def HasGroupAccess(grps,user):
+	if grps != None:
+		for ga in grps.split(","):
+			if GroupMember.all().filter("group =",ga).filter("name =",user).get():
+				return True
+	return False
+	
+def ReadAccessToPage( page, user = users.get_current_user()):
+	if page.__class__ == unicode:
+		page = Page.all().filter("path =",page).get()
+	if page == None: # Un-cataloged page - restricted access
+		return users.is_current_user_admin()
+	if page.anonAccess >= page.ViewAccess: # anyone can see it
+		return True
+	if user != None:
+		if page.authAccess >= page.ViewAccess: # authenticated users have access
+			return True
+		if page.owner == user: # owner has access, of course
+			return True
+		if page.groupAccess >= page.ViewAccess and HasGroupAccess(page.groups,user.nickname()):
+			return True
+	return False
+
+def AccessToPage( page, user = users.get_current_user()):
+	if page.__class__ == unicode:
+		page = Page.all().filter("path =",page).get()
+	if page == None: # Un-cataloged page - restricted access
+		return 'all' if users.is_current_user_admin() else 'none'
+	if page.owner == user or users.is_current_user_admin():
+		return 'all'
+	if user != None:
+		access = page.groupAccess if HasGroupAccess(page.groups,user.nickname()) else page.authAccess
+	else:
+		access = page.anonAccess
+	return Page.access[access]

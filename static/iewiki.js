@@ -29,11 +29,11 @@ DAMAGE.
 */
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
-var giewikiVersion = { title: "giewiki", major: 1, minor: 2, revision: 2, date: new Date("Mar 25, 2010"), extensions: {} };
+var giewikiVersion = { title: "giewiki", major: 1, minor: 3, revision: 0, date: new Date("Apr 17, 2010"), extensions: {} };
 
 // Modified by Poul Staugaard, (poul [dot] staugaard [at] gmail [dot] com)
 // Portions with spaces for tabs are mostly original, while portions with
-// tabs for tabs are mine. Set tab size to 4 characters.
+// tabs for tabs are mine. Set tab size to 4 characters for readability.
 
 //--
 //-- Configuration repository
@@ -114,11 +114,9 @@ config.options = {
     chkCaseSensitiveSearch: false,
     chkIncrementalSearch: true,
     chkAnimate: true,
-    chkGenerateAnRssFeed: false,
     chkSaveEmptyTemplate: false,
     chkOpenInNewWindow: true,
     chkToggleLinks: false,
-    chkHttpReadOnly: true,
     chkForceMinorUpdate: false,
     chkConfirmDelete: true,
     chkInsertTabs: false,
@@ -141,11 +139,9 @@ config.optionsDesc = {
     chkCaseSensitiveSearch: "Case-sensitive searching",
     chkIncrementalSearch: "Incremental key-by-key searching",
     chkAnimate: "Enable animations",
-    chkGenerateAnRssFeed: "Generate an RSS feed when saving changes",
     chkSaveEmptyTemplate: "Generate an empty template when saving changes",
     chkOpenInNewWindow: "Open external links in a new window",
     chkToggleLinks: "Clicking on links to open tiddlers causes them to close",
-    chkHttpReadOnly: "Hide editing features when viewed over HTTP",
     chkForceMinorUpdate: "Don't update modifier username and date when editing tiddlers",
     chkConfirmDelete: "Require confirmation before deleting tiddlers",
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
@@ -192,7 +188,7 @@ config.views = {
     }
 };
 
-// Macros; each has a 'handler' member that is inserted later
+// Macros; handlers defined elsewhere
 config.macros = {
     today: {},
     version: {},
@@ -231,6 +227,10 @@ config.macros = {
     closeAll: {
         label: "close all",
         prompt: "Close all displayed tiddlers (except any that are being edited)"
+    },
+    pageProperties: {
+		label: "page properties",
+		prompt: "Edit page properties"
     },
     comments: {
         listLabel: "%0 comments",
@@ -324,6 +324,12 @@ config.commands = {
         warning: "Are you sure you want to abandon your changes to '%0'?",
         readOnlyText: "done",
         readOnlyTooltip: "View this tiddler normally"
+    },
+    lockTiddler: { 
+        text: "lock",
+        tooltip: "Permanently lock this tiddler",
+        readOnlyText: "unlock",
+        readOnlyTooltip: "Allow editing tiddler"
     },
     deleteTiddler: { 
         hideReadOnly: true,
@@ -456,7 +462,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -465,16 +471,14 @@ config.shadowTiddlers = {
     TabMoreOrphans: '<<list orphans>>',
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
-    RecentChanges: '<<recentChanges>>',
-    RecentComments: '<<recentComments>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler reload > fields syncing permalink references jump|\n|~EditToolbar|+saveTiddler -cancelTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler reload > fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
     SiteTitle: "SiteTitle",
     SiteSubtitle: "",
     SiteUrl: "http://giewiki.appspot.com/",
-    SideBarOptions: '<<login>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e !readOnly>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
+    SideBarOptions: '<<login>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e !readOnly>><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "More" "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
@@ -518,16 +522,16 @@ var pluginInfo, tiddler; // Used to pass information to plugins in loadPlugins()
 
 config.read = function(t) {
 	fields = t.fields;
-    this.admin = window.eval(fields.admin);
-    if (this.admin)
-		http._addMethod("evaluate");
-    this.owner = fields.owner;
-    this.anonAccess = fields.anonaccess;
-    this.authAccess = fields.authaccess;
-    this.groupAccess = fields.groupaccess;
-    this.groups = fields.groups;
-    this.pages = this.readPages(t.ace);
-    SetUserName(fields.username,fields.groupmember);
+	this.admin = window.eval(fields.admin);
+	this.owner = fields.owner;
+	this.access = fields.access;
+	this.anonAccess = fields.anonaccess;
+	this.authAccess = fields.authaccess;
+	this.groupAccess = fields.groupaccess;
+	this.groups = fields.groups;
+	this.locked = fields.locked;
+	this.pages = this.readPages(t.ace);
+	SetUserName(fields.username,fields.groupmember);
 }
 
 config.readPages = function(pgs) {
@@ -575,7 +579,6 @@ function main() {
     store.loadFromDiv("storeArea", "store", true);
     
     invokeParamifier(params, "onload");
-    readOnly = false;
     
     config.read(store.fetchTiddler("_MetaData"));
     http._init(store.getTiddlerText("HttpMethods").split('\n'));
@@ -1818,6 +1821,15 @@ config.macros.closeAll.onClick = function(e) {
     return false;
 };
 
+config.macros.pageProperties.handler = function(place) {
+	if (config.access == 'all' && readOnly) // if !readOnly, it's in the editing menu
+		createTiddlyButton(place, this.label, this.prompt, this.onClick);
+};
+
+config.macros.pageProperties.onClick = function(e) {
+    story.displayTiddler(null,'PageProperties');
+};
+
 config.macros.comments.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
     createTiddlyElement(place,"hr");
     var ced = createTiddlyElement(place,"div",null,"commentToolbar");
@@ -2631,6 +2643,20 @@ config.commands.saveTiddler.handler = function(event, src, title) {
     if (newTitle)
         story.displayTiddler(null, newTitle);
     return false;
+};
+
+config.commands.lockTiddler.handler = function(event, src, title) {
+    var t = store.getTiddler(title);
+    if (t) {
+		tr  = http.lockTiddler({tiddlerId: t.id, lock: !t.readOnly})
+		if (tr.Success) {
+			t.readOnly = !t.readOnly;
+			story.setDirty(title, false);
+			story.displayTiddler(null, title);
+			if (t && t.key && t.until)
+				http.unlockTiddler({"key": t.key});
+		}
+	}
 };
 
 config.commands.cancelTiddler.handler = function(event, src, title) {
@@ -6390,7 +6416,7 @@ TW21Loader.prototype.internalizeTiddler = function(tiddler, title, node) {
     var modified = m ? Date.convertFromYYYYMMDDHHMM(m) : created;
     var tags = node.getAttribute("tags");
 
-    tiddler.readOnly = node.getAttribute("readOnly") == "true";
+    tiddler.readOnly = node.getAttribute("readonly") == "true";
     tiddler.comments = parseInt(node.getAttribute("comments"));
     tiddler.notes = node.getAttribute("notes");
     tiddler.messages = node.getAttribute("messages");
@@ -7071,7 +7097,7 @@ config.macros.login = {
         }
         else {
             var label = config.options.txtUserName;
-            var tip = "logout";
+            var tip = config.admin ? "admin logout" : "logout";
         }
             
         createTiddlyButton(place, label, tip, function() { story.displayTiddler(null,"LoginDialog") });
@@ -7086,22 +7112,19 @@ config.macros.userName = {
 }
 
 function SetUserName(name,grpmember) {
-    var currAccess = config.access;
-    config.options.txtUserName = name;
-    switch(name) {
-      case "", undefined:
-        config.access = config.anonAccess;
-        break;
-      case config.owner:
-        config.access = "all";
-        break;
-      default:
-        config.access = grpmember ? config.groupAccess : config.authAccess;
-    }
-    if (currAccess == "none" && config.access != "none") {
+	var currAccess = config.access;
+	config.options.txtUserName = name;
+	if (name == "" || name === undefined)
+		config.access = config.anonAccess;
+	else if (name == config.owner)
+		config.access = "all";
+	else
+		config.access = grpmember ? config.groupAccess : config.authAccess;
+
+	if (currAccess != config.access) {
 		window.location.reload();
 	}
-    readOnly = (config.access == "none" || config.access == "view") || (config.owner === undefined);
+    readOnly = (config.locked || config.access == "none" || config.access == "view") || (config.owner === undefined);
     if (config.access == "none")
 		store.getTiddler("DefaultTiddlers").text = "LoginDialog";
     return currAccess != config.access;

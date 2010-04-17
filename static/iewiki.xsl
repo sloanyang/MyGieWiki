@@ -438,6 +438,7 @@ body {font-size:0.8em;}
 </div>
 <div title="ViewOnlyTemplate">
 <pre>&lt;!--{{{--&gt;
+&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
 &lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
 &lt;div class='tagClear'&gt;&lt;/div&gt;
 &lt;!--}}}--&gt;
@@ -484,6 +485,14 @@ See also the AdvancedOptions
 <div title="SiteMap" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;&lt;siteMap&gt;&gt;</pre>
 </div>
+<div title="RecentChanges" viewTemplate="ViewOnlyTemplate">
+  <pre>&lt;html&gt;&lt;div class='title'&gt;Recent changes&lt;/div&gt;&lt;/html&gt;
+&lt;&lt;recentChanges&gt;&gt;</pre>
+</div>
+<div title="RecentComments" viewTemplate="ViewOnlyTemplate">
+  <pre>&lt;html&gt;&lt;div class='title'&gt;Recent comments&lt;/div&gt;&lt;/html&gt;
+&lt;&lt;recentComments&gt;&gt;</pre>
+</div>
 <div title="DeletePage" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;script&gt;if (!confirm("Do you really want to delete this page?")) return;
 if (http.deletePage(window.location.href).Success) {
@@ -518,8 +527,7 @@ if (http.deletePage(window.location.href).Success) {
 	accessTypes = &quot;all|edit|add|comment|view|none|&quot;;
 	if (!config.options.txtUserName) return story.closeTiddler("PageProperties") || displayMessage("You are not logged in");
 	forms.PageProperties = http.pageProperties();
-	&lt;/script&gt;
-&lt;html&gt;&lt;div class='title'&gt;Page properties&lt;/div&gt;&lt;/html&gt;
+	&lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Page properties&lt;/div&gt;&lt;/html&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 95&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 95&gt;&gt;|
 |Owner&lt;br&gt;&lt;&lt;input text owner 36&gt;&gt;|Group(s) &lt;&lt;defineGroup&gt;&gt;&lt;br&gt;&lt;&lt;input text groups 36&gt;&gt;|Locked&lt;br&gt;&lt;&lt;input checkbox locked false&gt;&gt;|
@@ -536,7 +544,7 @@ if (fn != "CreateNewPage") {
 	forms[fn].address = CheckNewAddress(fn);
 	}
 forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"address",CheckNewAddress(v)); }
-;&lt;/script&gt;
+;&lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Create new page&lt;/div&gt;&lt;/html&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 70&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 70&gt;&gt;|
 |&gt;|&gt;|Address (end with a / to make a folder)&lt;br&gt;&lt;&lt;input text address 70&gt;&gt;|
