@@ -46,3 +46,9 @@ indexes:
   properties:
   - name: id
   - name: version
+
+- kind: Tiddler
+  properties:
+  - name: sub
+  - name: modified
+    direction: desc
