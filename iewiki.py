@@ -1,3 +1,8 @@
+# this:	iewiki.py
+# by:	Poul Staugaard
+# URL:	http://code.google.com/p/giewiki
+# ver.:	1.3.0
+
 import cgi
 import uuid
 import urllib
@@ -89,7 +94,7 @@ class MainPage(webapp.RequestHandler):
 	if error == None:
 		t = Tiddler.all().filter("id", self.request.get("id")).filter("current",True).get()
 		if t == None:
-			error = "Tiddler doesnt' exist"
+			error = "Tiddler doesn't exist"
 		else:
 			usr = users.get_current_user()
 			el = EditLock().all().filter("id",t.id).get() # get existing lock, if any
@@ -141,7 +146,7 @@ class MainPage(webapp.RequestHandler):
 	else:
 		error = page.UpdateViolation()
 
-	if tlr.id != "":
+	if tlr.id != "" and tlr.id.startswith('include-') == False:
 		key = self.request.get("key")
 		if key == "":
 			t = Tiddler.all().filter("id", tlr.id).get()
@@ -591,7 +596,7 @@ class MainPage(webapp.RequestHandler):
 	self.reply(aux)
 	return True
 
-  def reply(self, values, de="reply"):
+  def reply(self, values = { 'Success': True }, de = 'reply'):
 	self.initXmlResponse()
 	xd = xml.dom.minidom.Document()
 	tr = xd.createElement(de)
@@ -1009,6 +1014,27 @@ class MainPage(webapp.RequestHandler):
 	tv.appendChild(xd.createTextNode(str(result)))
 	self.response.out.write(xd.toxml())
 
+  def publishSub(self):
+	npages = toDict(Page.all().filter('sub',self.subdomain).fetch(1000),'path')
+	epages = toDict(Page.all().filter('sub',None).fetch(1000),'path')
+	results = []
+	for pg in npages:
+		if not pg.path in epages:
+			pg[pg.path].sub = None
+			pg.put()
+	for t in Tiddler.all().filter('sub',self.subdomain):
+		if t.current == True:
+			et = Tiddler.all().filter('id',t.id).filter('current',True).filter('sub',None).get()
+			if et != None: # demote
+				et.current = False
+				et.put()
+			t.sub = None # promote
+			t.put()
+			results.append(t.title)
+		else:
+			t.delete()
+	self.reply({'Success': True, 'Message': str(len(results)) + " tiddlers published:<br>" + '<br>'.join(results) })
+	
   def expando(self,method):
 	xd = self.initXmlResponse()
 	result = xd.createElement('Result')
@@ -1129,7 +1155,10 @@ class MainPage(webapp.RequestHandler):
 
 	page = Page.all().filter("path",self.request.path).get()
 	includeNumber = 0
-	for tn in self.request.get("include").split():
+	includefiles = self.request.get("include").split()
+	if self.subdomain != None:
+		includefiles.append('PublishPlugin.xml')
+	for tn in includefiles:
 		try:
 			if tn.find('/') > 0: # rule: filename/filter
 				tfs = tn[tn.find('/') + 1:].split('|') # the filter: ta|tb|...

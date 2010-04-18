@@ -1,4 +1,9 @@
-﻿import xml.dom.minidom
+﻿# this:	giewikilib.py
+# by:	Poul Staugaard
+# URL:	http://code.google.com/p/giewiki
+# ver.:	1.3.0
+
+import xml.dom.minidom
 import datetime
 
 from google.appengine.api import users
@@ -60,7 +65,14 @@ def userNameOrAddress(u,a):
 		return u.nickname()
 	else:
 		return a
-  
+
+def toDict(iter,keyName):
+	d = dict()
+	for e in iter:
+		keyVal = getattr(e,keyName)
+		d[keyVal] = e
+	return d
+
 def xmlArrayOfStrings(xd,te,text,name):
 	mas = text.split()
 	for a in mas:

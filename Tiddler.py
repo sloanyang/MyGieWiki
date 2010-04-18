@@ -1,4 +1,9 @@
-﻿from google.appengine.ext import db
+﻿# this:	tiddler.py
+# by:	Poul Staugaard
+# URL:	http://code.google.com/p/giewiki
+# ver.:	1.3.0
+
+from google.appengine.ext import db
 from google.appengine.api import users
 
 class Tiddler(db.Model):
@@ -24,7 +29,8 @@ class Tiddler(db.Model):
 	d['title'] = s.title
 	d['page'] = s.page
 	d['sub'] = s.sub
-	d['author_ip'] = s.author_ip if s.author == None else s.author.nickname()
+	d['author'] = s.author
+	d['author_ip'] = s.author_ip
 	d['version'] = s.version
 	d['current'] = s.current
 	d['public'] = s.public
@@ -83,6 +89,7 @@ class Page(db.Model):
   groups = db.StringProperty()
   def todict(s,d):
 	d['path'] = s.path
+	d['sub'] = s.sub
 	d['owner'] = s.owner
 	d['title'] = s.title
 	d['subtitle'] = s.subtitle
@@ -153,7 +160,7 @@ class Group(db.Model):
   admin = db.UserProperty()
   def todict(s,d):
 	d['name'] = s.name
-	d['admin'] = s.admin.nickname()
+	d['admin'] = s.admin
 		
 class GroupMember(db.Model):
   name = db.StringProperty()

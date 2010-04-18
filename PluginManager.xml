@@ -1,4 +1,4 @@
-<?xml version="1.0" ?><div comments="0" id="c2798641-12c0-44c8-b671-2ded8ffbc371" modified="20100405095004" modifier="test@example.com" tags="systemConfig" title="PMM" version="2"><pre>//{{{
+<?xml version="1.0" ?><div comments="0" modified="20100405095004" modifier="pou.staugaard" tags="systemConfig" title="PMM" version="1"><pre>//{{{
 // plugin macro; see iewiki.js for copyright info
 config.shadowTiddlers.PluginManager = "&lt;&lt;plugins&gt;&gt;";
 config.macros.plugins =

@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" ?><div modified="20100405095004" modifier="poul.staugaard" tags="systemConfig" title="PublishPlugin" version="1"><pre>
+/***
+|''Name:''|PublishPlugin|
+|''Version:''|1.0.0 (2010-04-18)|
+|''Source:''|http://code.google.com/p/giewiki|
+|''Author:''|Poul Staugaard (poul [dot] staugaard [at] gmail [dot] com)|
+|''Licence:''|[[BSD open source license]]|
+***/
+//{{{
+http._addMethod('publishSub');
+se = store.getTiddler('EditingMenu');
+se.text = se.text + 'macro|publishPlugin|' + '\n';
+config.macros.publishPlugin = {
+  handler: function(place) {
+    host = location.host.split('.').slice(1)
+    createTiddlyButton(place, "publish", "publish to " + host, this.onclick);
+  },
+  onclick: function() {
+    http.publishSub({});
+  }
+};
+//}}}
+</pre>
+</div>
