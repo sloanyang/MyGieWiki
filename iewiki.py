@@ -26,6 +26,7 @@ class MainPage(webapp.RequestHandler):
 		pos = len(hostc) - 4
 	elif len(hostc) > 1 and hostc[len(hostc) - 1].startswith('localhost'): # e.g. sd.localhost:port
 		pos = len(hostc) - 2
+	# elif... support for app.org.tld domains -- TODO
 	else:
 		self.merge = False
 		self.subdomain = None
@@ -186,13 +187,17 @@ class MainPage(webapp.RequestHandler):
 			tlr.version = atl.version + 1
 			tlr.comments = atl.comments;
 		if atl.current:
-			atl.current = False
-			tlr.comments = atl.comments
-			tlr.sub = atl.sub
-			atl.put()
+			if atl.sub == self.subdomain:
+				atl.current = False
+				tlr.comments = atl.comments
+				tlr.sub = atl.sub
+				atl.put()
+			elif atl.sub == None: # automatically lock public version
+				atl.locked = True
+				atl.put()
+				
 	tlr.current = True
-	if tlr.version == 1:
-		tlr.sub = self.subdomain
+	tlr.sub = self.subdomain
 	if "includes" in tlr.tags.split():
 		tlf = list()
 		tls = tlr.text.split("\n")
@@ -1120,15 +1125,36 @@ class MainPage(webapp.RequestHandler):
 		
 	tiddict = dict()
 	defaultTiddlers = ""
-	
+	warnings = ""
+
 	page = Page.all().filter("path",self.request.path).get()
-	
+	includeNumber = 0
 	for tn in self.request.get("include").split():
 		try:
+			if tn.find('/') > 0: # rule: filename/filter
+				tfs = tn[tn.find('/') + 1:].split('|') # the filter: ta|tb|...
+				tn = tn[0:tn.find('/')] # the filename
+			else:
+				tfs = None
 			txd = xml.dom.minidom.parse(tn)
 			tde = txd.documentElement
-			tdo = TiddlerFromXml(tde,self.request.path)
-			tiddict[tdo.id] = tdo;
+			tds = TiddlersFromXml(tde,self.request.path)
+			tdx = []
+			for tdo in tds:
+				if tdo == None:
+					warnings = "None in TiddlersFromXml<br>";
+				elif tfs == None or tfs.count(tdo.title) > 0:
+					includeNumber = includeNumber - 1
+					tiddict['include' + str(includeNumber)] = tdo
+					if tfs != None:
+						tfs.remove(tdo.title)
+				else:
+					tdx.append(tdo.title)
+			if tfs != None and len(tfs) > 0:
+				if tfs[0] != 'list':
+					warnings = "Not found: " + '|'.join(tfs)
+				elif len(tdx) > 0:
+					warnings = "Found but excluded:<br>" + ' '.join(tdx)
 		except Exception, x:
 			self.response.out.write("<html>Error including " + tn + ":<br>" + str(x))
 			return
@@ -1163,6 +1189,9 @@ class MainPage(webapp.RequestHandler):
 
 	httpMethodTiddler = None
 	for id, t in tiddict.iteritems():
+		if t == None:
+			print("Bad data in tiddict: " + str(id))
+			return
 		if t.title == 'HttpMethods':
 			httpMethodTiddler = tiddict.pop(id)
 			break
@@ -1226,6 +1255,8 @@ class MainPage(webapp.RequestHandler):
 					metaDiv.setAttribute('groupmember','true')
 			if page.locked:
 				metaDiv.setAttribute('locked','true')
+			if warnings != "":
+				metaDiv.setAttribute('warnings',warnings)
 		elStArea.appendChild(metaDiv)
 		
 		pgse = xd.createElement("div")

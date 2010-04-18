@@ -531,6 +531,7 @@ config.read = function(t) {
 	this.groups = fields.groups;
 	this.locked = fields.locked;
 	this.pages = this.readPages(t.ace);
+	this.warnings = fields.warnings;
 	SetUserName(fields.username,fields.groupmember);
 }
 
@@ -560,7 +561,7 @@ config.readPages = function(pgs) {
 // Starting up
 function main() {
     startingUp = true;
-    if (window.location.search == "?Debugger") 
+    if (window.location.search.startsWith == "?Debugger") 
 		debugger;
     window.onbeforeunload = function(e) { if (window.confirmExit) return confirmExit(); };
     params = getParameters();
@@ -597,6 +598,8 @@ function main() {
         story.displayTiddler(null, "PluginManager");
         displayMessage(config.messages.customConfigError);
     }
+    else if (config.warnings)
+		displayMessage(config.warnings);
     for (var m in config.macros) {
         if (config.macros[m].init)
             config.macros[m].init();

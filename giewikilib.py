@@ -122,18 +122,29 @@ def mergeDict(td,ts):
 		else:
 			td[id] = t
 
+def TiddlersFromXml(te,path):
+	list = []
+	if te.tagName == 'tiddlers':
+		for ce in te.childNodes:
+			if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'div':
+				list.append(TiddlerFromXml(ce,path))
+	else:
+		list.append(TiddlerFromXml(te,path))
+	return list
+
 def TiddlerFromXml(te,path):
 	id = None
 	try:
 		title = te.getAttribute('title')
 		id = te.getAttribute('id')
+		author_ip = te.getAttribute('modifier')
 		v = te.getAttribute('version')
 		version = eval(v) if v != None and v != "" else 1
 	except Exception, x:
-		self.response.out.write("Attr missing...: " + str(x));
+		print(str(x))
 		return None
 		
-	nt = Tiddler(page = path, title = title, id = id, version = version)
+	nt = Tiddler(page = path, title = title, id = id, version = version, author_ip = author_ip)
 	nt.current = True
 	nt.tags = te.getAttribute('tags')
 	nt.author = users.get_current_user()
