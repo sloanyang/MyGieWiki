@@ -6947,9 +6947,9 @@ function expandFolder(ev)
 		target.src = "/static/minusFolder36.png";
 		sub.div = createTiddlyElement(target.parentNode,"div");
 		SiteMapEntry(sub.div,sub.ca,sub.l,sub.d);
-		//break;
 	case "plusDoc36.png":
-		target.src = "/static/minusDoc36.png";
+		if (leaf(target.src) == "plusDoc36.png")
+			target.src = "/static/minusDoc36.png";
 		var div = createTiddlyElement(target.parentNode,"div");
 		var tl = http.getTiddlers({page: href});
 		if (tl.error)
