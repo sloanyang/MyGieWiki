@@ -6941,16 +6941,18 @@ function expandFolder(ev)
 		href = "#" + findTiddlyLink(target.parentNode);
 	}
 	var sub = siteMap[href];
+	var div = null;
 	switch(leaf(target.src))
 	{
 	case "plusFolder36.png":
 		target.src = "/static/minusFolder36.png";
-		sub.div = createTiddlyElement(target.parentNode,"div");
-		SiteMapEntry(sub.div,sub.ca,sub.l,sub.d);
+		div = createTiddlyElement(target.parentNode,"div");
+		SiteMapEntry(div,sub.ca,sub.l,sub.d);
 	case "plusDoc36.png":
 		if (leaf(target.src) == "plusDoc36.png")
 			target.src = "/static/minusDoc36.png";
-		var div = createTiddlyElement(target.parentNode,"div");
+		if (!div)
+			div = createTiddlyElement(target.parentNode,"div");
 		var tl = http.getTiddlers({page: href});
 		if (tl.error)
 			AddIconPlusLink(div,null,tl.error);

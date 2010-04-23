@@ -87,6 +87,7 @@ class Page(db.Model):
   authAccess = db.IntegerProperty()
   groupAccess = db.IntegerProperty()
   groups = db.StringProperty()
+  gwversion = db.StringProperty()
   def todict(s,d):
 	d['path'] = s.path
 	d['sub'] = s.sub
@@ -232,3 +233,27 @@ def AccessToPage( page, user = users.get_current_user()):
 	else:
 		access = page.anonAccess
 	return Page.access[access]
+
+def Upgrade(self):
+	UpgradeTable(Tiddler)
+	UpgradeTable(Page,'gwversion','1.3')
+
+def UpgradeTable(c,at = None, atv = None):
+	cursor = None
+	repeat = True
+	while repeat:
+		ts = c.all()
+		if cursor != None:
+			ts.with_cursor(cursor)
+		n = 0
+		for t in ts.fetch(1000):
+			t.sub = None
+			if at != None:
+				setattr(t,at,atv)
+			t.put()
+			n = n + 1
+		if n < 1000:
+			repeat = False
+		else:
+			cursor = ts.cursor()
+

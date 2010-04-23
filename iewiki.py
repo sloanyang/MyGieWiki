@@ -1053,6 +1053,9 @@ class MainPage(webapp.RequestHandler):
 		self.fail('Data was truncated')
 	else:
 		self.fail('Access denied')
+		
+  def getLibraries(self):
+	self.reply({ 'Abego':'tiddlywiki.abego-software.xml' })
 
   def post(self):
 	self.getSubdomain()
@@ -1153,7 +1156,10 @@ class MainPage(webapp.RequestHandler):
 	defaultTiddlers = ""
 	warnings = ""
 
-	page = Page.all().filter("path",self.request.path).get()
+	for page in Page.all().filter("path",self.request.path):
+		if page.sub == self.subdomain: # should eventually be filter
+			break
+		
 	includeNumber = 0
 	includefiles = self.request.get("include").split()
 	if self.subdomain != None:
@@ -1192,7 +1198,11 @@ class MainPage(webapp.RequestHandler):
 		if self.request.path.startswith(st.path):
 			tiddict[st.tiddler.id] = st.tiddler
 	
+	if page.gwversion == None:
+		Upgrade(self)
+
 	tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",self.subdomain).filter("current", True)
+		
 	mergeDict(tiddict, tiddlers)
 	
 	if self.merge == True:
@@ -1375,7 +1385,11 @@ class MainPage(webapp.RequestHandler):
 			xmldecl = '<?xml version="1.0" ?>' # strip off this
 			if text.startswith(xmldecl):
 				text = text[len(xmldecl):]
-			text = twdtext.replace('<div id="storeArea">\n</div>',elStArea.toxml()).replace('<div id="shadowArea">',elShArea.toxml()[:-6]) # insert text into body
+			cssa = '<div id="shadowArea">';
+			mysa = elShArea.toxml()
+			if len(mysa) > len(cssa) + 6:
+				text = text.replace(cssa,mysa[:-6])
+			text = twdtext.replace('<div id="storeArea">\n</div>',elStArea.toxml()) # insert text into body
 		
 	# last, but no least
 	self.response.out.write(text)
