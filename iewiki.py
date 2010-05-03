@@ -16,6 +16,7 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
+from google.appengine.api import memcache
 from google.appengine.api import urlfetch 
 
 from Tiddler import *
@@ -24,6 +25,9 @@ from giewikilib import *
 
 class MainPage(webapp.RequestHandler):
   "Serves wiki pages and updates"
+  trace = list()
+  merge = False
+  subdomain = None
 
   def getSubdomain(self):
 	hostc = self.request.host.split('.')
@@ -430,10 +434,11 @@ class MainPage(webapp.RequestHandler):
 	if users.get_current_user() == None:
 		return self.fail("You are not logged in");
 	path = self.request.path
-	page = Page.all().filter("path =",path).filter("sub",self.subdomain).get()
+	page = self.CurrentPage()
 	if page == None:
 		if path == "/" and users.get_current_user() != None: # Root page
 			page = Page()
+			page.gwversion = "2.3"
 			page.path = "/"
 			page.sub = self.subdomain
 			page.title = ""
@@ -968,14 +973,93 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write(xd.toxml())
 	
   def urlFetch(self):
-	result = urlfetch.fetch(self.request.get("url"))
+	result = urlfetch.fetch(self.request.get('url'))
 	if result.status_code == 200:
 		xd = self.initXmlResponse()
 		tv = xd.createElement('Content')
 		xd.appendChild(tv);
 		tv.appendChild(xd.createTextNode(result.content))
 		self.response.out.write(xd.toxml())
+
+
+  def tiddlersFromUrl(self):
+	if self.request.get('menu') == 'true':
+		filelist = list()
+		for file in UrlImport.all():
+			filelist.append(file.url)
+		return replyWithStringList(self,"files","file",filelist);
+			
+	url = self.request.get('url')
+	filter = self.request.get('filter')
+	cache = self.request.get('cache')
+	select = self.request.get('select')
+	cache = 60 if cache == "" else int(cache) # default cache age: 60 s
+	content = memcache.get(url)
+	if content == None:
+		result = urlfetch.fetch(url)
+		if result.status_code != 200:
+			return self.fail("Fetching the url " + url + " returned status code " + str(result.status_code))
+		else:
+			content = result.content
+			memcache.add(url,content)
+	try:
+		txd = xml.dom.minidom.parseString(content)
+	except xml.parsers.expat.ExpatError, ex:
+		return self.fail("The url " + url + " failed to read as XML: <br>" + str(ex))
 		
+	tde = txd.documentElement.getElementsByTagName('body')
+	if len(tde) == 0:
+		return self.fail("The url " + url + " has no body element")
+	else:
+		body = tde[0]
+
+	fromUrl = list()
+	page = self.CurrentPage()
+	if page.systemInclude != None:
+		urls = page.systemInclude.split('\n')
+		for al in urls:
+			if al.startswith(url):
+				if select != "":
+					urls.remove(al) # to be replaced by select
+				else:
+					fromUrl = al.split('#')[1].split('|')
+	if select != "":
+		newPick = url + "#" + select
+		if page.systemInclude == None:
+			page.systemInclude = newPick
+		else:
+			urls.append(newPick)
+			page.systemInclude = '\n'.join(urls)
+		page.put()
+		urlimport = UrlImport.all().filter("url", url).get()
+		if urlimport == None:
+			urlimport = UrlImport()
+			urlimport.url = url
+		try:
+			urlimport.data = db.Blob(content)
+			urlimport.put()
+		except Exception, sa:
+			self.Trace("Ex:" + str(sa))
+		return self.fail("Reload to get the requested tiddlers")
+
+	for acn in body.childNodes:
+		if acn.nodeType == xml.dom.Node.ELEMENT_NODE:
+			if acn.getAttribute('id') == 'storeArea':
+				for asn in acn.childNodes:
+					if asn.nodeType == xml.dom.Node.ELEMENT_NODE:
+						if asn.hasAttribute('title'):
+							title = asn.getAttribute('title')
+							if filter == "" or tagInFilter(asn.getAttribute('tags'),filter):
+								if fromUrl.count(title) == 0:
+									fromUrl.append(title)
+
+	xd = self.initXmlResponse()
+	tv = xd.createElement('Content')
+	xd.appendChild(tv)
+	xmlArrayOfStrings(xd,tv,fromUrl,'tiddlers')
+	self.response.out.write(xd.toxml())
+
+
   def evaluate(self):
 	xd = self.initXmlResponse()
 	tv = xd.createElement('Result')
@@ -1054,20 +1138,32 @@ class MainPage(webapp.RequestHandler):
 	else:
 		self.fail('Access denied')
 		
-  def getLibraries(self):
-	self.reply({ 'Abego':'tiddlywiki.abego-software.xml' })
+  def getFile(self):
+	try:
+		ftwm = open(path.normcase( self.request.get('filename')))
+		self.reply({'text': ftwm.read()})
+		ftwm.close()
+	except Exception,x:
+		self.fail(str(x))
+
+  def traceMethod(self,m,method):
+	r = method()
+	if self.trace != False:
+		LogEvent("tm:" + m,'\n'.join(self.trace))
+	return r
 
   def post(self):
+	self.trace = list()
 	self.getSubdomain()
-	m = self.request.get("method") # what do you want
+	m = self.request.get("method") # what do you want to do
 	if m in dir(self):
-		try:
+		try: # find specified method if it's built-in
 			method = getattr(self,m)
 		except AttributeError, a:
 			return self.fail("Invalid method: " + m)
 		except MyError, x:
 			return self.fail(str(x.value))
-		return method()
+		return self.traceMethod(m,method) # run method
 	else:
 		try: # Any class that has a 'public(self,page)' method handle method named by class
 			po = eval(m + "()") # construct class
@@ -1117,6 +1213,7 @@ class MainPage(webapp.RequestHandler):
 		until = el.time + timedelta(0,60*eval(str(el.duration)))
 		if until < datetime.datetime.utcnow():
 			el.delete()
+	truncateModel(LogEntry)
 	  
   def task(self,method):
 	if method == 'cleanup':
@@ -1139,10 +1236,24 @@ class MainPage(webapp.RequestHandler):
 	exportTable(xd,xr,GroupMember,'groupmembers','groupmember')
 	self.response.out.write(xd.toxml())
 
-  def get(self):
+  def Trace(self,msg):
+	if self.trace == False:
+		return # disabled
+	if self.trace == None:
+		self.trace = list()
+	self.trace.append(msg)
+	
+  def CurrentPage(self):
+	for page in Page.all().filter("path",self.request.path):
+		if page.sub == self.subdomain: # should eventually be filter
+			return page
+	return None
+
+  def get(self): # this is where it all starts
+	if self.request.get('trace') == '':
+		self.trace = False # disabled by default
 	self.getSubdomain()
 	method = self.request.get("method")
-	LogEvent('get', method)
 	
 	if method == "LoginDone":
 		return self.LoginDone(self.request.get("path"))
@@ -1151,15 +1262,34 @@ class MainPage(webapp.RequestHandler):
 		return self.task(method)
 	elif self.request.path == "/_export.xml" and users.is_current_user_admin():
 		return self.export()
-		
+
 	tiddict = dict()
 	defaultTiddlers = ""
 	warnings = ""
 
-	for page in Page.all().filter("path",self.request.path):
-		if page.sub == self.subdomain: # should eventually be filter
-			break
-		
+	page = self.CurrentPage()
+	if page != None and page.gwversion == None:
+		Upgrade(self)
+		warnings = "DataStore was upgraded"
+	if page != None:
+		if page.systemInclude != None:
+			includeDisabled = self.request.get('disable')
+			if includeDisabled != '*':
+				includeFiles = page.systemInclude.split('\n')
+				for sf in includeFiles:
+					urlParts = sf.split('#')
+					urlPath = urlParts[0]
+					if includeDisabled != urlPath:
+						urlPicks = None if len(urlParts) <= 1 else urlParts[1].split('||')
+						importedFile = UrlImport.all().filter('url',urlPath).get()
+						txd = xml.dom.minidom.parseString(importedFile.data)
+						tde = txd.documentElement.getElementsByTagName('body')
+						if len(tde) == 1:
+							tds = TiddlersFromXml(tde[0],self.request.path)
+							for tdo in tds:
+								if urlPicks == None or urlPicks.count(tdo.title) > 0:
+									tiddict[urlPath + "#" + tdo.title] = tdo
+
 	includeNumber = 0
 	includefiles = self.request.get("include").split()
 	if self.subdomain != None:
@@ -1198,9 +1328,6 @@ class MainPage(webapp.RequestHandler):
 		if self.request.path.startswith(st.path):
 			tiddict[st.tiddler.id] = st.tiddler
 	
-	if page.gwversion == None:
-		Upgrade(self)
-
 	tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",self.subdomain).filter("current", True)
 		
 	mergeDict(tiddict, tiddlers)
@@ -1282,6 +1409,7 @@ class MainPage(webapp.RequestHandler):
 		metaDiv.setAttribute('title', "_MetaData")
 		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
 		if page != None:
+			metaDiv.setAttribute('timestamp',str(datetime.datetime.now()))
 			metaDiv.setAttribute('username',username)
 			metaDiv.setAttribute('owner', page.owner.nickname())
 			metaDiv.setAttribute('access', AccessToPage(page,user))
@@ -1296,6 +1424,10 @@ class MainPage(webapp.RequestHandler):
 				metaDiv.setAttribute('locked','true')
 			if warnings != "":
 				metaDiv.setAttribute('warnings',warnings)
+		if self.trace != None and self.trace != False and len(self.trace) > 0:
+			metaPre = xd.createElement('pre')
+			metaDiv.appendChild(metaPre)
+			metaPre.appendChild(xd.createTextNode('\n'.join(self.trace)))
 		elStArea.appendChild(metaDiv)
 		
 		pgse = xd.createElement("div")
@@ -1393,7 +1525,9 @@ class MainPage(webapp.RequestHandler):
 		
 	# last, but no least
 	self.response.out.write(text)
-
+	if self.trace != False:
+		LogEvent("get " + self.request.url,'\n'.join(self.trace))
+	
 ############################################################################
 
 application = webapp.WSGIApplication( [('/.*', MainPage)], debug=True)

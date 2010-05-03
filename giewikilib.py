@@ -72,14 +72,31 @@ def toDict(iter,keyName):
 		keyVal = getattr(e,keyName)
 		d[keyVal] = e
 	return d
+	
+def tagInFilter(tags,filter):
+	tags = tags.split()
+	filter = filter.split()
+	for t in tags:
+		for f in filter:
+			if t == f:
+				return True
+	return False
 
 def xmlArrayOfStrings(xd,te,text,name):
-	mas = text.split()
-	for a in mas:
+	if isinstance(text,basestring):
+		text = text.split()
+	for a in text:
 		se = xd.createElement(name)
 		te.appendChild(se)
 		se.appendChild(xd.createTextNode(unicode(a)))
 	te.setAttribute('type', 'string[]')
+
+def replyWithStringList(cl,re,se,sl):
+	xd = cl.initXmlResponse()
+	tv = xd.createElement(re)
+	xd.appendChild(tv)
+	xmlArrayOfStrings(xd,tv,sl,se)
+	cl.response.out.write(xd.toxml())
 
 def getAuthor(t):
 	if t.author != None:
@@ -136,12 +153,22 @@ def mergeDict(td,ts):
 
 def TiddlersFromXml(te,path):
 	list = []
-	if te.tagName == 'tiddlers':
+	if te.tagName == 'body':
+		for acn in te.childNodes:
+			if acn.nodeType == xml.dom.Node.ELEMENT_NODE:
+				if acn.getAttribute('id') == 'storeArea':
+					for asn in acn.childNodes:
+						if asn.nodeType == xml.dom.Node.ELEMENT_NODE and asn.tagName == 'div':
+							list.append(TiddlerFromXml(asn,path))
+
+	elif te.tagName == 'tiddlers':
 		for ce in te.childNodes:
 			if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'div':
 				list.append(TiddlerFromXml(ce,path))
+
 	else:
 		list.append(TiddlerFromXml(te,path))
+
 	return list
 
 def TiddlerFromXml(te,path):

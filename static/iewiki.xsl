@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
+<!-- Copyright (c) UnaMesa Association 2004-2009; see /static/iewiki.js -->
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:output method='html' version='1.0' encoding='UTF-8' indent='yes'/>
@@ -16,9 +17,9 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 #shadowArea {display:none;}
 #javascriptWarning {width:100%; text-align:center; font-weight:bold; background-color:#dd1100; color:#fff; padding:1em 0em;}
 	</style>
-</head>
 <script src="/static/iewiki.js" />
 <script src="/static/inlinescript.js" />
+</head>
 <body onload="main()">
 <div id="copyright">
 	Based on TiddlyWiki created by Jeremy Ruston, Copyright 2007 UnaMesa Association

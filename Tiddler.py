@@ -87,6 +87,9 @@ class Page(db.Model):
   authAccess = db.IntegerProperty()
   groupAccess = db.IntegerProperty()
   groups = db.StringProperty()
+  created = db.DateTimeProperty(auto_now_add=True)
+  modified = db.DateTimeProperty(auto_now_add=True)
+  systemInclude = db.TextProperty()
   gwversion = db.StringProperty()
   def todict(s,d):
 	d['path'] = s.path
@@ -99,6 +102,10 @@ class Page(db.Model):
 	d['authAccess'] = s.authAccess
 	d['groupAccess'] = s.groupAccess
 	d['groups'] = s.groups
+	d['created'] = s.created
+	d['modified'] = s.modified
+	d['systemInclude'] = s.systemInclude
+	d['gwversion'] = s.gwversion
 
   def Update(self,tiddler):
 	if tiddler.title == "SiteTitle":
@@ -142,7 +149,6 @@ class Include(db.Model):
 	if ev == None:
 		return Include(page = apage, id = aid)
 	return ev
-  # Unique = staticmethod(Unique)
   
 class Note(Comment):
   revision = db.IntegerProperty()
@@ -170,6 +176,10 @@ class GroupMember(db.Model):
 	d['name'] = s.name
 	d['group'] = s.group
 
+class UrlImport(db.Model):
+  url = db.StringProperty()
+  data = db.BlobProperty()
+
 class UploadedFile(db.Model):
   owner = db.UserProperty()
   path = db.StringProperty()
@@ -180,7 +190,7 @@ class UploadedFile(db.Model):
 class LogEntry(db.Model):
 	when = db.DateTimeProperty(auto_now_add=True)
 	what = db.StringProperty()
-	text = db.StringProperty()
+	text = db.TextProperty()
 	
 def truncateModel(m):
 	while m.all().get() != None:
