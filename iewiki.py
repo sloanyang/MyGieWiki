@@ -96,7 +96,10 @@ class MainPage(webapp.RequestHandler):
 	else:
 		error = page.UpdateViolation()
 	if error == None:
-		t = Tiddler.all().filter("id", self.request.get("id")).filter("current",True).get()
+		tid = self.request.get("id")
+		if tid.startswith('include-'):
+			return self.reply()
+		t = Tiddler.all().filter("id",tid).filter("current",True).get()
 		if t == None:
 			error = "Tiddler doesn't exist"
 		else:
@@ -509,6 +512,8 @@ class MainPage(webapp.RequestHandler):
 		if self.request.get("title") == "":
 			if parent == "/" and users.get_current_user() != None:
 				pad = Page()
+				self.Trace("CP1")
+				pad.gwversion = "2.3"
 				pad.path = "/"
 				pad.sub = self.subdomain
 				pad.owner = users.get_current_user()
@@ -535,6 +540,8 @@ class MainPage(webapp.RequestHandler):
 	page = Page.all().filter('path =',url).get()
 	if page == None:
 		page = Page()
+		self.Trace("CP2")
+		page.gwversion = "2.3"
 		page.path = url
 		page.sub = self.subdomain
 		page.owner = users.get_current_user()
@@ -990,20 +997,33 @@ class MainPage(webapp.RequestHandler):
 		return replyWithStringList(self,"files","file",filelist);
 			
 	url = self.request.get('url')
-	filter = self.request.get('filter')
+	iftagged = self.request.get('filter')
 	cache = self.request.get('cache')
 	select = self.request.get('select')
 	cache = 60 if cache == "" else int(cache) # default cache age: 60 s
 	content = memcache.get(url)
-	if content == None:
-		result = urlfetch.fetch(url)
-		if result.status_code != 200:
-			return self.fail("Fetching the url " + url + " returned status code " + str(result.status_code))
-		else:
-			content = result.content
-			memcache.add(url,content)
 	try:
-		txd = xml.dom.minidom.parseString(content)
+		if content == None:
+			if url.startswith('http'):
+				try:
+					result = urlfetch.fetch(url)
+				except urlfetch.Error, ex:
+					return self.fail("Could not get the file <b>" + url + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
+				if result.status_code != 200:
+					return self.fail("Fetching the url " + url + " returned status code " + str(result.status_code))
+				else:
+					self.Trace("UrlFetched:" + url)
+					content = result.content
+					memcache.add(url,content)
+					txd = xml.dom.minidom.parseString(content)
+			else:
+				content = None
+				self.Trace("Parsing " + url)
+				txd = xml.dom.minidom.parse(url)
+				self.Trace("Parsed: " + url + str(txd))
+		else:
+			txd = xml.dom.minidom.parseString(content)
+
 	except xml.parsers.expat.ExpatError, ex:
 		return self.fail("The url " + url + " failed to read as XML: <br>" + str(ex))
 		
@@ -1022,7 +1042,7 @@ class MainPage(webapp.RequestHandler):
 				if select != "":
 					urls.remove(al) # to be replaced by select
 				else:
-					fromUrl = al.split('#')[1].split('|')
+					fromUrl = al.split('#')[1].split('||')
 	if select != "":
 		newPick = url + "#" + select
 		if page.systemInclude == None:
@@ -1036,12 +1056,14 @@ class MainPage(webapp.RequestHandler):
 			urlimport = UrlImport()
 			urlimport.url = url
 		try:
-			urlimport.data = db.Blob(content)
+			if content != None:
+				urlimport.data = db.Blob(content)
 			urlimport.put()
 		except Exception, sa:
 			self.Trace("Ex:" + str(sa))
 		return self.fail("Reload to get the requested tiddlers")
 
+	newlist = list()
 	for acn in body.childNodes:
 		if acn.nodeType == xml.dom.Node.ELEMENT_NODE:
 			if acn.getAttribute('id') == 'storeArea':
@@ -1049,15 +1071,13 @@ class MainPage(webapp.RequestHandler):
 					if asn.nodeType == xml.dom.Node.ELEMENT_NODE:
 						if asn.hasAttribute('title'):
 							title = asn.getAttribute('title')
-							if filter == "" or tagInFilter(asn.getAttribute('tags'),filter):
+							if iftagged == "" or tagInFilter(asn.getAttribute('tags'),iftagged):
 								if fromUrl.count(title) == 0:
-									fromUrl.append(title)
+									newlist.append(title)
+								else:
+									newlist.append('$@$'+ title)
 
-	xd = self.initXmlResponse()
-	tv = xd.createElement('Content')
-	xd.appendChild(tv)
-	xmlArrayOfStrings(xd,tv,fromUrl,'tiddlers')
-	self.response.out.write(xd.toxml())
+	replyWithStringList(self,'Content','tiddlers',newlist)
 
 
   def evaluate(self):
@@ -1153,7 +1173,7 @@ class MainPage(webapp.RequestHandler):
 	return r
 
   def post(self):
-	self.trace = list()
+	self.trace = False # list()
 	self.getSubdomain()
 	m = self.request.get("method") # what do you want to do
 	if m in dir(self):
@@ -1252,6 +1272,8 @@ class MainPage(webapp.RequestHandler):
   def get(self): # this is where it all starts
 	if self.request.get('trace') == '':
 		self.trace = False # disabled by default
+	else:
+		self.traceLevel = self.request.get('trace')
 	self.getSubdomain()
 	method = self.request.get("method")
 	
@@ -1281,14 +1303,23 @@ class MainPage(webapp.RequestHandler):
 					urlPath = urlParts[0]
 					if includeDisabled != urlPath:
 						urlPicks = None if len(urlParts) <= 1 else urlParts[1].split('||')
-						importedFile = UrlImport.all().filter('url',urlPath).get()
-						txd = xml.dom.minidom.parseString(importedFile.data)
-						tde = txd.documentElement.getElementsByTagName('body')
-						if len(tde) == 1:
-							tds = TiddlersFromXml(tde[0],self.request.path)
-							for tdo in tds:
-								if urlPicks == None or urlPicks.count(tdo.title) > 0:
-									tiddict[urlPath + "#" + tdo.title] = tdo
+						txd = None
+						self.Trace("Importing " + str(urlPicks) + " from " + str(urlPath))
+						if urlPath.startswith("http:"):
+							importedFile = UrlImport.all().filter('url',urlPath).get()
+							if importedFile == None:
+								warnings = "File not found: " + urlPath
+							else:
+								txd = xml.dom.minidom.parseString(importedFile.data)
+						else:
+							txd = xml.dom.minidom.parse(urlPath)
+						if txd != None:
+							tde = txd.documentElement.getElementsByTagName('body')
+							if len(tde) == 1:
+								tds = TiddlersFromXml(tde[0],self.request.path)
+								for tdo in tds:
+									if urlPicks == None or urlPicks.count(tdo.title) > 0:
+										tiddict[urlPath + "#" + tdo.title] = tdo
 
 	includeNumber = 0
 	includefiles = self.request.get("include").split()
