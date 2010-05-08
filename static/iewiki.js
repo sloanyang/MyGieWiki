@@ -7556,7 +7556,7 @@ config.macros.importTiddlers = {
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers", afilter];
 				wd.innerHTML = resmsg.join('') + hta.join('');
-				document.getElementById('cmdImport').onclick = config.macros.importTiddlers.import;
+				document.getElementById('cmdImport').onclick = config.macros.importTiddlers.importSelected;
 
 			}
 		}
@@ -7583,7 +7583,7 @@ config.macros.importTiddlers = {
 			mls.push(['<script label="', filelist[i], '">config.macros.importTiddlers.serve("', filelist[i], '")</script>'].join(''));
 		return mls.join('<br>');
 	},
-	import: function (ev) {
+	importSelected: function (ev) {
 		var target = resolveTarget(ev || window.event);
 		var tidlr = story.findContainingTiddler(target);
 		var inputs = document.getElementsByTagName('input');
@@ -7611,6 +7611,5 @@ config.macros.importTiddlers = {
 			}
 		}
 		var libs = http.tiddlersFromUrl({ url: aurl, select: selectList.join('||') });
-
 	}
 }
