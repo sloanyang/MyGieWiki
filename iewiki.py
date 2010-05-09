@@ -682,13 +682,28 @@ class MainPage(webapp.RequestHandler):
 		xd.add(tr,"error",error)
 	return self.response.out.write(xd.toxml())
 
-
   def getTiddler(self):
 	id = self.request.get("id",None)
 	if id != None:
-		if id.startswith('include-'):
-			return self.fail('NYI')
-
+		self.Trace("Get by id: " + id)
+		urlParts = id.split('#')
+		if len(urlParts) == 2:
+			urlPath = urlParts[0]
+			urlPick = urlParts[1]
+			ts = self.tiddlersFromFile(urlPath)
+			if ts != None:
+				for at in ts:
+					if at.title == urlPick:
+						return self.reply( {
+							'title': at.title,
+							'id': 'include-' + id,
+							'text': at.text,
+							'modifier': at.author_ip,
+							'tags': at.tags })
+			self.fail("File or tiddler not found")
+		else:
+			self.fail("id should be like path#tiddlerTitle")
+		
 	title = self.request.get("title")
 	if title == "":
 		url = self.request.get("url").split("#",1)
@@ -1091,7 +1106,21 @@ class MainPage(webapp.RequestHandler):
 
 	replyWithStringList(self,'Content','tiddlers',newlist)
 
-
+  def tiddlersFromFile(self,url):
+	if url.startswith("http:"):
+		importedFile = UrlImport.all().filter('url',url).get()
+		if importedFile == None:
+			self.warnings = "File not found: " + url
+			return None
+		else:
+			txd = xml.dom.minidom.parseString(importedFile.data)
+	else:
+		txd = xml.dom.minidom.parse(url)
+	tde = txd.documentElement.getElementsByTagName('body')
+	if len(tde) == 1:
+		return TiddlersFromXml(tde[0],self.request.path)
+	return None
+	
   def evaluate(self):
 	xd = self.initXmlResponse()
 	tv = xd.createElement('Result')
@@ -1302,12 +1331,12 @@ class MainPage(webapp.RequestHandler):
 
 	tiddict = dict()
 	defaultTiddlers = ""
-	warnings = ""
+	self.warnings = ""
 
 	page = self.CurrentPage()
 	if page != None and page.gwversion == None:
 		Upgrade(self)
-		warnings = "DataStore was upgraded"
+		self.warnings = "DataStore was upgraded"
 	if page != None:
 		if page.systemInclude != None:
 			includeDisabled = self.request.get('disable')
@@ -1318,25 +1347,13 @@ class MainPage(webapp.RequestHandler):
 					urlPath = urlParts[0]
 					if includeDisabled != urlPath:
 						urlPicks = None if len(urlParts) <= 1 else urlParts[1].split('||')
-						txd = None
-						self.Trace("Importing " + str(urlPicks) + " from " + str(urlPath))
-						if urlPath.startswith("http:"):
-							importedFile = UrlImport.all().filter('url',urlPath).get()
-							if importedFile == None:
-								warnings = "File not found: " + urlPath
-							else:
-								txd = xml.dom.minidom.parseString(importedFile.data)
-						else:
-							txd = xml.dom.minidom.parse(urlPath)
-						if txd != None:
-							tde = txd.documentElement.getElementsByTagName('body')
-							if len(tde) == 1:
-								tds = TiddlersFromXml(tde[0],self.request.path)
-								for tdo in tds:
-									if urlPicks == None or urlPicks.count(tdo.title) > 0:
-										if tdo.id == None or tdo.id == '':
-											tdo.id = 'include-' + urlPath + '#' + tdo.title
-										tiddict[tdo.id] = tdo
+						tds = self.tiddlersFromFile(urlPath)
+						if tds != None:
+							for tdo in tds:
+								if urlPicks == None or urlPicks.count(tdo.title) > 0:
+									if tdo.id == None or tdo.id == '':
+										tdo.id = 'include-' + urlPath + '#' + tdo.title
+									tiddict[tdo.id] = tdo
 
 	includeNumber = 0
 	includefiles = self.request.get("include").split()
@@ -1355,7 +1372,7 @@ class MainPage(webapp.RequestHandler):
 			tdx = []
 			for tdo in tds:
 				if tdo == None:
-					warnings = "None in TiddlersFromXml<br>";
+					self.warnings = "None in TiddlersFromXml<br>";
 				elif tfs == None or tfs.count(tdo.title) > 0:
 					includeNumber = includeNumber - 1
 					tiddict['include' + str(includeNumber)] = tdo
@@ -1365,9 +1382,9 @@ class MainPage(webapp.RequestHandler):
 					tdx.append(tdo.title)
 			if tfs != None and len(tfs) > 0:
 				if tfs[0] != 'list':
-					warnings = "Not found: " + '|'.join(tfs)
+					self.warnings = "Not found: " + '|'.join(tfs)
 				elif len(tdx) > 0:
-					warnings = "Found but excluded:<br>" + ' '.join(tdx)
+					self.warnings = "Found but excluded:<br>" + ' '.join(tdx)
 		except Exception, x:
 			self.response.out.write("<html>Error including " + tn + ":<br>" + str(x))
 			return
@@ -1470,8 +1487,8 @@ class MainPage(webapp.RequestHandler):
 					metaDiv.setAttribute('groupmember','true')
 			if page.locked:
 				metaDiv.setAttribute('locked','true')
-			if warnings != "":
-				metaDiv.setAttribute('warnings',warnings)
+			if self.warnings != "":
+				metaDiv.setAttribute('warnings',self.warnings)
 		if self.trace != None and self.trace != False and len(self.trace) > 0:
 			metaPre = xd.createElement('pre')
 			metaDiv.appendChild(metaPre)

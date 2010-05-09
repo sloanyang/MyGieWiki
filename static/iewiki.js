@@ -7548,19 +7548,19 @@ config.macros.importTiddlers = {
 					}
 					else
 						var checked = '';
-					var line = ['<tr><td><input type="checkbox" id="cht', lt, '"', checked, ' name="', lt, '" value="1" /><a href="javascript:;" id="itl', lt, '">', lt, '</a></td></tr>'].join('');
-					links[t] = 'itl' + lt;
+					var ltav = t;
+					var line = ['<tr><td><input type="checkbox" id="cht', ltav, '"', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl,'">', lt.htmlEncode(), '</a></td></tr>'].join('');
+					links[t] = 'itl' + ltav;
 					hta.push(line);
 				}
 				hta.push(['</tbody></table><input type="checkbox" id="chkAll">',
-				"Select all or select those above you wish to <a href='javascript:;' id='cmdImport'>import</a>."].join(''));
+					"Select all or select those above you wish to <a href='javascript:;' id='cmdImport'>import</a>."].join(''));
 				if (afilter != "")
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers", afilter];
 				wd.innerHTML = resmsg.join('') + hta.join('');
-				for (var t = 0; t < libs.length; t++) {
+				for (var t = 0; t < links.length; t++)
 					document.getElementById(links[t]).onclick = config.macros.importTiddlers.fetch;
-				}
 				document.getElementById('cmdImport').onclick = config.macros.importTiddlers.importSelected;
 
 			}
@@ -7568,7 +7568,14 @@ config.macros.importTiddlers = {
 	},
 	fetch: function (ev) {
 		var target = resolveTarget(ev || window.event);
-		alert(target.firstChild.nodeValue + " fetch");
+		var td = http.getTiddler({id: target.getAttribute('title') + "#" + target.firstChild.nodeValue});
+		var tiddler = new Tiddler(td.title, 0, td.text);
+		tiddler.tags = td.tags.readBracketedList();
+		tiddler.modifier = td.modifier;
+		tiddler.modified = td.modified;
+		store.addTiddler(tiddler);
+		story.displayTiddler(null,tiddler.title);
+		story.focusTiddler(tiddler.title,"text");
 	},
 	serve: function (file) {
 		var ms = function (t) {
@@ -7608,9 +7615,10 @@ config.macros.importTiddlers = {
 				if (!id || id.length < 3)
 					continue;
 				var isAll = id == 'chkAll';
-				var tn = id.startsWith('cht') ? id.substr(3) : false;
-				if (!isAll && tn)
+				if (id.startsWith('cht')) {
+					var tn = e.nextSibling.firstChild.nodeValue;
 					all.push(tn);
+				}
 				if (e.type == 'checkbox' && e.checked) {
 					if (isAll)
 						selectList = all;
