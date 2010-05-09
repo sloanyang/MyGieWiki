@@ -7538,6 +7538,7 @@ config.macros.importTiddlers = {
 			clearMessage();
 			if (libs) {
 				var wd = createTiddlyElement(place, "div");
+				var links = [];
 				var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
 				for (var t = 0; t < libs.length; t++) {
 					var lt = libs[t];
@@ -7547,19 +7548,27 @@ config.macros.importTiddlers = {
 					}
 					else
 						var checked = '';
-					var line = ['<tr><td><input type="checkbox" id="cht', lt, '"', checked, ' name="', lt, '" value="1" />', lt, '</td></tr>'].join('');
+					var line = ['<tr><td><input type="checkbox" id="cht', lt, '"', checked, ' name="', lt, '" value="1" /><a href="javascript:;" id="itl', lt, '">', lt, '</a></td></tr>'].join('');
+					links[t] = 'itl' + lt;
 					hta.push(line);
 				}
 				hta.push(['</tbody></table><input type="checkbox" id="chkAll">',
-				"Select all or select those above you wish to <a href='javascript:' id='cmdImport'>import</a>."].join(''));
+				"Select all or select those above you wish to <a href='javascript:;' id='cmdImport'>import</a>."].join(''));
 				if (afilter != "")
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers", afilter];
 				wd.innerHTML = resmsg.join('') + hta.join('');
+				for (var t = 0; t < libs.length; t++) {
+					document.getElementById(links[t]).onclick = config.macros.importTiddlers.fetch;
+				}
 				document.getElementById('cmdImport').onclick = config.macros.importTiddlers.importSelected;
 
 			}
 		}
+	},
+	fetch: function (ev) {
+		var target = resolveTarget(ev || window.event);
+		alert(target.firstChild.nodeValue + " fetch");
 	},
 	serve: function (file) {
 		var ms = function (t) {

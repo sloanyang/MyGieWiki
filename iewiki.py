@@ -6,10 +6,10 @@
 import cgi
 import uuid
 import urllib
+import xml.dom.minidom
 
 from datetime import *
 from new import instance, classobj
-import xml.dom.minidom
 from os import path
 
 from google.appengine.api import users
@@ -76,6 +76,7 @@ class MainPage(webapp.RequestHandler):
 	p.tags = ""
 	p.id = str(uuid.uuid4())
 	p.save()
+	return p
 
   def lock(self,t,usr):
 	try:
@@ -97,8 +98,9 @@ class MainPage(webapp.RequestHandler):
 		error = page.UpdateViolation()
 	if error == None:
 		tid = self.request.get("id")
+		self.Trace("editTiddler: " + tid)
 		if tid.startswith('include-'):
-			return self.reply()
+			return self.fail("Included from " + tid[8:])
 		t = Tiddler.all().filter("id",tid).filter("current",True).get()
 		if t == None:
 			error = "Tiddler doesn't exist"
@@ -153,7 +155,12 @@ class MainPage(webapp.RequestHandler):
 	else:
 		error = page.UpdateViolation()
 
-	if tlr.id != "" and tlr.id.startswith('include-') == False:
+	if tlr.id != '':
+		if tlr.id.startswith('include-'):
+			# break the link and create a new tiddler
+			nt = self.SaveNewTiddler(tlr.page, self.request.get("tiddlerName"),self.request.get("text"))
+			self.Trace("SavedNewTiddler: " + nt.id);
+			return self.reply({"Success": True, "id": nt.id})
 		key = self.request.get("key")
 		if key == "":
 			t = Tiddler.all().filter("id", tlr.id).get()
@@ -677,6 +684,11 @@ class MainPage(webapp.RequestHandler):
 
 
   def getTiddler(self):
+	id = self.request.get("id",None)
+	if id != None:
+		if id.startswith('include-'):
+			return self.fail('NYI')
+
 	title = self.request.get("title")
 	if title == "":
 		url = self.request.get("url").split("#",1)
@@ -1173,7 +1185,8 @@ class MainPage(webapp.RequestHandler):
 	return r
 
   def post(self):
-	self.trace = False # list()
+	trace = memcache.get(self.request.remote_addr) # False # list()
+	self.trace = list() if trace != None else False
 	self.getSubdomain()
 	m = self.request.get("method") # what do you want to do
 	if m in dir(self):
@@ -1274,6 +1287,8 @@ class MainPage(webapp.RequestHandler):
 		self.trace = False # disabled by default
 	else:
 		self.traceLevel = self.request.get('trace')
+		memcache.add(self.request.remote_addr, self.traceLevel)
+
 	self.getSubdomain()
 	method = self.request.get("method")
 	
@@ -1319,7 +1334,9 @@ class MainPage(webapp.RequestHandler):
 								tds = TiddlersFromXml(tde[0],self.request.path)
 								for tdo in tds:
 									if urlPicks == None or urlPicks.count(tdo.title) > 0:
-										tiddict[urlPath + "#" + tdo.title] = tdo
+										if tdo.id == None or tdo.id == '':
+											tdo.id = 'include-' + urlPath + '#' + tdo.title
+										tiddict[tdo.id] = tdo
 
 	includeNumber = 0
 	includefiles = self.request.get("include").split()
