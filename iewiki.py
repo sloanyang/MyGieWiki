@@ -98,7 +98,6 @@ class MainPage(webapp.RequestHandler):
 		error = page.UpdateViolation()
 	if error == None:
 		tid = self.request.get("id")
-		self.Trace("editTiddler: " + tid)
 		if tid.startswith('include-'):
 			return self.fail("Included from " + tid[8:])
 		t = Tiddler.all().filter("id",tid).filter("current",True).get()
@@ -159,7 +158,6 @@ class MainPage(webapp.RequestHandler):
 		if tlr.id.startswith('include-'):
 			# break the link and create a new tiddler
 			nt = self.SaveNewTiddler(tlr.page, self.request.get("tiddlerName"),self.request.get("text"))
-			self.Trace("SavedNewTiddler: " + nt.id);
 			return self.reply({"Success": True, "id": nt.id})
 		key = self.request.get("key")
 		if key == "":
@@ -519,7 +517,6 @@ class MainPage(webapp.RequestHandler):
 		if self.request.get("title") == "":
 			if parent == "/" and users.get_current_user() != None:
 				pad = Page()
-				self.Trace("CP1")
 				pad.gwversion = "2.3"
 				pad.path = "/"
 				pad.sub = self.subdomain
@@ -547,7 +544,6 @@ class MainPage(webapp.RequestHandler):
 	page = Page.all().filter('path =',url).get()
 	if page == None:
 		page = Page()
-		self.Trace("CP2")
 		page.gwversion = "2.3"
 		page.path = url
 		page.sub = self.subdomain
@@ -685,7 +681,6 @@ class MainPage(webapp.RequestHandler):
   def getTiddler(self):
 	id = self.request.get("id",None)
 	if id != None:
-		self.Trace("Get by id: " + id)
 		urlParts = id.split('#')
 		if len(urlParts) == 2:
 			urlPath = urlParts[0]
@@ -1022,7 +1017,7 @@ class MainPage(webapp.RequestHandler):
 		for file in UrlImport.all():
 			filelist.append(file.url)
 		return replyWithStringList(self,"files","file",filelist);
-			
+
 	url = self.request.get('url')
 	iftagged = self.request.get('filter')
 	cache = self.request.get('cache')
@@ -1039,15 +1034,12 @@ class MainPage(webapp.RequestHandler):
 				if result.status_code != 200:
 					return self.fail("Fetching the url " + url + " returned status code " + str(result.status_code))
 				else:
-					self.Trace("UrlFetched:" + url)
 					content = result.content
-					memcache.add(url,content)
+					memcache.add(url,content,cache)
 					txd = xml.dom.minidom.parseString(content)
 			else:
 				content = None
-				self.Trace("Parsing " + url)
 				txd = xml.dom.minidom.parse(url)
-				self.Trace("Parsed: " + url + str(txd))
 		else:
 			txd = xml.dom.minidom.parseString(content)
 
@@ -1215,7 +1207,7 @@ class MainPage(webapp.RequestHandler):
 
   def post(self):
 	trace = memcache.get(self.request.remote_addr) # False # list()
-	self.trace = list() if trace != None else False
+	self.trace = list() if trace != None and trace != "0" else False
 	self.getSubdomain()
 	m = self.request.get("method") # what do you want to do
 	if m in dir(self):
@@ -1316,7 +1308,8 @@ class MainPage(webapp.RequestHandler):
 		self.trace = False # disabled by default
 	else:
 		self.traceLevel = self.request.get('trace')
-		memcache.add(self.request.remote_addr, self.traceLevel)
+		memcache.add(self.request.remote_addr, self.traceLevel, 300) # 5 minutes
+		self.Trace("TL=" + memcache.get(self.request.remote_addr))
 
 	self.getSubdomain()
 	method = self.request.get("method")
