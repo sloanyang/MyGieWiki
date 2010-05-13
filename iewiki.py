@@ -1089,14 +1089,16 @@ class MainPage(webapp.RequestHandler):
 				for asn in acn.childNodes:
 					if asn.nodeType == xml.dom.Node.ELEMENT_NODE:
 						if asn.hasAttribute('title'):
+							tags = asn.getAttribute('tags')
 							title = asn.getAttribute('title')
-							if iftagged == "" or tagInFilter(asn.getAttribute('tags'),iftagged):
+							if iftagged == "" or tagInFilter(tags,iftagged):
+								dv = dict()
 								if fromUrl.count(title) == 0:
-									newlist.append(title)
+									newlist.append({'title': title, 'tags':tags })
 								else:
-									newlist.append('$@$'+ title)
+									newlist.append({ 'current': 'true', 'title': title, 'tags':tags })
 
-	replyWithStringList(self,'Content','tiddlers',newlist)
+	replyWithObjectList(self,'Content','tnt',newlist)
 
   def tiddlersFromFile(self,url):
 	if url.startswith("http:"):

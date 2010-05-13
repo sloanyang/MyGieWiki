@@ -98,6 +98,23 @@ def replyWithStringList(cl,re,se,sl):
 	xmlArrayOfStrings(xd,tv,sl,se)
 	cl.response.out.write(xd.toxml())
 
+def xmlArrayOfObjects(xd,te,os,name):
+	for a in os:
+		se = xd.createElement(name)
+		te.appendChild(se)
+		for (d,v) in a.iteritems():
+			de = xd.createElement(d)
+			se.appendChild(de)
+			de.appendChild(xd.createTextNode(unicode(v)))
+	te.setAttribute('type', 'object[]')
+
+def replyWithObjectList(cl,re,se,sl):
+	xd = cl.initXmlResponse()
+	tv = xd.createElement(re)
+	xd.appendChild(tv)
+	xmlArrayOfObjects(xd,tv,sl,se)
+	cl.response.out.write(xd.toxml())
+
 def getAuthor(t):
 	if t.author != None:
 		return str(t.author.nickname());

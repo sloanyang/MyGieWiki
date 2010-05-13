@@ -7542,14 +7542,12 @@ config.macros.importTiddlers = {
 				var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
 				for (var t = 0; t < libs.length; t++) {
 					var lt = libs[t];
-					if (lt.startsWith('$@$')) {
-						lt = lt.substring(3);
+					if (lt.current)
 						var checked = 'checked="1"';
-					}
 					else
 						var checked = '';
 					var ltav = t;
-					var line = ['<tr><td><input type="checkbox" id="cht', ltav, '"', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl,'">', lt.htmlEncode(), '</a></td></tr>'].join('');
+					var line = ['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td><input type="checkbox" id="cht', ltav, '"', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl,'">', lt.title.htmlEncode(), '</a></td><td>',lt.tags,'</td></tr>'].join('');
 					links[t] = 'itl' + ltav;
 					hta.push(line);
 				}
