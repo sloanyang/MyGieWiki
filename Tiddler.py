@@ -1,7 +1,7 @@
-﻿# this:	tiddler.py
+# this:	tiddler.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.3.0
+# ver.:	1.3.1
 
 from google.appengine.ext import db
 from google.appengine.api import users

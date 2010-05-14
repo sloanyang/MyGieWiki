@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!-- Copyright (c) UnaMesa Association 2004-2009; see /static/iewiki.js -->
+<!-- giewiki ver.: 1.3.1 -->
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:output method='html' version='1.0' encoding='UTF-8' indent='yes'/>
@@ -460,6 +461,7 @@ macro|newJournal|"DD MMM YYYY" "journal"
 tiddler|CreateNewPage|new page|Create new page|p
 tiddler|UploadDialog|upload file|Upload a local file|u
 tiddler|PageProperties|page properties|Edit page properties|p
+tiddler|ImportTiddlers|import tiddlers|Import from web or file|i
 tiddler|File list|file list|list of uploaded files|f
 </pre>
 </div>

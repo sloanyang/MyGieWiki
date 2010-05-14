@@ -29,7 +29,7 @@ DAMAGE.
 */
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
-var giewikiVersion = { title: "giewiki", major: 1, minor: 3, revision: 0, date: new Date("Apr 17, 2010"), extensions: {} };
+var giewikiVersion = { title: "giewiki", major: 1, minor: 3, revision: 1, date: new Date("Apr 17, 2010"), extensions: {} };
 
 // Modified by Poul Staugaard, (poul [dot] staugaard [at] gmail [dot] com)
 // Portions with spaces for tabs are mostly original, while portions with
@@ -7575,7 +7575,7 @@ config.shadowTiddlers.ImportTiddlers = "<<importTiddlers>>";
 config.macros.importTiddlers = {
 	handler: function (place, macroName, params, wikifier, paramString) {
 		if (params.length == 0)
-			wikify("Usage:<br>    {{{<<importTiddlers URL>>}}}<br>substituting URL with the web address of the library you want to use. Edit this tiddler to insert the parameter"
+			wikify("The importTiddlers macro lets you easily import from ~TiddlyWiki or giewiki documents on the web or on this web site. Usage:<br>    {{{<<importTiddlers URL>>}}}<br>substituting URL with the web address or filename of the library you want to use. Edit this tiddler to insert the parameter"
 				+ config.macros.importTiddlers.menu(), place);
 		else {
 			var aurl = params.shift();
