@@ -1,4 +1,4 @@
-﻿# this:	giewikilib.py
+# this:	giewikilib.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
 # ver.:	1.3.0
@@ -168,34 +168,18 @@ def mergeDict(td,ts):
 		else:
 			td[id] = t
 
-def TiddlersFromXml(te,path):
-	list = []
-	if te.tagName == 'body':
-		for acn in te.childNodes:
-			if acn.nodeType == xml.dom.Node.ELEMENT_NODE:
-				if acn.getAttribute('id') == 'storeArea':
-					for asn in acn.childNodes:
-						if asn.nodeType == xml.dom.Node.ELEMENT_NODE and asn.tagName == 'div':
-							list.append(TiddlerFromXml(asn,path))
-
-	elif te.tagName == 'tiddlers':
-		for ce in te.childNodes:
-			if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'div':
-				list.append(TiddlerFromXml(ce,path))
-
-	else:
-		list.append(TiddlerFromXml(te,path))
-
-	return list
-
 def TiddlerFromXml(te,path):
 	id = None
 	try:
 		title = te.getAttribute('title')
-		id = te.getAttribute('id')
-		author_ip = te.getAttribute('modifier')
-		v = te.getAttribute('version')
-		version = eval(v) if v != None and v != "" else 1
+		if title != "":
+			id = te.getAttribute('id')
+			author_ip = te.getAttribute('modifier')
+			tags = te.getAttribute('tags')
+			v = te.getAttribute('version')
+			version = eval(v) if v != None and v != "" else 1
+		else:
+			return None
 	except Exception, x:
 		print(str(x))
 		return None

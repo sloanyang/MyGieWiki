@@ -59,7 +59,7 @@ config.parsers = {};
 config.annotations = {};
 
 // Custom fields to be automatically added to new tiddlers
-config.defaultCustomFields = { cache: "-1" };
+config.defaultCustomFields = { };
 
 // Messages
 config.messages = {
@@ -326,6 +326,14 @@ config.commands = {
         readOnlyText: "unlock",
         readOnlyTooltip: "Allow editing tiddler"
     },
+    copyTiddler: { 
+        text: "copy",
+        tooltip: "Copy this tiddler"
+    },
+    excludeTiddler: { 
+        text: "exclude",
+        tooltip: "Exclude this tiddler"
+    },
     deleteTiddler: { 
         hideReadOnly: true,
         text: "delete",
@@ -467,7 +475,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler reload > fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
     SiteTitle: "SiteTitle",
@@ -516,8 +524,9 @@ var startingUp = false; // Whether we're in the process of starting up
 var pluginInfo, tiddler; // Used to pass information to plugins in loadPlugins()
 
 config.read = function(t) {
-	fields = t.fields;
+	var fields = t.fields;
 	this.admin = window.eval(fields.admin);
+	this.clientip = fields.clientip;
 	this.owner = fields.owner;
 	this.access = fields.access;
 	this.anonAccess = fields.anonaccess;
@@ -556,7 +565,7 @@ config.readPages = function(pgs) {
 // Starting up
 function main() {
     startingUp = true;
-    if (window.location.search.startsWith("?Debugger"))
+    if (window.location.search.startsWith("?debugger"))
 		debugger;
     window.onbeforeunload = function(e) { if (window.confirmExit) return confirmExit(); };
     params = getParameters();
@@ -2613,7 +2622,7 @@ config.commands.editTiddler.handler = function(event, src, title) {
 			store.addTiddler(t);
 		}
 	}
-	if (st && st.id && config.options.txtLockDuration != "") {
+	if (st && st.id && (!st.from) && config.options.txtLockDuration != "") {
 		var reply = http.editTiddler({id: st.id, duration: config.options.txtLockDuration });
 		st.key = reply.key;
 		if (reply.Success) {
@@ -2641,6 +2650,10 @@ config.commands.saveTiddler.handler = function(event, src, title) {
     return false;
 };
 
+config.commands.lockTiddler.isEnabled = function(tdlr) {
+	return !tdlr.from;
+};
+
 config.commands.lockTiddler.handler = function(event, src, title) {
     var t = store.getTiddler(title);
     if (t) {
@@ -2653,6 +2666,19 @@ config.commands.lockTiddler.handler = function(event, src, title) {
 				http.unlockTiddler({"key": t.key});
 		}
 	}
+};
+
+config.commands.excludeTiddler.isEnabled = config.commands.copyTiddler.isEnabled = function(tdlr) {
+	return tdlr.from;
+};
+
+config.commands.copyTiddler.handler = function(event, src, title) {
+	var t = store.getTiddler(title);
+	t.from = null;
+	t.id = null;
+	t.readOnly = false;
+    story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, null);
+    story.focusTiddler(title, config.options.txtEditorFocus || "text");
 };
 
 config.commands.cancelTiddler.handler = function(event, src, title) {
@@ -2678,6 +2704,11 @@ config.commands.deleteTiddler.handler = function(event, src, title) {
     }
     return false;
 };
+
+config.commands.excludeTiddler.handler = function(event, src, title) {
+    store.removeTiddler(title);
+    story.closeTiddler(title, true);
+}
 
 config.commands.permalink.handler = function(event, src, title) {
     var t = encodeURIComponent(String.encodeTiddlyLink(title));
@@ -6412,11 +6443,9 @@ TW21Loader.prototype.internalizeTiddler = function(tiddler, title, node) {
     var modified = m ? Date.convertFromYYYYMMDDHHMM(m) : created;
     var tags = node.getAttribute("tags");
 
-    tiddler.readOnly = node.getAttribute("readonly") == "true";
     tiddler.comments = parseInt(node.getAttribute("comments"));
     tiddler.notes = node.getAttribute("notes");
     tiddler.messages = node.getAttribute("messages");
-    tiddler.from = node.getAttribute("from");
     
     try { tiddler.id = node.getAttribute("id"); } catch (e) { this.id = ""; }
     try { tiddler.includedFrom = node.getAttribute("includedFrom"); } catch (e) { }
@@ -6425,12 +6454,22 @@ TW21Loader.prototype.internalizeTiddler = function(tiddler, title, node) {
 
     var fields = {};
     var attrs = node.attributes;
-    for (var i = attrs.length - 1; i >= 0; i--) {
-        var name = attrs[i].name;
-        if (attrs[i].specified && !TiddlyWiki.isStandardField(name)) {
-            fields[name] = attrs[i].value.unescapeLineBreaks();
-        }
-    }
+    for (var i = attrs.length - 1; i >= 0; i--) if (attrs[i].specified) {
+		var name = attrs[i].name;
+		var value = attrs[i].value;
+		switch(name)
+		{
+		case 'locked':
+			tiddler.readOnly = eval(value);
+			break;
+		case 'from':
+			tiddler.from = value;
+			break;
+		default:
+			if (!TiddlyWiki.isStandardField(name))
+				fields[name] = attrs[i].value.unescapeLineBreaks();
+		}
+	}
     tiddler.assign(title, text, modifier, modified, tags, created, fields, v, node.id);
     return tiddler;
 };

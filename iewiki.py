@@ -343,6 +343,23 @@ class MainPage(webapp.RequestHandler):
   def deleteTiddler(self):
 	self.initXmlResponse()
 	tid = self.request.get("tiddlerId")
+	if tid.startswith('include-'):
+		page = self.CurrentPage()
+		urlparts = tid[8:].split('#')
+		url = urlparts[0] + '#'
+		part = urlparts[1]
+		siLines = page.systemInclude.split('\n')
+		for ali in siLines:
+			if ali.startswith(url):
+				sl = ali[len(url):].split('||')
+				sl.remove(part)
+				url = url + '||'.join(sl)
+				siLines.remove(ali)
+				siLines.append(url)
+				page.systemInclude = '\n'.join(siLines)
+				page.put()
+				return self.warn("tiddler excluded")
+				
 	tls = Tiddler.all().filter('id', tid)
 	any = False
 	for tlr in tls:
@@ -685,7 +702,7 @@ class MainPage(webapp.RequestHandler):
 		if len(urlParts) == 2:
 			urlPath = urlParts[0]
 			urlPick = urlParts[1]
-			ts = self.tiddlersFromFile(urlPath)
+			ts = self.tiddlersFromSources(urlPath)
 			if ts != None:
 				for at in ts:
 					if at.title == urlPick:
@@ -1016,42 +1033,20 @@ class MainPage(webapp.RequestHandler):
 		filelist = list()
 		for file in UrlImport.all():
 			filelist.append(file.url)
-		return replyWithStringList(self,"files","file",filelist);
+		return replyWithStringList(self,"files","file",filelist)
 
 	url = self.request.get('url')
 	iftagged = self.request.get('filter')
 	cache = self.request.get('cache')
 	select = self.request.get('select')
 	cache = 60 if cache == "" else int(cache) # default cache age: 60 s
-	content = memcache.get(url)
 	try:
-		if content == None:
-			if url.startswith('http'):
-				try:
-					result = urlfetch.fetch(url)
-				except urlfetch.Error, ex:
-					return self.fail("Could not get the file <b>" + url + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
-				if result.status_code != 200:
-					return self.fail("Fetching the url " + url + " returned status code " + str(result.status_code))
-				else:
-					content = result.content
-					memcache.add(url,content,cache)
-					txd = xml.dom.minidom.parseString(content)
-			else:
-				content = None
-				txd = xml.dom.minidom.parse(url)
-		else:
-			txd = xml.dom.minidom.parseString(content)
-
+		tiddlers = self.tiddlersFromSources(url,cache=cache,save=True)
+		if tiddlers == None:
+			return			
 	except xml.parsers.expat.ExpatError, ex:
 		return self.fail("The url " + url + " failed to read as XML: <br>" + str(ex))
 		
-	tde = txd.documentElement.getElementsByTagName('body')
-	if len(tde) == 0:
-		return self.fail("The url " + url + " has no body element")
-	else:
-		body = tde[0]
-
 	fromUrl = list()
 	page = self.CurrentPage()
 	if page.systemInclude != None:
@@ -1070,50 +1065,92 @@ class MainPage(webapp.RequestHandler):
 			urls.append(newPick)
 			page.systemInclude = '\n'.join(urls)
 		page.put()
-		urlimport = UrlImport.all().filter("url", url).get()
-		if urlimport == None:
-			urlimport = UrlImport()
-			urlimport.url = url
-		try:
-			if content != None:
-				urlimport.data = db.Blob(content)
-			urlimport.put()
-		except Exception, sa:
-			self.Trace("Ex:" + str(sa))
 		return self.fail("Reload to get the requested tiddlers")
 
 	newlist = list()
-	for acn in body.childNodes:
-		if acn.nodeType == xml.dom.Node.ELEMENT_NODE:
-			if acn.getAttribute('id') == 'storeArea':
-				for asn in acn.childNodes:
-					if asn.nodeType == xml.dom.Node.ELEMENT_NODE:
-						if asn.hasAttribute('title'):
-							tags = asn.getAttribute('tags')
-							title = asn.getAttribute('title')
-							if iftagged == "" or tagInFilter(tags,iftagged):
-								dv = dict()
-								if fromUrl.count(title) == 0:
-									newlist.append({'title': title, 'tags':tags })
-								else:
-									newlist.append({ 'current': 'true', 'title': title, 'tags':tags })
+	for t in tiddlers:
+		if t != None:
+			if iftagged == "" or tagInFilter(t.tags,iftagged):
+				newel = {'title': t.title, 'tags': t.tags }
+				if fromUrl.count(t.title) > 0:
+					newel['current'] = 'true'
+				newlist.append(newel)
 
 	replyWithObjectList(self,'Content','tnt',newlist)
 
-  def tiddlersFromFile(self,url):
-	if url.startswith("http:"):
-		importedFile = UrlImport.all().filter('url',url).get()
-		if importedFile == None:
-			self.warnings = "File not found: " + url
-			return None
-		else:
-			txd = xml.dom.minidom.parseString(importedFile.data)
-	else:
-		txd = xml.dom.minidom.parse(url)
-	tde = txd.documentElement.getElementsByTagName('body')
-	if len(tde) == 1:
-		return TiddlersFromXml(tde[0],self.request.path)
+
+  def tiddlersFromSources(self,url,sources=None,cache=None,save=False):
+	xd = self.XmlFromSources(url,sources)
+	if xd.__class__ == xml.dom.minidom.Document:
+		pe = xd.documentElement
+		if pe.nodeName.lower() == 'html':
+			es = pe.getElementsByTagName('body')
+			if len(es) == 1:
+				pe = es[0]
+			else:
+				self.reply(pe.nodeName + " contains " + str(len(es)) + " body elements")
+				return None
+		return self.TiddlersFromXml(pe,url)
 	return None
+	
+
+  def XmlFromSources(self,url,sources=None,cache=None,save=False):
+	if url.startswith("http:"):
+		if sources == None or 'local' in sources:
+			importedFile = UrlImport.all().filter('url',url).get()
+			if importedFile != None:
+				return xml.dom.minidom.parseString(importedFile.data)
+		if sources == None or 'remote' in sources:	
+			content = memcache.get(url)	if cache != None else None
+			if content == None:
+				try:
+					result = urlfetch.fetch(url)
+				except urlfetch.Error, ex:
+					return self.fail("Could not get the file <b>" + url + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
+				if result.status_code != 200:
+					return self.fail("Fetching the url " + url + " returned status code " + str(result.status_code))
+				else:
+					content = result.content
+					if cache != None:
+						memcache.add(url,content,cache)
+			xd = xml.dom.minidom.parseString(content)
+			if xd == None:
+				return None
+			if save:
+				urlimport = UrlImport()
+				urlimport.url = url
+				urlimport.data = db.Blob(content)
+				urlimport.put()
+			return xd
+			
+		return None				
+	else:
+		return xml.dom.minidom.parse(url)
+
+
+  def TiddlersFromXml(self,te,path):
+	list = []
+
+	def append(t):
+		if t != None:
+			# self.Trace('Append ' + t.title + ' from ' + t.page)
+			list.append(t)
+
+	# self.Trace('TiddlersFromXml ' + te.tagName)
+	if te.tagName in ('body','document'):
+		for acn in te.childNodes:
+			if acn.nodeType == xml.dom.Node.ELEMENT_NODE:
+				if acn.nodeName == 'storeArea' or acn.getAttribute('id') == 'storeArea':
+					for asn in acn.childNodes:
+						if asn.nodeType == xml.dom.Node.ELEMENT_NODE and asn.tagName == 'div':
+							append(TiddlerFromXml(asn,path))
+	elif te.tagName == 'tiddlers':
+		for ce in te.childNodes:
+			if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'div':
+				append(TiddlerFromXml(ce,path))
+	else:
+		append(TiddlerFromXml(te,path))
+	return list
 	
   def evaluate(self):
 	xd = self.initXmlResponse()
@@ -1208,8 +1245,8 @@ class MainPage(webapp.RequestHandler):
 	return r
 
   def post(self):
-	trace = memcache.get(self.request.remote_addr) # False # list()
-	self.trace = list() if trace != None and trace != "0" else False
+	trace = memcache.get(self.request.remote_addr)
+	self.trace = [] if trace != None and trace != "0" else False
 	self.getSubdomain()
 	m = self.request.get("method") # what do you want to do
 	if m in dir(self):
@@ -1238,11 +1275,11 @@ class MainPage(webapp.RequestHandler):
 	div = xd.createElement('div')
 	div.setAttribute('id', id)
 	div.setAttribute('title', t.title)
-	if t.locked:
-		div.setAttribute('readonly','true')
+	if getattr(t,'locked',False):
+		div.setAttribute('locked','true')
 	elif t.page != self.request.path:
 		div.setAttribute('from',t.page)
-		div.setAttribute('readonly','true')
+		div.setAttribute('locked','true')
 
 	if t.modified != None:
 		div.setAttribute('modified', t.modified.strftime("%Y%m%d%H%M%S"))
@@ -1296,7 +1333,7 @@ class MainPage(webapp.RequestHandler):
 	if self.trace == False:
 		return # disabled
 	if self.trace == None:
-		self.trace = list()
+		self.trace = []
 	self.trace.append(msg)
 	
   def CurrentPage(self):
@@ -1306,10 +1343,12 @@ class MainPage(webapp.RequestHandler):
 	return None
 
   def get(self): # this is where it all starts
-	if self.request.get('trace') == '':
+	trace = self.request.get('trace')
+	if trace == '':
 		self.trace = False # disabled by default
 	else:
 		self.traceLevel = self.request.get('trace')
+		self.trace = []
 		memcache.add(self.request.remote_addr, self.traceLevel, 300) # 5 minutes
 		self.Trace("TL=" + memcache.get(self.request.remote_addr))
 
@@ -1336,13 +1375,12 @@ class MainPage(webapp.RequestHandler):
 		if page.systemInclude != None:
 			includeDisabled = self.request.get('disable')
 			if includeDisabled != '*':
-				includeFiles = page.systemInclude.split('\n')
-				for sf in includeFiles:
+				for sf in page.systemInclude.split('\n'):
 					urlParts = sf.split('#')
 					urlPath = urlParts[0]
 					if includeDisabled != urlPath:
 						urlPicks = None if len(urlParts) <= 1 else urlParts[1].split('||')
-						tds = self.tiddlersFromFile(urlPath)
+						tds = self.tiddlersFromSources(urlPath)
 						if tds != None:
 							for tdo in tds:
 								if urlPicks == None or urlPicks.count(tdo.title) > 0:
@@ -1361,14 +1399,12 @@ class MainPage(webapp.RequestHandler):
 				tn = tn[0:tn.find('/')] # the filename
 			else:
 				tfs = None
-			txd = xml.dom.minidom.parse(tn)
-			tde = txd.documentElement
-			tds = TiddlersFromXml(tde,self.request.path)
+			tds = self.tiddlersFromSources(tn)
 			tdx = []
 			for tdo in tds:
 				if tdo == None:
 					self.warnings = "None in TiddlersFromXml<br>";
-				elif tfs == None or tfs.count(tdo.title) > 0:
+				elif tfs == None or tdo.title in tfs:
 					includeNumber = includeNumber - 1
 					tiddict['include' + str(includeNumber)] = tdo
 					if tfs != None:
@@ -1468,6 +1504,7 @@ class MainPage(webapp.RequestHandler):
 		metaDiv = xd.createElement('div')
 		metaDiv.setAttribute('title', "_MetaData")
 		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
+		metaDiv.setAttribute('clientip', self.request.remote_addr)
 		if page != None:
 			metaDiv.setAttribute('timestamp',str(datetime.datetime.now()))
 			metaDiv.setAttribute('username',username)
@@ -1587,7 +1624,7 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write(text)
 	if self.trace != False:
 		LogEvent("get " + self.request.url,'\n'.join(self.trace))
-	
+		self.trace = False	
 ############################################################################
 
 application = webapp.WSGIApplication( [('/.*', MainPage)], debug=True)
