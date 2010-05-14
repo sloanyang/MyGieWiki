@@ -29,7 +29,7 @@ DAMAGE.
 */
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
-var giewikiVersion = { title: "giewiki", major: 1, minor: 3, revision: 1, date: new Date("Apr 17, 2010"), extensions: {} };
+var giewikiVersion = { title: "giewiki", major: 1, minor: 3, revision: 1, date: new Date("May 14, 2010"), extensions: {} };
 
 // Modified by Poul Staugaard, (poul [dot] staugaard [at] gmail [dot] com)
 // Portions with spaces for tabs are mostly original, while portions with
