@@ -1065,7 +1065,7 @@ class MainPage(webapp.RequestHandler):
 			urls.append(newPick)
 			page.systemInclude = '\n'.join(urls)
 		page.put()
-		return self.fail("Reload to get the requested tiddlers")
+		return self.warn("Reload to get the requested tiddlers")
 
 	newlist = list()
 	for t in tiddlers:
@@ -1088,13 +1088,14 @@ class MainPage(webapp.RequestHandler):
 			if len(es) == 1:
 				pe = es[0]
 			else:
-				self.reply(pe.nodeName + " contains " + str(len(es)) + " body elements")
-				return None
+				raise ImportException(pe.nodeName + " contains " + str(len(es)) + " body elements.")
 		return self.TiddlersFromXml(pe,url)
 	return None
 	
 
   def XmlFromSources(self,url,sources=None,cache=None,save=False):
+	if url.startswith('//'):
+		url = 'http:' + url
 	if url.startswith("http:"):
 		if sources == None or 'local' in sources:
 			importedFile = UrlImport.all().filter('url',url).get()
@@ -1106,9 +1107,9 @@ class MainPage(webapp.RequestHandler):
 				try:
 					result = urlfetch.fetch(url)
 				except urlfetch.Error, ex:
-					return self.fail("Could not get the file <b>" + url + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
+					raise ImportException("Could not get the file <b>" + url + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
 				if result.status_code != 200:
-					return self.fail("Fetching the url " + url + " returned status code " + str(result.status_code))
+					raise ImportException("Fetching the url " + url + " returned status code " + str(result.status_code))
 				else:
 					content = result.content
 					if cache != None:
@@ -1394,9 +1395,10 @@ class MainPage(webapp.RequestHandler):
 		includefiles.append('PublishPlugin.xml')
 	for tn in includefiles:
 		try:
-			if tn.find('/') > 0: # rule: filename/filter
-				tfs = tn[tn.find('/') + 1:].split('|') # the filter: ta|tb|...
-				tn = tn[0:tn.find('/')] # the filename
+			splitpos = tn.find('|')
+			if splitpos > 0: # rule: filename|select-list
+				tfs = tn[splitpos + 1:].split('|') # the filter: ta|tb|...
+				tn = tn[0:splitpos] # the filename
 			else:
 				tfs = None
 			tds = self.tiddlersFromSources(tn)
@@ -1486,19 +1488,19 @@ class MainPage(webapp.RequestHandler):
 	else:
 		username = ""
 	
-	twd = self.request.get('twd')
-	# xsl = self.request.get('xsl')
-	if twd == "" or twd == "":		# Unless a TiddlyWiki is required or a style sheet is specified
+	twd = self.request.get('twd',None)
+	xsl = self.request.get('xsl',None)
+	if twd == None and xsl == None:	# Unless a TiddlyWiki is required or a style sheet is specified
 		xsl = "/static/iewiki.xsl"	# use the default,
 
 	xd = self.initXmlResponse()
-	if twd == "":					# except if no CSS is desired
+	if xsl != None and xsl != "":	# except if no CSS is desired
 		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
 
 	elDoc = xd.createElement("document")
 	xd.appendChild(elDoc)
 		
-	if twd == "" or twd == "none": # normal giewiki output
+	if twd == None: # normal giewiki output
 		elStArea = xd.createElement("storeArea")
 		elShArea = xd.createElement("shadowArea")
 		metaDiv = xd.createElement('div')
@@ -1592,7 +1594,7 @@ class MainPage(webapp.RequestHandler):
 			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,user))
 
 	text = xd.toxml()
-	if twd != "" and twd != "none":
+	if twd != None:
 		twdtext = None
 		if twd.startswith('http:'):
 			try:

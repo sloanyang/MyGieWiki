@@ -7447,12 +7447,20 @@ config.macros.downloadAsTiddlyWiki = {
     {
 		if (window.location.protocol == "file:") 
 			return;
-		createTiddlyText(place, "Download ");
+		createTiddlyText(place, "Download");
+
 		var link = document.createElement("a");
 		link.href = location.pathname + "?twd=" + config.options.txtEmptyTiddlyWiki; 
 		link.title = "Right-click to download this page as a Tiddlywiki";
-		createTiddlyText(link, "TiddlyWiki");
+		createTiddlyText(link, " TiddlyWiki");
 		place.appendChild(link);
+
+		var link = document.createElement("a");
+		link.href = location.pathname + "?xsl="; 
+		link.title = "Right-click to download this page as XML";
+		createTiddlyText(link, " XML");
+		place.appendChild(link);
+
 		if (config.admin && window.location.pathname == "/") {
 			var link = document.createElement("a");
 			link.href = "/_export.xml"; 
@@ -7576,6 +7584,8 @@ config.macros.importTiddlers = {
 			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter });
 			clearMessage();
 			if (libs) {
+				this.aurl = aurl;
+				this.libs = libs;
 				var wd = createTiddlyElement(place, "div");
 				var links = [];
 				var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
@@ -7591,17 +7601,35 @@ config.macros.importTiddlers = {
 					hta.push(line);
 				}
 				hta.push(['</tbody></table><input type="checkbox" id="chkAll">',
-					"Select all or select those above you wish to <a href='javascript:;' id='cmdImport'>import</a>."].join(''));
+					"Select all or select those above you wish to <a href='javascript:;' id='cmdImport'>import (permanently)</a> or <a href='/' id='cmdInclude' target='_blank'>include (once, via query string)</a>."].join(''));
 				if (afilter != "")
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers", afilter];
 				wd.innerHTML = resmsg.join('') + hta.join('');
-				for (var t = 0; t < links.length; t++)
+				for (var t = 0; t < links.length; t++) {
+					var chtid = 'cht' + t;
+					var chtel = document.getElementById(chtid);
+					chtel.onchange = config.macros.importTiddlers.onchange;
 					document.getElementById(links[t]).onclick = config.macros.importTiddlers.fetch;
+				}
 				document.getElementById('cmdImport').onclick = config.macros.importTiddlers.importSelected;
 
 			}
 		}
+	},
+	onchange: function(ev) {
+		var target = resolveTarget(ev || window.event);
+		var idx = Number(target.id.substring(3));	
+		var libs = config.macros.importTiddlers.libs;
+		libs[idx].current = target.checked;
+		var cursel = [];
+		for (var t = 0; t < libs.length; t++)
+			if (libs[t].current)
+				cursel.push(libs[t].title);
+		var aurl = config.macros.importTiddlers.aurl;
+		if (aurl.startsWith('http:'))
+			aurl = aurl.substring(5);
+		document.getElementById('cmdInclude').href = [window.location.path, '?include=', aurl, '|', cursel.join('|')].join('');
 	},
 	fetch: function (ev) {
 		var target = resolveTarget(ev || window.event);
@@ -7664,6 +7692,9 @@ config.macros.importTiddlers = {
 				}
 			}
 		}
-		var libs = http.tiddlersFromUrl({ url: aurl, select: selectList.join('||') });
+		var result = http.tiddlersFromUrl({ url: aurl, select: selectList.join('||') });
+		if (result.Success)
+			if (window.confirm(result.Message))
+				window.location.reload();
 	}
 }

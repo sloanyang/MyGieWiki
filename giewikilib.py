@@ -211,3 +211,9 @@ class XmlDocument(xml.dom.minidom.Document):
 		if parent == None:
 			parent = self
 		return self.add(parent,name, attrs={'type':'object[]'})
+
+class ImportException(Exception):
+  def __init__(self,err):
+	self.error = err
+  def __str__(self):
+	return self.error
