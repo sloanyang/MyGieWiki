@@ -45,11 +45,14 @@
     <Content Include="iewiki.py" />
     <Content Include="index.py" />
     <Content Include="Hello.py" />
+    <Content Include="PluginManager.xml" />
     <Content Include="Plugins.py" />
     <Content Include="empty.html" />
+    <Content Include="PublishPlugin.xml" />
     <Content Include="static\favicon.ico" />
     <Content Include="static\iewiki.js" />
     <Content Include="static\iewiki.xsl" />
+    <Content Include="static\inlinescript.htm" />
     <Content Include="static\inlinescript.js" />
     <Content Include="static\minusDoc36.png" />
     <Content Include="static\minusFolder36.png" />
@@ -61,6 +64,7 @@
     <Content Include="static\scratch.js" />
     <Content Include="static\upload.js" />
     <Content Include="static\UploadDialog.htm" />
+    <Content Include="Tiddler.py" />
     <Content Include="UploadDialog.htm" />
   </ItemGroup>
 </Project>
