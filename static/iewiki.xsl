@@ -415,7 +415,7 @@ body {font-size:0.8em;}
 <pre>&lt;!--{{{--&gt;
 &lt;div class='toolbar' macro='toolbar [[ToolbarCommands::ViewToolbar]]'&gt;&lt;/div&gt;
 &lt;div class='title' macro='view title'&gt;&lt;/div&gt;
-&lt;div class='subtitle'&gt;&lt;span macro='view modifier link'&gt;&lt;/span&gt;&lt;span macro='view modified date "DD MMM YYYY" ", "'&gt;&lt;/span&gt; &lt;span macro='history'&gt;&lt;/span&gt;&lt;/div&gt;
+&lt;div class='subtitle'&gt;&lt;span macro='author'&gt;&lt;/span&gt;&lt;span macro='view modified date "DD MMM YYYY" ", "'&gt;&lt;/span&gt; &lt;span macro='history'&gt;&lt;/span&gt;&lt;/div&gt;
 &lt;div class='tagging' macro='tagging'&gt;&lt;/div&gt;
 &lt;div class='tagged' macro='tags'&gt;&lt;/div&gt;
 &lt;div class='viewer' macro='view versions wikified'&gt;&lt;/div&gt;
@@ -453,6 +453,24 @@ To get started with this blank page, you'll need to modify the following tiddler
 * MainMenu: The menu that appears on the left
 * DefaultTiddlers: Contains the names of the tiddlers that you want to appear when the page is opened
 	</pre>
+</div>
+<div title="UserProfile" viewTemplate="ViewOnlyTemplate">
+<pre>
+&lt;script&gt;forms.UserProfile = http.userProfile();&lt;/script&gt;
+|My pen name&lt;br&gt;&lt;&lt;input text penname 40&gt;&gt;|
+|About me (displayed as a tooltip)&lt;br&gt;&lt;&lt;input textarea aboutme 5*50&gt;&gt;|
+|When my pen name is clicked, display this page or tiddler (/path#title)&lt;br&gt;&lt;&lt;input text tiddler 55&gt;&gt; &lt;script label=&quot;Display&quot; title=&quot;Display tiddler now&quot;&gt;DisplayNonLocalTiddler(null,forms.UserProfile.tiddler);&lt;/script&gt;|
+|My projects&lt;br&gt; &lt;&lt;myprojects&gt;&gt;&lt;&lt;input text newproject 55&gt;&gt; &lt;script label=&quot;Add&quot; title=&quot;Add project&quot;&gt;var n = 'newproject'; if (config.macros.input.showField(n)) { if (ConfirmIfMessage(http.addProject({'domain': forms.UserProfile.newproject}))) if (http.addProject({'domain': forms.UserProfile.newproject, 'confirmed': true}).Success) story.refreshTiddler("UserProfile",null,true)} else config.macros.input.showField(n,true);&lt;/script&gt;&lt;br&gt;|
+|&lt;script label=&quot;Save&quot; title=&quot;Save&quot;&gt;OnCommitCloseForm("UserProfile",http.userProfile(forms.UserProfile));&lt;/script&gt;|
+&lt;script&gt;config.macros.input.showField('newproject',false);&lt;/script&gt;
+</pre>
+</div>
+<div title="UserMenu">
+<pre>
+macro|login|
+macro|logout|
+tiddler|UserProfile|my profile|Edit my profile|
+</pre>
 </div>
 <div title="EditingMenu">
 <pre>

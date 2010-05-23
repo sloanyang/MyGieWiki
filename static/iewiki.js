@@ -465,7 +465,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -481,7 +481,7 @@ config.shadowTiddlers = {
     SiteTitle: "SiteTitle",
     SiteSubtitle: "",
     SiteUrl: "http://giewiki.appspot.com/",
-    SideBarOptions: '<<login>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e !readOnly>><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
+    SideBarOptions: '<<login edit UserMenu "My stuff" m !readOnly>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e !readOnly>><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "More" "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
@@ -572,6 +572,7 @@ function main() {
     if (params)
         params = params.parseParams("open", null, false);
     http._addMethod("getTiddler");
+    authors = [];
     store = new TiddlyWiki();
     invokeParamifier(params, "oninit");
     story = new Story("tiddlerDisplay", "tiddler");
@@ -748,7 +749,8 @@ function invokeMacro(place, macro, params, wikifier, tiddler) {
         	createTiddlyError(place, config.messages.macroError.format([macro]), config.messages.macroErrorDetails.format([macro, config.messages.missingMacro]));
         }
     } catch (ex) {
-        createTiddlyError(place, config.messages.macroError.format([macro]), config.messages.macroErrorDetails.format([macro, ex.toString()]));
+		var msg = ex.message || ex.toString();
+        createTiddlyError(place, config.messages.macroError.format([macro]), config.messages.macroErrorDetails.format([macro, msg]));
     }
 }
 
@@ -2244,6 +2246,7 @@ config.macros.refreshDisplay.onClick = function(e) {
     refreshAll();
     return false;
 };
+
 config.macros.annotations.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
     var title = tiddler ? tiddler.title : null;
     var a = title ? config.annotations[title] : null;
@@ -2607,21 +2610,12 @@ config.commands.editTiddler.handler = function(event, src, title) {
     var tiddlerElem = story.getTiddler(title);
     var fields = tiddlerElem.getAttribute("tiddlyFields");
     var st = store.getTiddler(title);
-    if (st && st.from)
-		if (confirm("This tiddler is included from " + st.from) == false)
-			return;
-	if (!st) {
-		st = http.getTiddler({'title': title});
-		if (st && st.success) {
-			var t = new Tiddler();
-			t.assign(st.title,st.text,st.modifier,
-				Date.convertFromYYYYMMDDHHMM(st.modified),st.tags,
-				Date.convertFromYYYYMMDDHHMM(st.created),
-				null, parseInt(st.version));
-			t.currentVer = t.version;
-			store.addTiddler(t);
-		}
+    if (st && st.from) {
+		var a = st.from + '#' + encodeURIComponent(String.encodeTiddlyLink(title));
+		config.annotations[title] = [ "Go to [[", a,'|', a, "]] to edit this tiddler, if so permitted"].join('');
 	}
+	if (!st)
+		st = TryGetTiddler(title);
 	if (st && st.id && (!st.from) && config.options.txtLockDuration != "") {
 		var reply = http.editTiddler({id: st.id, duration: config.options.txtLockDuration });
 		st.key = reply.key;
@@ -2642,6 +2636,38 @@ config.commands.editTiddler.handler = function(event, src, title) {
     story.focusTiddler(title, config.options.txtEditorFocus || "text");
     return false;
 };
+
+function TryGetTiddler(title)
+{
+	st = http.getTiddler({'title': title});
+	if (st && st.success) {
+		var t = new Tiddler();
+		t.assign(st.title,st.text,st.modifier,
+			Date.convertFromYYYYMMDDHHMM(st.modified),st.tags,
+			Date.convertFromYYYYMMDDHHMM(st.created),
+			null, parseInt(st.version));
+		t.currentVer = t.version;
+		store.addTiddler(t);
+		return t;
+	}
+	return null;
+}
+
+function DisplayNonLocalTiddler(from, url)
+{
+	st = http.getTiddler({'url': url});
+	if (st && st.success) {
+		var t = new Tiddler();
+		t.assign(st.title,st.text,st.modifier,
+			Date.convertFromYYYYMMDDHHMM(st.modified),st.tags,
+			Date.convertFromYYYYMMDDHHMM(st.created),
+			null, parseInt(st.version));
+		t.currentVer = t.version;
+		story.displayTiddler(from, t);
+	}
+	else
+		displayMessage(url + " not found");
+}
 
 config.commands.saveTiddler.handler = function(event, src, title) {
     var newTitle = story.saveTiddler(title, event.shiftKey);
@@ -3787,7 +3813,7 @@ Story.prototype.displayTiddler = function(srcElement, tiddler, template, animate
     } else {
         var place = this.getContainer();
         var before = this.positionTiddler(srcElement);
-        tiddlerElem = this.createTiddler(place, before, title, template, customFields);
+        tiddlerElem = this.createTiddler(place, before, title, template, customFields, tiddler instanceof Tiddler ? tiddler : null);
     }
     if (animationSrc && typeof animationSrc !== "string") {
         srcElement = animationSrc;
@@ -3827,14 +3853,14 @@ Story.prototype.positionTiddler = function(srcElement) {
     return before;
 };
 
-Story.prototype.createTiddler = function(place, before, title, template, customFields) {
+Story.prototype.createTiddler = function(place, before, title, template, customFields, tiddler) {
     var tiddlerElem = createTiddlyElement(null, "div", this.tiddlerId(title), "tiddler");
     tiddlerElem.setAttribute("refresh", "tiddler");
     if (customFields)
         tiddlerElem.setAttribute("tiddlyFields", customFields);
     place.insertBefore(tiddlerElem, before);
     var defaultText = null;
-    this.refreshTiddler(title, template, false, customFields, defaultText);
+    this.refreshTiddler(title, template, false, customFields, defaultText, tiddler);
     return tiddlerElem;
 };
 
@@ -3855,7 +3881,7 @@ Story.prototype.getTemplateForTiddler = function(title, template, tiddler) {
     return store.getRecursiveTiddlerText(template, null, 10);
 };
 
-Story.prototype.refreshTiddler = function(title, template, force, customFields, defaultText) {
+Story.prototype.refreshTiddler = function(title, template, force, customFields, defaultText, tdlr) {
     var tiddlerElem = this.getTiddler(title);
     if (tiddlerElem) {
         if (tiddlerElem.getAttribute("dirty") == "true" && !force)
@@ -3863,7 +3889,7 @@ Story.prototype.refreshTiddler = function(title, template, force, customFields, 
         template = this.chooseTemplateForTiddler(title, template);
         var currTemplate = tiddlerElem.getAttribute("template");
         if ((template != currTemplate) || force) {
-            var tiddler = store.getTiddler(title);
+            var tiddler = tdlr || store.getTiddler(title);
             if (!tiddler) {
                 tiddler = new Tiddler();
                 if (store.isShadowTiddler(title)) {
@@ -4794,6 +4820,8 @@ function onClickTiddlerLink(ev) {
         if (noToggle)
             toggling = false;
         t = store.getTiddler(title)
+		if (!t)
+			t = TryGetTiddler(title);
         if (t)
             t.display(target,fields,toggling);
         else
@@ -6482,7 +6510,7 @@ function convertUnicodeToHtmlEntities(s) {
 function Debugger(m,r) { 
 	if (window.confirm((typeof(m) == "string" ? m : "") + "- Invoke debugger?"))
 		debugger; 
-	return r;
+	return r || m;
 }
 
 function RetryInDebugger(e,m) { 
@@ -6492,6 +6520,16 @@ function RetryInDebugger(e,m) {
 	} 
 	else 
 		return false; 
+}
+
+function ConfirmIfMessage(status)
+{
+	if (!status.Success)
+		return false;
+	else if (status.Message)
+		return window.confirm(status.Message);
+	else
+		return true;
 }
 
 function JsoFromXml(rce) {
@@ -6822,6 +6860,13 @@ config.macros.input = {
         } catch (x) {
             displayMessage(x.message);
         }
+    },
+    showField: function(name,show) {
+		var e = document.getElementById(name);
+		if (show === undefined)
+			return e.style.display == 'inline';
+		else
+			e.style.display  = show ? 'inline':'none';
     }
 }
 
@@ -7150,20 +7195,30 @@ config.macros.loginDialog = {
 }
 
 config.macros.login = {
-    handler: function(place,macroName,params,wikifier,paramString,tiddler) 
-    {
-        if (config.options.txtUserName == null || config.options.txtUserName == "")	{
-            var label = "login";
-            var tip = "Log in with your Google id";
-        }
-        else {
-            var label = config.options.txtUserName;
-            var tip = config.admin ? "admin logout" : "logout";
-        }
-            
-        createTiddlyButton(place, label, tip, function() { story.displayTiddler(null,"LoginDialog") });
-    }
-}
+	displayLoginDialog: function()	{
+		story.displayTiddler(null,"LoginDialog");
+	},
+	handler: function(place,macroName,params,wikifier,paramString,tiddler) {
+		if (config.options.txtUserName == null || config.options.txtUserName == "")	{
+			var label = "login";
+			var tip = "Log in with your Google id";
+			createTiddlyButton(place, label, tip, this.displayLoginDialog);
+		}
+		else {
+			this.open = true;
+			params[0] = config.options.txtUserName + " \u00bb";
+			return config.macros.menu.handler(place,macroName,params,wikifier,paramString,tiddler);
+		}
+	}
+};
+
+config.macros.logout = {
+	handler: function(place,macroName,params,wikifier,paramString,tiddler) {
+		var label = "logout";
+		createTiddlyButton(place, label, label, config.macros.login.displayLoginDialog);
+	}
+};
+
 
 config.macros.userName = {
     handler: function(place,macroName,params,wikifier,paramString,tiddler) 
@@ -7432,19 +7487,56 @@ config.macros.fileList = {
 	}
 }
 
+config.macros.author = {
+	handler: function(place, macroName, params, wikifier, paramString, tiddler)
+	{
+		if (tiddler.version == 0)
+			return createTiddlyButton(place,config.views.wikified.shadowModifier,"This is a special-purpose tiddler",null,'shadowTiddler');
+			
+		var au = authors[tiddler.modifier];
+		if (!au)
+			au = authors[tiddler.modifier] = http.getUserInfo({'user': tiddler.modifier});
+		
+		createTiddlyButton(place,tiddler.modifier,au.about,config.macros.author.onclick,'penname','user/' + tiddler.modifier);
+	},
+	onclick: function(ev)
+	{
+		t = resolveTarget(ev || window.event);
+		var id = t.getAttribute("id").substring(5);
+		var au = authors[id];
+		if (au.tiddler != "")
+			DisplayNonLocalTiddler(null, au.tiddler);
+	}
+}
+
+config.macros.myprojects = {
+	handler: function(place)
+	{
+		var projects = http.userProfile().projects;
+		if (projects && projects.length) {
+			var ps = projects.split(' ');
+			for (var p = 0; p < ps.length; p++) {
+				var link = createExternalLink(place,'http://' + [ps[p], window.location.host].join('.'));
+				link.innerHTML = ps[p];
+				createTiddlyElement(place,'br');
+			}
+		}
+	}
+}
+
 config.macros.urlFetch = {
-    handler: function(place, macroName, params)
-    {
-        var text = http.urlFetch(
-            { url: params[0] } );
-        var output = createTiddlyElement(place, "span");
-        output.innerHTML = text;
-    }
+	handler: function(place, macroName, params)
+	{
+		var text = http.urlFetch(
+			{ url: params[0] } );
+		var output = createTiddlyElement(place, "span");
+		output.innerHTML = text;
+	}
 }
 
 config.macros.downloadAsTiddlyWiki = {
-    handler: function(place, macroName, params)
-    {
+	handler: function(place, macroName, params)
+	{
 		if (window.location.protocol == "file:") 
 			return;
 		createTiddlyText(place, "Download");

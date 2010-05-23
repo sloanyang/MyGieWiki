@@ -9,7 +9,7 @@
 //{{{
 http._addMethod('publishSub');
 se = store.getTiddler('EditingMenu');
-se.text = se.text + 'macro|publishPlugin|' + '\n';
+se.text = se.text + '\nmacro|publishPlugin|' + '\n';
 config.macros.publishPlugin = {
   handler: function(place) {
     host = location.host.split('.').slice(1)

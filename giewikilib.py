@@ -5,6 +5,7 @@
 
 import xml.dom.minidom
 import datetime
+import re
 
 from google.appengine.api import users
 
@@ -116,7 +117,9 @@ def replyWithObjectList(cl,re,se,sl):
 	cl.response.out.write(xd.toxml())
 
 def getAuthor(t):
-	if t.author != None:
+	if t.author_ip != None and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',t.author_ip) == None:
+		return t.author_ip # It's not an IP address
+	elif t.author != None:
 		return str(t.author.nickname());
 	elif t.author_ip != None:
 		return str(t.author_ip)

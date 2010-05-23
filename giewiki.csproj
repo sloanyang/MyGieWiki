@@ -1,21 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="3.5">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>9.0.30729</ProductVersion>
+    <ProductVersion>8.0.50727</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{92C4352D-2183-4476-8B77-F3E6FA6FB9B0}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>giewiki</RootNamespace>
     <AssemblyName>giewiki</AssemblyName>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
-    <OldToolsVersion>2.0</OldToolsVersion>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -44,17 +38,15 @@
   -->
   <ItemGroup>
     <None Include="app.yaml" />
+    <None Include="cron.yaml" />
     <None Include="index.yaml" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="iewiki.py" />
     <Content Include="index.py" />
     <Content Include="Hello.py" />
-    <Content Include="giewikilib.py" />
-    <Content Include="PluginManager.xml" />
     <Content Include="Plugins.py" />
     <Content Include="empty.html" />
-    <Content Include="PluginsMacro.xml" />
     <Content Include="static\favicon.ico" />
     <Content Include="static\iewiki.js" />
     <Content Include="static\iewiki.xsl" />
@@ -62,7 +54,6 @@
     <Content Include="static\minusDoc36.png" />
     <Content Include="static\minusFolder36.png" />
     <Content Include="static\minusTiddler36.png" />
-    <Content Include="plugins.js" />
     <Content Include="static\plusDoc36.png" />
     <Content Include="static\plusFolder36.png" />
     <Content Include="static\plusTiddler36.png" />
@@ -70,8 +61,6 @@
     <Content Include="static\scratch.js" />
     <Content Include="static\upload.js" />
     <Content Include="static\UploadDialog.htm" />
-    <Content Include="testmacro.js" />
-    <Content Include="Tiddler.py" />
     <Content Include="UploadDialog.htm" />
   </ItemGroup>
 </Project>

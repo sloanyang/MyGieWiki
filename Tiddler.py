@@ -182,11 +182,29 @@ class UrlImport(db.Model):
 
 class UploadedFile(db.Model):
   owner = db.UserProperty()
+  sub = db.StringProperty()
   path = db.StringProperty()
   mimetype = db.StringProperty()
   data = db.BlobProperty()
   date = db.DateTimeProperty(auto_now_add=True)
   
+class UserProfile(db.Model):
+  user = db.UserProperty()
+  penname = db.StringProperty()
+  aboutme = db.TextProperty()
+  tiddler = db.StringProperty()
+  projects = db.StringProperty()
+  
+class PenName(db.Model):
+  penname = db.StringProperty()
+  user = db.ReferenceProperty(UserProfile)
+  
+class SubDomain(db.Model):
+  preurl = db.StringProperty()
+  ownerprofile = db.ReferenceProperty(UserProfile)
+  owneruser = db.UserProperty()
+  public = db.BooleanProperty()
+
 class LogEntry(db.Model):
 	when = db.DateTimeProperty(auto_now_add=True)
 	what = db.StringProperty()
@@ -215,9 +233,11 @@ def HasGroupAccess(grps,user):
 				return True
 	return False
 	
-def ReadAccessToPage( page, user = users.get_current_user()):
-	if page.__class__ == unicode:
-		page = Page.all().filter("path =",page).get()
+def ReadAccessToPage( page, sub = None, user = None):
+	if user == None:
+		user = users.get_current_user()
+	if page.__class__ in (unicode, str):
+		page = Page.all().filter('path',page).filter('sub',sub).get()
 	if page == None: # Un-cataloged page - restricted access
 		return users.is_current_user_admin()
 	if page.anonAccess >= page.ViewAccess: # anyone can see it
@@ -231,9 +251,9 @@ def ReadAccessToPage( page, user = users.get_current_user()):
 			return True
 	return False
 
-def AccessToPage( page, user = users.get_current_user()):
+def AccessToPage( page, sub = None, user = users.get_current_user()):
 	if page.__class__ == unicode:
-		page = Page.all().filter("path =",page).get()
+		page = Page.all().filter('path',page).filter('sub',sub).get()
 	if page == None: # Un-cataloged page - restricted access
 		return 'all' if users.is_current_user_admin() else 'none'
 	if page.owner == user or users.is_current_user_admin():

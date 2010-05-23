@@ -62,12 +62,21 @@ class MainPage(webapp.RequestHandler):
 		versions += '|>|Default content|0|<<revision "' + title + '" 0>>|\n'
 	return versions;
   
+  def AuthorIP(self):
+	u = users.get_current_user()
+	if u == None:
+		return self.request.remote_addr
+	p = UserProfile.all().filter('user',u).get()
+	if p == None:
+		return self.request.remote_addr
+	return p.penname
+  
   def SaveNewTiddler(self,page,name,value):
 	p = Tiddler()
 	p.page = page
 	p.sub = self.subdomain 
 	p.author = users.get_current_user()
-	p.author_ip = self.request.remote_addr
+	p.author_ip = self.AuthorIP()
 	p.version = 1
 	p.comments = 0
 	p.current = True
@@ -184,7 +193,7 @@ class MainPage(webapp.RequestHandler):
 		tlr.id = str(uuid.uuid4())
 	if users.get_current_user():
 		tlr.author = users.get_current_user()
-	tlr.author_ip = self.request.remote_addr # ToDo: Get user's sig in stead
+	tlr.author_ip = self.AuthorIP() # ToDo: Get user's sig in stead
 
 	tls = Tiddler.all().filter('id', tlr.id).filter('version >=',tlr.version - 1)
 	
@@ -359,19 +368,18 @@ class MainPage(webapp.RequestHandler):
 				page.systemInclude = '\n'.join(siLines)
 				page.put()
 				return self.warn("tiddler excluded")
-				
+		self.reply()
+	for st in ShadowTiddler.all().filter('id',tid):
+		st.delete()
 	tls = Tiddler.all().filter('id', tid)
 	any = False
 	for tlr in tls:
 		tlr.delete()
 		any = True
-	for st in ShadowTiddler.all().filter('id',tid):
-		st.delete()
-		
-	xd = xml.dom.minidom.Document()
-	tv = xd.createElement('TiddlerDelete')
-	xd.appendChild(tv)
-	self.response.out.write(xd.toxml())
+	if any:
+		self.reply()
+	else:
+		self.fail("Tiddler " + tid + " does not exist");
 	
   def add(self):
 	self.reply({"Success": True, "result": int(self.request.get("a")) + int(self.request.get("b"))})
@@ -730,7 +738,7 @@ class MainPage(webapp.RequestHandler):
 	if t == None:
 		self.reply({"success": False })
 	else:
-		if t.public or ReadAccessToPage(t.page):
+		if t.public or ReadAccessToPage(t.page,self.subdomain):
 			self.reply({ \
 			'success': True, \
 			'id': t.id, \
@@ -993,6 +1001,7 @@ class MainPage(webapp.RequestHandler):
 		return self.uploadTiddlyWikiDoc(filename,filedata)
 	else:
 		f = UploadedFile()
+		f.sub = self.subdomain
 		f.owner = users.get_current_user()
 		f.path = CombinePath(self.request.path, filename)
 		f.mimetype = self.request.get("mimetype")
@@ -1006,10 +1015,11 @@ class MainPage(webapp.RequestHandler):
 		u.close()
 	
   def fileList(self):
-	files = UploadedFile.all()
+	files = UploadedFile.all().filter('sub', self.subdomain)
 	owner = self.request.get("owner")
 	if owner != "":
 		files = files.filter("owner =",owner)
+		
 	path = self.request.get("path")
 	xd = self.initXmlResponse()
 	re = xd.addArrayOfObjects('result')
@@ -1239,6 +1249,70 @@ class MainPage(webapp.RequestHandler):
 	except Exception,x:
 		self.fail(str(x))
 
+  def userProfile(self):
+	" Store or retrieve current user's profile "
+	u = UserProfile.all().filter('user', users.get_current_user()).get()
+	penname = self.request.get('penname',None)
+	if u == None and penname != None: # data supplied and not stored
+		u = UserProfile(user = users.get_current_user(), penname = '', aboutme = '', tiddler = '', projects = '') # new record
+	if penname != None: # update data
+		pn = PenName.all().filter('penname',penname).get()
+		if pn != None and pn.user.user != users.get_current_user():
+			return self.fail("This penname belongs to someone else (" + pn.user.nickname() + ")")
+		u.penname = penname
+		u.aboutme = self.request.get('aboutme')
+		u.tiddler = self.request.get('tiddler')
+		u.put()
+		if pn == None:
+			pn = PenName(user=u)
+		pn.penname = penname
+		pn.put() 
+		self.reply()
+	elif u != None: # retrieve data
+		self.reply({ \
+			'Success': True, \
+			'penname': u.penname, \
+			'aboutme': u.aboutme,
+			'tiddler': u.tiddler,
+			'projects': u.projects})
+	else:
+		self.reply();
+
+  def addProject(self):
+	up = UserProfile.all().filter('user', users.get_current_user()).get()
+	if up == None:
+		return self.fail("You have to first save your profile before you can add a project")
+	sd = self.request.get('domain')
+	ev = SubDomain.all().filter('preurl',sd).get()
+	if ev == None:
+		if self.request.get('confirmed',False) == False:
+			return self.reply({'Success': 'true'})
+		ev = SubDomain( \
+			preurl = sd, \
+			ownerprofile = up, \
+			owneruser = users.get_current_user())
+		ev.put()
+	elif ev.owneruser != users.get_current_user():
+		if ev.public == False:
+			return self.fail("This project belongs to someone else")
+		if not ReadAccessToPage('/',sd):
+			return self.fail("This project belongs to " + ev.ownerprofile.penname)
+		if not self.request.get('confirmed',False):
+			return self.warn("This project is managed by " + ev.ownerprofile.penname + '\nProceed?')
+	currp = up.projects.split() if up.projects != None else []
+	if not sd in currp:
+		currp.append(sd)
+		up.projects = ' '.join(currp)
+		up.put()
+	self.reply()
+	
+  def getUserInfo(self):
+	user = self.request.get('user')
+	pn = PenName.all().filter('penname',user).get()
+	if pn == None:
+		return self.reply({ 'about': user })
+	self.reply( { 'about': pn.user.aboutme, 'tiddler': pn.user.tiddler } )
+
   def traceMethod(self,m,method):
 	r = method()
 	if self.trace != False:
@@ -1308,7 +1382,15 @@ class MainPage(webapp.RequestHandler):
 		if until < datetime.datetime.utcnow():
 			el.delete()
 	truncateModel(LogEntry)
-	  
+
+  def deleteLink(self,id):
+	done = False
+	for st in ShadowTiddler.all():
+		if st.id == id:
+			st.delete()
+			done = True
+	self.response.out.write(''.join(["Id ", id,' ','deleted' if done else 'not deleted']))
+
   def task(self,method):
 	if method == 'cleanup':
 		return self.cleanup()
@@ -1348,17 +1430,19 @@ class MainPage(webapp.RequestHandler):
 	if trace == '':
 		self.trace = False # disabled by default
 	else:
-		self.traceLevel = self.request.get('trace')
+		self.traceLevel = trace
 		self.trace = []
 		memcache.add(self.request.remote_addr, self.traceLevel, 300) # 5 minutes
 		self.Trace("TL=" + memcache.get(self.request.remote_addr))
 
 	self.getSubdomain()
-	method = self.request.get("method")
-	
-	if method == "LoginDone":
-		return self.LoginDone(self.request.get("path"))
-		
+	method = self.request.get("method",None)
+	if method != None:
+		if method == "LoginDone":
+			return self.LoginDone(self.request.get("path"))
+		elif method == "deleteLink":
+			return self.deleteLink(self.request.get('id'))
+
 	if self.request.path == "/_tasks":
 		return self.task(method)
 	elif self.request.path == "/_export.xml" and users.is_current_user_admin():
@@ -1366,12 +1450,12 @@ class MainPage(webapp.RequestHandler):
 
 	tiddict = dict()
 	defaultTiddlers = ""
-	self.warnings = ""
+	self.warnings = []
 
 	page = self.CurrentPage()
 	if page != None and page.gwversion == None:
 		Upgrade(self)
-		self.warnings = "DataStore was upgraded"
+		self.warnings.append("DataStore was upgraded")
 	if page != None:
 		if page.systemInclude != None:
 			includeDisabled = self.request.get('disable')
@@ -1390,9 +1474,12 @@ class MainPage(webapp.RequestHandler):
 									tiddict[tdo.id] = tdo
 
 	includeNumber = 0
+	disregard = 0
 	includefiles = self.request.get("include").split()
 	if self.subdomain != None:
 		includefiles.append('PublishPlugin.xml')
+		disregard = disregard + 1
+		
 	for tn in includefiles:
 		try:
 			splitpos = tn.find('|')
@@ -1405,7 +1492,7 @@ class MainPage(webapp.RequestHandler):
 			tdx = []
 			for tdo in tds:
 				if tdo == None:
-					self.warnings = "None in TiddlersFromXml<br>";
+					self.warnings.append("Internal error: None in TiddlersFromXml")
 				elif tfs == None or tdo.title in tfs:
 					includeNumber = includeNumber - 1
 					tiddict['include' + str(includeNumber)] = tdo
@@ -1415,16 +1502,20 @@ class MainPage(webapp.RequestHandler):
 					tdx.append(tdo.title)
 			if tfs != None and len(tfs) > 0:
 				if tfs[0] != 'list':
-					self.warnings = "Not found: " + '|'.join(tfs)
+					self.warnings.append("Not found: " + '|'.join(tfs))
 				elif len(tdx) > 0:
-					self.warnings = "Found but excluded:<br>" + ' '.join(tdx)
+					self.warnings.append("Found but excluded:<br>" + ' '.join(tdx))
 		except Exception, x:
 			self.response.out.write("<html>Error including " + tn + ":<br>" + str(x))
 			return
 	
 	for st in ShadowTiddler.all():
 		if self.request.path.startswith(st.path):
-			tiddict[st.tiddler.id] = st.tiddler
+			try:
+				tiddict[st.tiddler.id] = st.tiddler
+			except Exception, x:
+				self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
+					' has been deleted! <a href="', self.request.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
 	
 	tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",self.subdomain).filter("current", True)
 		
@@ -1460,10 +1551,12 @@ class MainPage(webapp.RequestHandler):
 			httpMethodTiddler = tiddict.pop(id)
 			break
 		
-	# LogEvent("get: " + str(len(tiddict)) , self.request.path)
+	self.Trace("Tiddict: " + str(len(tiddict)))
+	for id, t in tiddict.iteritems():
+		self.Trace(id + ':' + t.title)
 	pages = []
-	if len(tiddict) == 0: # Not an existing page, perhaps an uploaded file ?
-		file = UploadedFile.all().filter("path =", self.request.path).get()
+	if len(tiddict) == disregard: # Not an existing page, perhaps an uploaded file ?
+		file = UploadedFile.all().filter("sub",self.subdomain).filter("path =", self.request.path).get()
 		LogEvent("Get file", self.request.path)
 		if file != None:
 			self.response.headers['Content-Type'] = file.mimetype
@@ -1511,7 +1604,7 @@ class MainPage(webapp.RequestHandler):
 			metaDiv.setAttribute('timestamp',str(datetime.datetime.now()))
 			metaDiv.setAttribute('username',username)
 			metaDiv.setAttribute('owner', page.owner.nickname())
-			metaDiv.setAttribute('access', AccessToPage(page,user))
+			metaDiv.setAttribute('access', AccessToPage(page,self.subdomain,user))
 			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
 			metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
 			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
@@ -1521,8 +1614,8 @@ class MainPage(webapp.RequestHandler):
 					metaDiv.setAttribute('groupmember','true')
 			if page.locked:
 				metaDiv.setAttribute('locked','true')
-			if self.warnings != "":
-				metaDiv.setAttribute('warnings',self.warnings)
+			if len(self.warnings) > 0:
+				metaDiv.setAttribute('warnings','<br>'.join(self.warnings))
 		if self.trace != None and self.trace != False and len(self.trace) > 0:
 			metaPre = xd.createElement('pre')
 			metaDiv.appendChild(metaPre)
@@ -1557,7 +1650,7 @@ class MainPage(webapp.RequestHandler):
 	elDoc.appendChild(elStArea) # the root element
 	elDoc.appendChild(elShArea)
 	
-	if ReadAccessToPage(page,user):
+	if ReadAccessToPage(page,self.subdomain,user):
 		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
 		for id, t in tiddict.iteritems():
 			# pages at /_python/ are executable script...
