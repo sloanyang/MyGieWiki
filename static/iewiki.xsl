@@ -470,6 +470,7 @@ To get started with this blank page, you'll need to modify the following tiddler
 macro|login|
 macro|logout|
 tiddler|UserProfile|my profile|Edit my profile|
+link|/_ah/admin|DataStore|config.admin
 </pre>
 </div>
 <div title="EditingMenu">
@@ -554,6 +555,7 @@ if (http.deletePage(window.location.href).Success) {
 |Owner&lt;br&gt;&lt;&lt;input text owner 36&gt;&gt;|Group(s) &lt;&lt;defineGroup&gt;&gt;&lt;br&gt;&lt;&lt;input text groups 36&gt;&gt;|Locked&lt;br&gt;&lt;&lt;input checkbox locked false&gt;&gt;|
 |&gt;|&gt;|Access permissions|
 |Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes &gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
+|&gt;|&gt;|Includes:&lt;&lt;importTiddlerStatus forms.PageProperties.systeminclude&gt;&gt;|
 |&lt;script label=&quot;Save&quot; title=&quot;Save properties&quot;&gt;OnSavePageProperties(OnCommitCloseForm("PageProperties",http.pageProperties(forms.PageProperties)));&lt;/script&gt;|DeletePage|&lt;script label=&quot;Close&quot; title=&quot;Close&quot;&gt;story.closeTiddler("PageProperties");&lt;/script&gt;|</pre>
 </div>
 <div title="CreateNewPage" viewTemplate="ViewOnlyTemplate">

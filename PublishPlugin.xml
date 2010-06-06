@@ -9,14 +9,24 @@
 //{{{
 http._addMethod('publishSub');
 se = store.getTiddler('EditingMenu');
-se.text = se.text + '\nmacro|publishPlugin|' + '\n';
+se.text = se.text + '\nmacro|publishPlugin|!tiddler.hasShadow' + '\n';
 config.macros.publishPlugin = {
-  handler: function(place) {
+  handler: function(place,macroName,params,wkfr,paramString) {
     host = location.host.split('.').slice(1)
-    createTiddlyButton(place, "publish", "publish to " + host, this.onclick);
+    createTiddlyButton(place, "publish", "publish to " + host, this.onclick, null, null, null, {'filter': paramString });
   },
-  onclick: function() {
-    http.publishSub({});
+  onclick: function(ev) {
+    var e = ev || window.event;
+    var me = resolveTarget(e);
+    var params = me.getAttribute('filter');
+    if (params &amp;&amp; params.length) {
+      store.filtered = [];
+      var code = ['if (', params, ') this.filtered.push(encodeURIComponent(title));'].join('');
+      var ff = new Function("title","tiddler", code);
+      store.forEachTiddler(ff);
+      //displayMesssage(store.filtered.join('&amp;'));
+    }
+    http.publishSub({'s': store.filtered});
   }
 };
 //}}}

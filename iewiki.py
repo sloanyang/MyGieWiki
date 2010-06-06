@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.3.1
+# ver.:	1.3.1.1
 
 import cgi
 import uuid
@@ -499,14 +499,15 @@ class MainPage(webapp.RequestHandler):
 			self.reply({"Success": True })
 	else: # Get
 		self.reply({ 
-			"title": page.title,
-			"subtitle": page.subtitle,
-			"owner": page.owner,
-			"locked": page.locked,
-			"anonymous": Page.access[page.anonAccess],
-			"authenticated": Page.access[page.authAccess],
-			"group": Page.access[page.groupAccess],
-			"groups": page.groups})
+			'title': page.title,
+			'subtitle': page.subtitle,
+			'owner': page.owner,
+			'locked': page.locked,
+			'anonymous': Page.access[page.anonAccess],
+			'authenticated': Page.access[page.authAccess],
+			'group': Page.access[page.groupAccess],
+			'groups': page.groups,
+			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
 
   def getNewAddress(self):
 	path = self.request.path
@@ -1068,11 +1069,15 @@ class MainPage(webapp.RequestHandler):
 				else:
 					fromUrl = al.split('#')[1].split('||')
 	if select != "":
-		newPick = url + "#" + select
+		if select != 'void':
+			newPick = url + "#" + select
+		else:
+			newPick = None
 		if page.systemInclude == None:
 			page.systemInclude = newPick
 		else:
-			urls.append(newPick)
+			if newPick != None:
+				urls.append(newPick)
 			page.systemInclude = '\n'.join(urls)
 		page.put()
 		return self.warn("Reload to get the requested tiddlers")
@@ -1090,7 +1095,11 @@ class MainPage(webapp.RequestHandler):
 
 
   def tiddlersFromSources(self,url,sources=None,cache=None,save=False):
-	xd = self.XmlFromSources(url,sources)
+	try:
+		xd = self.XmlFromSources(url,sources)
+	except Exception, x:
+		self.warnings.append('failed to read ' + str(url) + ":" + str(x))
+		return None
 	if xd.__class__ == xml.dom.minidom.Document:
 		pe = xd.documentElement
 		if pe.nodeName.lower() == 'html':
@@ -1202,14 +1211,27 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write(xd.toxml())
 
   def publishSub(self):
-	npages = toDict(Page.all().filter('sub',self.subdomain).fetch(1000),'path')
+	sel = self.request.get('s',None)
+	srcpages = Page.all().filter('sub',self.subdomain)
+	srctidds = Tiddler.all().filter('sub',self.subdomain)
+	if sel != None:
+		srcpages = srcpages.filter('path',self.request.path)
+		srctidds = srctidds.filter('page',self.request.path)
+		sel = sel.split('%2C')
+		flt = []
+		for t in srctidds:
+			if t.title in sel:
+				flt.append(t)
+		srctidds = flt
+
+	npages = toDict(srcpages.fetch(1000),'path')
 	epages = toDict(Page.all().filter('sub',None).fetch(1000),'path')
 	results = []
-	for pg in npages:
+	for path,pg in npages.iteritems():
 		if not pg.path in epages:
 			pg[pg.path].sub = None
 			pg.put()
-	for t in Tiddler.all().filter('sub',self.subdomain):
+	for t in srctidds:
 		if t.current == True:
 			et = Tiddler.all().filter('id',t.id).filter('current',True).filter('sub',None).get()
 			if et != None: # demote
@@ -1460,7 +1482,7 @@ class MainPage(webapp.RequestHandler):
 		if page.systemInclude != None:
 			includeDisabled = self.request.get('disable')
 			if includeDisabled != '*':
-				for sf in page.systemInclude.split('\n'):
+				for sf in page.systemInclude.replace('\r','').split('\n'):
 					urlParts = sf.split('#')
 					urlPath = urlParts[0]
 					if includeDisabled != urlPath:
@@ -1489,22 +1511,23 @@ class MainPage(webapp.RequestHandler):
 			else:
 				tfs = None
 			tds = self.tiddlersFromSources(tn)
-			tdx = []
-			for tdo in tds:
-				if tdo == None:
-					self.warnings.append("Internal error: None in TiddlersFromXml")
-				elif tfs == None or tdo.title in tfs:
-					includeNumber = includeNumber - 1
-					tiddict['include' + str(includeNumber)] = tdo
-					if tfs != None:
-						tfs.remove(tdo.title)
-				else:
-					tdx.append(tdo.title)
-			if tfs != None and len(tfs) > 0:
-				if tfs[0] != 'list':
-					self.warnings.append("Not found: " + '|'.join(tfs))
-				elif len(tdx) > 0:
-					self.warnings.append("Found but excluded:<br>" + ' '.join(tdx))
+			if tds != None:
+				tdx = []
+				for tdo in tds:
+					if tdo == None:
+						self.warnings.append("Internal error: None in TiddlersFromXml")
+					elif tfs == None or tdo.title in tfs:
+						includeNumber = includeNumber - 1
+						tiddict['include' + str(includeNumber)] = tdo
+						if tfs != None:
+							tfs.remove(tdo.title)
+					else:
+						tdx.append(tdo.title)
+				if tfs != None and len(tfs) > 0:
+					if tfs[0] != 'list':
+						self.warnings.append("Not found: " + '|'.join(tfs))
+					elif len(tdx) > 0:
+						self.warnings.append("Found but excluded:<br>" + ' '.join(tdx))
 		except Exception, x:
 			self.response.out.write("<html>Error including " + tn + ":<br>" + str(x))
 			return

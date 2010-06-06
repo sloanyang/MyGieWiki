@@ -6533,6 +6533,8 @@ function ConfirmIfMessage(status)
 }
 
 function JsoFromXml(rce) {
+	if (rce == null)
+		return null;
     var v =  rce.childNodes.length ? rce.firstChild.nodeValue : "";
     var type = rce.attributes.getNamedItem("type");
     if (type != null && type.value != null)
@@ -6805,6 +6807,7 @@ config.macros.input = {
         c.onchange = this.fieldChanged;
         return c;
 	},
+	// <<input checkbox name [checked]>>
 	checkbox: function(place, name, params, wikifier, paramString, tiddler) {
         var c = createTiddlyElement(place,"input",name,null,null, {href: "javascript:;", type: "checkbox"});
         c.checked = params.length > 1 ? params[1] : "";
@@ -7160,12 +7163,20 @@ config.macros.menu = {
 			var what = text[i].split("|");
 			switch (what.shift())
 			{
-			case "macro":
+			case 'macro':
 				invokeMacro(target,what[0],what[1]);
 				break;
-			case "tiddler":
+			case 'tiddler':
 				var tn = what[0];
 				createTiddlyButton(target,what[1],what[2],config.macros.menu.openTiddler,null,null,what[3],{data:tn});
+				break;
+			case 'link':
+				// link URL text condition
+				if (eval(what[2])) {
+					var lnk = createExternalLink(target, what[0]);
+					lnk.appendChild(document.createTextNode(what[1]));
+				}
+				break;
 			}
 		}
 		var c = target;
@@ -7496,8 +7507,12 @@ config.macros.author = {
 		var au = authors[tiddler.modifier];
 		if (!au)
 			au = authors[tiddler.modifier] = http.getUserInfo({'user': tiddler.modifier});
-		
-		createTiddlyButton(place,tiddler.modifier,au.about,config.macros.author.onclick,'penname','user/' + tiddler.modifier);
+		if (au.tiddler == null)
+			createTiddlyLink(place,tiddler.modifier, true);
+		else if (au.tiddler.indexOf('#') > 0)
+			createTiddlyButton(place,tiddler.modifier,au.about,config.macros.author.onclick,'penname','user/' + tiddler.modifier);
+		else
+			createTiddlyText(createExternalLink(place,au.tiddler),tiddler.modifier);
 	},
 	onclick: function(ev)
 	{
@@ -7671,34 +7686,48 @@ config.macros.importTiddlers = {
 				+ config.macros.importTiddlers.menu(), place);
 		else {
 			var aurl = params.shift();
-			var afilter = params.join(' ');
+			var filt = params.shift();
+			if (filt == 'all') {
+				return wikify('all', place);
+			}
+			if (filt == 'tagged')
+				var afilter = params.join(' ');
+			else if (filt == 'tiddlers' && params.length)
+				var tiddlers = params.length == 1 ? params[0].split('||') : params;
 			displayMessage("Getting <br>" + aurl + "</br>");
-			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter });
+			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter || '' });
 			clearMessage();
 			if (libs) {
 				this.aurl = aurl;
 				this.libs = libs;
 				var wd = createTiddlyElement(place, "div");
+				var hta = [ '<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
 				var links = [];
-				var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
 				for (var t = 0; t < libs.length; t++) {
 					var lt = libs[t];
+					if (tiddlers && tiddlers.indexOf(lt.title) == -1)
+						continue;
 					if (lt.current)
 						var checked = 'checked="1"';
 					else
 						var checked = '';
 					var ltav = t;
-					var line = ['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td><input type="checkbox" id="cht', ltav, '"', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl,'">', lt.title.htmlEncode(), '</a></td><td>',lt.tags,'</td></tr>'].join('');
+					var line = ['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td><input type="checkbox" id="cht', ltav, '" ', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl, '">', lt.title.htmlEncode(), '</a></td><td>', lt.tags, '</td></tr>'].join('');
 					links[t] = 'itl' + ltav;
 					hta.push(line);
 				}
 				hta.push(['</tbody></table><input type="checkbox" id="chkAll">',
-					"Select all or select those above you wish to <a href='javascript:;' id='cmdImport'>import (permanently)</a> or <a href='/' id='cmdInclude' target='_blank'>include (once, via query string)</a>."].join(''));
-				if (afilter != "")
+					'Select all or select those above you wish to <a href="javascript:;" id="cmdImport">import (permanently)</a> or <a href="/" id="cmdInclude" target="_blank">include (once, via query string)</a>.'].join(''));
+				if (afilter)
 					afilter = " tagged " + afilter;
-				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers", afilter];
+				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers.", afilter];
+				if (tiddlers)
+					resmsg.push(' <a href="javascript:;" id="sea',aurl,'"> Show all</a>');
 				wd.innerHTML = resmsg.join('') + hta.join('');
-				for (var t = 0; t < links.length; t++) {
+				if (tiddlers)
+					document.getElementById('sea' + aurl).onclick = config.macros.importTiddlers.showAll;
+				for (t in links) {
+					if (isNaN(t)) continue;
 					var chtid = 'cht' + t;
 					var chtel = document.getElementById(chtid);
 					chtel.onchange = config.macros.importTiddlers.onchange;
@@ -7709,9 +7738,13 @@ config.macros.importTiddlers = {
 			}
 		}
 	},
-	onchange: function(ev) {
+	showAll: function(ev) {
 		var target = resolveTarget(ev || window.event);
-		var idx = Number(target.id.substring(3));	
+		config.macros.importTiddlers.serve(target.getAttribute('id').substring(3), false, true);
+	},
+	onchange: function (ev) {
+		var target = resolveTarget(ev || window.event);
+		var idx = Number(target.id.substring(3));
 		var libs = config.macros.importTiddlers.libs;
 		libs[idx].current = target.checked;
 		var cursel = [];
@@ -7725,16 +7758,16 @@ config.macros.importTiddlers = {
 	},
 	fetch: function (ev) {
 		var target = resolveTarget(ev || window.event);
-		var td = http.getTiddler({id: target.getAttribute('title') + "#" + target.firstChild.nodeValue});
+		var td = http.getTiddler({ id: target.getAttribute('title') + "#" + target.firstChild.nodeValue });
 		var tiddler = new Tiddler(td.title, 0, td.text);
 		tiddler.tags = td.tags.readBracketedList();
 		tiddler.modifier = td.modifier;
 		tiddler.modified = td.modified;
 		store.addTiddler(tiddler);
-		story.displayTiddler(null,tiddler.title);
-		story.focusTiddler(tiddler.title,"text");
+		story.displayTiddler(null, tiddler.title);
+		story.focusTiddler(tiddler.title, "text");
 	},
-	serve: function (file) {
+	serve: function (file, selected, override) {
 		var ms = function (t) {
 			t.version = t.currentVer = 0;
 			t.hasShadow = true;
@@ -7743,9 +7776,12 @@ config.macros.importTiddlers = {
 			t.modified = null;
 			return t;
 		};
-		if (!store.fetchTiddler(file))
-			store.addTiddler(ms(new Tiddler(file, 0, ['<<importTiddlers "', file, '">>'].join(''))));
-		story.displayTiddler(null, file);
+		if ((!store.fetchTiddler(file)) || override)
+			store.addTiddler(ms(new Tiddler(file, 0, ['<<importTiddlers "', file, '" ', selected ? 'tiddlers' : '', ' "', selected, '">>'].join(''))));
+		if (story.getTiddler(file))
+			story.refreshTiddler(file,null,true);
+		else
+			story.displayTiddler(null, file);
 	},
 	menu: function () {
 		var filelist = http.tiddlersFromUrl({ menu: true });
@@ -7784,9 +7820,26 @@ config.macros.importTiddlers = {
 				}
 			}
 		}
-		var result = http.tiddlersFromUrl({ url: aurl, select: selectList.join('||') });
+		var result = http.tiddlersFromUrl({ url: aurl, select: selectList.length ? selectList.join('||') : 'void' });
 		if (result.Success)
 			if (window.confirm(result.Message))
 				window.location.reload();
+	}
+};
+
+config.macros.importTiddlerStatus = {
+	handler: function (place, macroName, params, wikifier, paramString) {
+		list = eval(params.shift()).split('\n');
+		var n = 0;
+		for (var i = 0; i < list.length; i++)
+			if (list[i].trim() != "") {
+				var data = list[i].trim().split('#', 2);
+				var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve("', data[0], '","', data[1], '")</script><br>'].join('');
+				if (++n == 1)
+					wikify('<br>', place);
+				wikify(wt, place);
+			}
+		if (n == 0)
+			wikify(' (none)',place);
 	}
 }
