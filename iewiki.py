@@ -1211,13 +1211,15 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write(xd.toxml())
 
   def publishSub(self):
-	sel = self.request.get('s',None)
+	rsel = self.request.get('s',None).split(',')
+	sel = []
+	for s in rsel:
+		sel.append(s.replace('%20',' ').replace('%2C',','))
 	srcpages = Page.all().filter('sub',self.subdomain)
 	srctidds = Tiddler.all().filter('sub',self.subdomain)
 	if sel != None:
 		srcpages = srcpages.filter('path',self.request.path)
 		srctidds = srctidds.filter('page',self.request.path)
-		sel = sel.split('%2C')
 		flt = []
 		for t in srctidds:
 			if t.title in sel:
@@ -1235,6 +1237,7 @@ class MainPage(webapp.RequestHandler):
 		if t.current == True:
 			et = Tiddler.all().filter('id',t.id).filter('current',True).filter('sub',None).get()
 			if et != None: # demote
+				t.version = et.version + 1
 				et.current = False
 				et.put()
 			t.sub = None # promote
