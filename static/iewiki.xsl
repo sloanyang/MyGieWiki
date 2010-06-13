@@ -556,6 +556,7 @@ if (http.deletePage(window.location.href).Success) {
 |&gt;|&gt;|Access permissions|
 |Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes &gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
 |&gt;|&gt;|Includes:&lt;&lt;importTiddlerStatus forms.PageProperties.systeminclude&gt;&gt;|
+|Read-only view options|Access to prior versions&lt;br&gt;&lt;&lt;input checkbox viewprior true&gt;&gt;|Show view button&lt;br&gt;&lt;&lt;input checkbox viewbutton true&gt;&gt;|
 |&lt;script label=&quot;Save&quot; title=&quot;Save properties&quot;&gt;OnSavePageProperties(OnCommitCloseForm("PageProperties",http.pageProperties(forms.PageProperties)));&lt;/script&gt;|DeletePage|&lt;script label=&quot;Close&quot; title=&quot;Close&quot;&gt;story.closeTiddler("PageProperties");&lt;/script&gt;|</pre>
 </div>
 <div title="CreateNewPage" viewTemplate="ViewOnlyTemplate">

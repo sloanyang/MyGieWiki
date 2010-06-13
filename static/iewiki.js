@@ -533,6 +533,8 @@ config.read = function(t) {
 	this.authAccess = fields.authaccess;
 	this.groupAccess = fields.groupaccess;
 	this.groups = fields.groups;
+	this.viewButton = window.eval(fields.viewbutton);
+	this.viewPrior =  window.eval(fields.viewprior);
 	this.locked = fields.locked;
 	this.pages = this.readPages(t.ace);
 	this.warnings = fields.warnings;
@@ -2676,8 +2678,12 @@ config.commands.saveTiddler.handler = function(event, src, title) {
     return false;
 };
 
+config.commands.editTiddler.isEnabled = function(tdlr) {
+	return readOnly == false || config.viewButton;
+};
+
 config.commands.lockTiddler.isEnabled = function(tdlr) {
-	return !tdlr.from;
+	return !tdlr.from && !readOnly;
 };
 
 config.commands.lockTiddler.handler = function(event, src, title) {
@@ -6652,7 +6658,7 @@ config.macros.history = {
                 hist = hist - 1;
                 if (store.isShadowTiddler(tiddler.title))
                     hist++;
-                if (!hist)
+                if (!hist || (readOnly == true && config.viewPrior == false))
                     return;
                 createTiddlyText(place, " (");
                 var snVersions = hist + " prior " + (hist != "1" ? "versions" : "version");

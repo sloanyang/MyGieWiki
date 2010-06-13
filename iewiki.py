@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.3.1.1
+# ver.:	1.3.1.2
 
 import cgi
 import uuid
@@ -471,7 +471,7 @@ class MainPage(webapp.RequestHandler):
 	if page == None:
 		if path == "/" and users.get_current_user() != None: # Root page
 			page = Page()
-			page.gwversion = "2.3"
+			page.gwversion = "2.4"
 			page.path = "/"
 			page.sub = self.subdomain
 			page.title = ""
@@ -482,21 +482,25 @@ class MainPage(webapp.RequestHandler):
 			page.groupAccess = 2
 			page.owner = users.get_current_user()
 			page.groups = ""
+			page.viewbutton = False
+			page.viewprior = False
 		else:
 			return self.fail("Page does not exist")
 	if self.request.get("title") != "": # Put
 		if users.get_current_user() != page.owner and users.is_current_user_admin() == False:
 			self.fail("You cannot change the properties of this pages")
 		else:
-			page.title = self.request.get("title")
-			page.subtitle = self.request.get("subtitle")
-			page.locked = self.request.get("locked") == "true"
-			page.anonAccess = Page.access[self.request.get("anonymous")]
-			page.authAccess = Page.access[self.request.get("authenticated")]
-			page.groupAccess = Page.access[self.request.get("group")]
-			page.groups = self.request.get("groups")
+			page.title = self.request.get('title')
+			page.subtitle = self.request.get('subtitle')
+			page.locked = self.request.get('locked') == 'true'
+			page.anonAccess = Page.access[self.request.get('anonymous')]
+			page.authAccess = Page.access[self.request.get('authenticated')]
+			page.groupAccess = Page.access[self.request.get('group')]
+			page.groups = self.request.get('groups')
+			page.viewbutton = True if self.request.get('viewbutton') == 'true' else False
+			page.viewprior = self.request.get('viewprior') == 'true'
 			page.put()
-			self.reply({"Success": True })
+			self.reply({'Success': True })
 	else: # Get
 		self.reply({ 
 			'title': page.title,
@@ -507,6 +511,8 @@ class MainPage(webapp.RequestHandler):
 			'authenticated': Page.access[page.authAccess],
 			'group': Page.access[page.groupAccess],
 			'groups': page.groups,
+			'viewbutton': page.viewbutton if hasattr(page,'viewbutton') else True,
+			'viewprior': page.viewprior if hasattr(page,'viewprior') else True,
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
 
   def getNewAddress(self):
@@ -543,7 +549,7 @@ class MainPage(webapp.RequestHandler):
 		if self.request.get("title") == "":
 			if parent == "/" and users.get_current_user() != None:
 				pad = Page()
-				pad.gwversion = "2.3"
+				pad.gwversion = "2.4"
 				pad.path = "/"
 				pad.sub = self.subdomain
 				pad.owner = users.get_current_user()
@@ -570,7 +576,7 @@ class MainPage(webapp.RequestHandler):
 	page = Page.all().filter('path =',url).get()
 	if page == None:
 		page = Page()
-		page.gwversion = "2.3"
+		page.gwversion = "2.4"
 		page.path = url
 		page.sub = self.subdomain
 		page.owner = users.get_current_user()
@@ -580,6 +586,8 @@ class MainPage(webapp.RequestHandler):
 		page.anonAccess = Page.access[self.request.get("anonymous")]
 		page.authAccess = Page.access[self.request.get("authenticated")]
 		page.groupAccess = Page.access[self.request.get("group")]
+		page.viewbutton = pad.viewbutton
+		page.viewprior = pad.viewprior
 		page.put()
 		self.SaveNewTiddler(url,"SiteTitle",page.title)
 		if page.subtitle != "":
@@ -1638,6 +1646,9 @@ class MainPage(webapp.RequestHandler):
 				metaDiv.setAttribute('groups',page.groups);
 				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
 					metaDiv.setAttribute('groupmember','true')
+			metaDiv.setAttribute('viewbutton', 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false')
+			metaDiv.setAttribute('viewprior', 'true' if hasattr(page,'viewprior') and page.viewprior else 'false')
+			# metaDiv.setAttribute('server', self.gwserverVersion)
 			if page.locked:
 				metaDiv.setAttribute('locked','true')
 			if len(self.warnings) > 0:

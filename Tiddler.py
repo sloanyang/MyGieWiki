@@ -1,7 +1,7 @@
 # this:	tiddler.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.3.1
+# ver.:	1.3.1.2
 
 from google.appengine.ext import db
 from google.appengine.api import users
@@ -91,6 +91,8 @@ class Page(db.Model):
   modified = db.DateTimeProperty(auto_now_add=True)
   systemInclude = db.TextProperty()
   gwversion = db.StringProperty()
+  viewbutton = db.BooleanProperty(True)
+  viewprior = db.BooleanProperty(True)
   def todict(s,d):
 	d['path'] = s.path
 	d['sub'] = s.sub
@@ -106,6 +108,8 @@ class Page(db.Model):
 	d['modified'] = s.modified
 	d['systemInclude'] = s.systemInclude
 	d['gwversion'] = s.gwversion
+	d['viewbutton'] = s.viewbutton
+	d['viewprior'] = s.viewprior
 
   def Update(self,tiddler):
 	if tiddler.title == "SiteTitle":
