@@ -7611,7 +7611,10 @@ config.macros.uploadDialog = {
 config.macros.diff = {
 	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
 	{
-		createTiddlyButton(place,params[0],'compare to this version', this.onClick);
+		if (tiddler.version == params[0])
+			createTiddlyElement(place,'a',null,'disabled',params[0]);
+		else
+			createTiddlyButton(place,params[0],'compare to this version', this.onClick);
 	},
 	onClick: function(ev)
 	{
@@ -7629,11 +7632,20 @@ config.macros.diff = {
 		var deid = 'diff' + tlr.title;
 		var de = document.getElementById(deid);
 		if (de) removeNode(de);
-		de = createTiddlyElement(tel,"fieldset",deid);
+		de = createTiddlyElement(null,"fieldset",deid);
 		createTiddlyElement(de,"legend",null,null,"Comparing version " + vnx + " (red) to version " + vny + " (green)");
 		var dce = createTiddlyElement(de,"div",null,'diffout');
 		dce.innerHTML = htr;
+		insertAfter(getChildByClassName(tel,'viewer'),de);
 	}
+}
+
+function getChildByClassName(e,name)
+{
+	for (e = e.firstChild; e.className != name; e = e.nextSibling) {
+		if (!e) break;
+	}
+	return e;
 }
 
 function createUploadFrame(place, qs, id)

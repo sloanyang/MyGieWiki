@@ -315,6 +315,7 @@ a.tiddlyLinkNonExisting.shadow {font-weight:bold;}
 .subtitle {font-size:1.1em;}
 
 .tiddler .button {padding:0.2em 0.4em;}
+.tiddler .disabled {padding:0.2em 0.6em;}
 
 .tagging {margin:0.5em 0.5em 0.5em 0; float:left; display:none;}
 .isTag .tagging {display:block;}
