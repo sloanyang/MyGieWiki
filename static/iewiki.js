@@ -465,7 +465,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -6587,9 +6587,10 @@ function JsoFromXml(rce) {
 function HttpReply(req) {
     if (typeof(req) != "object")
         return req;
-    if (!req.responseXML)
-        return req.responseText;
-	return JsoFromXml(req.responseXML.documentElement);
+    if (req.responseXML && req.responseXML.documentElement)
+		return JsoFromXml(req.responseXML.documentElement);
+	else
+		return req.responseText;
 }
 
 function HttpGet(args, method) {
@@ -7604,6 +7605,34 @@ config.macros.uploadDialog = {
 		createUploadFrame(place,"");
 		createTiddlyElement(place,"DIV","displayUploadResult");
 		createTiddlyElement(place,"DIV","displayUploads");
+	}
+}
+
+config.macros.diff = {
+	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
+	{
+		createTiddlyButton(place,params[0],'compare to this version', this.onClick);
+	},
+	onClick: function(ev)
+	{
+		var place = resolveTarget(ev || window.event);
+		var vnx = place.firstChild.nodeValue;
+		var vny = tiddler.version;
+		if (vny == vnx)
+			return displayMessage("Same version!");
+		if (vny < vnx) {
+			var vt = vnx; vnx = vny; vny = vt; // swap order
+		}
+		var tel = story.findContainingTiddler(place);
+		var tlr = store.getTiddler(tel.getAttribute("tiddler"));
+		var htr = http.tiddlerDiff({ tid: tlr.id, vn1: vnx, vn2: vny });
+		var deid = 'diff' + tlr.title;
+		var de = document.getElementById(deid);
+		if (de) removeNode(de);
+		de = createTiddlyElement(tel,"fieldset",deid);
+		createTiddlyElement(de,"legend",null,null,"Comparing version " + vnx + " (red) to version " + vny + " (green)");
+		var dce = createTiddlyElement(de,"div",null,'diffout');
+		dce.innerHTML = htr;
 	}
 }
 

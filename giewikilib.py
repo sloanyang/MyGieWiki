@@ -43,6 +43,17 @@ def MimetypeFromFiletype(ft):
 		return "image/gif"
 	return "application/octet-stream"
 	
+html_escape_table = {
+	"&": "&amp;",
+	'"': "&quot;",
+	"'": "&apos;",
+	">": "&gt;",
+	"<": "&lt;",
+	}
+
+def html_escape(text):
+	return "".join(html_escape_table.get(c,c) for c in text)
+
 def CombinePath(path,fn):
 	if path.rfind('/') != len(path) - 1:
 		path = path + '/'

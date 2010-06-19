@@ -1,11 +1,12 @@
 # this:	iewiki.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.3.1.2
+# ver.:	1.3.1.3
 
 import cgi
-import uuid
+import difflib
 import urllib
+import uuid
 import xml.dom.minidom
 
 from datetime import *
@@ -294,7 +295,8 @@ class MainPage(webapp.RequestHandler):
   def tiddlerHistory(self):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
-	tls = Tiddler.all().filter("id", self.request.get("tiddlerId"))
+	tid = self.request.get("tiddlerId")
+	tls = Tiddler.all().filter("id", tid)
 	eHist = xd.add(xd,'Hist')
 	eVersions = xd.createElement('versions')
 	eHist.appendChild(eVersions)
@@ -302,7 +304,9 @@ class MainPage(webapp.RequestHandler):
 	for tlr in tls:
 		if text == "":
 			text = self.initHist(tlr.title);
-		text += "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + getAuthor(tlr) + "|" + str(tlr.version) + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
+		text += "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + getAuthor(tlr) \
+			 + "|<<diff " + str(tlr.version) + ' ' + tid + '>>' \
+			 + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
 	
 	eVersions.appendChild(xd.createTextNode(text))
 	self.response.out.write(xd.toxml())
@@ -348,6 +352,20 @@ class MainPage(webapp.RequestHandler):
 		tv.appendChild(err)
 		err.appendChild(xd.createTextNode(self.request.get("tiddlerId") + ': ' + self.request.get("version") + ' found ' + str(found)))
 	self.response.out.write(xd.toxml())
+	
+  def tiddlerDiff(self):
+	v1t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',int(self.request.get('vn1'))).get().text
+	v2t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',int(self.request.get('vn2'))).get().text
+	ndiff = difflib.ndiff(v1t.splitlines(),v2t.splitlines())
+	pdiff = []
+	for dl in ndiff:
+		if dl[:2] == '  ':
+			pdiff.append(html_escape(dl[2:]))
+		elif dl[:2] == '+ ':
+			pdiff.append('<span class="diffplus">' + html_escape(dl[2:]) + '</span>');
+		elif dl[:2] == '- ':
+			pdiff.append('<span class="diffminus">' + html_escape(dl[2:]) + '</span>');
+	self.response.out.write('<br>'.join(pdiff))
 
   def deleteTiddler(self):
 	self.initXmlResponse()

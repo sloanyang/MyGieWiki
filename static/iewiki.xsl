@@ -363,6 +363,9 @@ table.listView th, table.listView td, table.listView tr {padding:0px 3px 0px 3px
 .replyTD { padding-left:1.25em }
 .buttonftr {position:relative; top:0em; right:0em; }
 
+.diffout { font-size:0.9em; font-family: courier; }
+.diffplus { background-color: #d0ffdd; }
+.diffminus { background-color: #ffd0dd; }
 /*}}}*/
 </pre>
 </div>
