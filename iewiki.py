@@ -57,12 +57,6 @@ class MainPage(webapp.RequestHandler):
 	self.initXmlResponse()
 	self.response.out.write(xd.toxml())
 
-  def initHist(self,title):
-	versions = '|When|Who|V#|Title|\n'
-	if self.request.get("shadow") == '1':
-		versions += '|>|Default content|0|<<revision "' + title + '" 0>>|\n'
-	return versions;
-  
   def AuthorIP(self):
 	u = users.get_current_user()
 	if u == None:
@@ -198,18 +192,7 @@ class MainPage(webapp.RequestHandler):
 
 	tls = Tiddler.all().filter('id', tlr.id).filter('version >=',tlr.version - 1)
 	
-	versions = self.request.get("versions")
-	getPrior = False
-	if versions == '':
-		getPrior = True
-		versions = self.initHist(tlr.title);
 	for atl in tls:
-		if getPrior or atl.version == tlr.version:
-			if atl.author != None:
-				by = atl.author.nickname()
-			else:
-				by = self.request.remote_addr
-			versions = versions + "|" + atl.modified.strftime("%Y-%m-%d %H:%M") + "|" + by + "|" + str(atl.version) + '|<<revision "' + atl.title + '" ' + str(atl.version) + '>>|\n'
 		if atl.version >= tlr.version:
 			tlr.version = atl.version + 1
 			tlr.comments = atl.comments;
@@ -280,35 +263,16 @@ class MainPage(webapp.RequestHandler):
 	ide = xd.createElement('id')
 	ide.appendChild(xd.createTextNode(str(tlr.id)))
 
-	if tlr.author != None:
-		by = tlr.author.nickname()
-	else:
-		by = self.request.remote_addr;
-	versions = versions + "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + by + "|" + str(tlr.version) + '|<<revision "' + tlr.title + '" ' + str(tlr.version) + '>>|\n'
-	ve = xd.createElement('versions')
-	ve.appendChild(xd.createTextNode(versions))
 	esr.appendChild(we)
 	esr.appendChild(ide)
-	esr.appendChild(ve)
+	esr.appendChild(getTiddlerVersions(xd,str(tlr.id),1 if tlr.version == 1 else tlr.version - 1))
 	self.response.out.write(xd.toxml())
 	
   def tiddlerHistory(self):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
-	tid = self.request.get("tiddlerId")
-	tls = Tiddler.all().filter("id", tid)
 	eHist = xd.add(xd,'Hist')
-	eVersions = xd.createElement('versions')
-	eHist.appendChild(eVersions)
-	text = ""
-	for tlr in tls:
-		if text == "":
-			text = self.initHist(tlr.title);
-		text += "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + getAuthor(tlr) \
-			 + "|<<diff " + str(tlr.version) + ' ' + tid + '>>' \
-			 + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
-	
-	eVersions.appendChild(xd.createTextNode(text))
+	eHist.appendChild(getTiddlerVersions(xd,self.request.get("tiddlerId"), 0 if self.request.get("shadow") == '1' else 1))
 	self.response.out.write(xd.toxml())
 
   def tiddlerVersion(self):
@@ -354,8 +318,16 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write(xd.toxml())
 	
   def tiddlerDiff(self):
-	v1t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',int(self.request.get('vn1'))).get().text
-	v2t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',int(self.request.get('vn2'))).get().text
+	vn1 = int(self.request.get('vn1'))
+	try:
+		v1t = "" if vn1 == 0 else Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn1).get().text
+	except Exception,x:
+		raise Exception("Cannot get version " + vn1 + " of " + self.request.get('tid'))
+	vn2 = int(self.request.get('vn2'))
+	try:
+		v2t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn2).get().text
+	except Exception,x:
+		raise Exception("Cannot get version " + vn2 + " of " + self.request.get('tid'))
 	ndiff = difflib.ndiff(v1t.splitlines(),v2t.splitlines())
 	pdiff = []
 	for dl in ndiff:

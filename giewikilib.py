@@ -127,6 +127,25 @@ def replyWithObjectList(cl,re,se,sl):
 	xmlArrayOfObjects(xd,tv,sl,se)
 	cl.response.out.write(xd.toxml())
 
+def initHist(shadowTitle):
+	versions = '|When|Who|V#|Title|\n'
+	if shadowTitle != None: # self.request.get("shadow") == '1':
+		versions += "|>|Default content|<<diff 0 " + shadowTitle + '>>|<<revision "' + shadowTitle + '" 0>>|\n'
+	return versions;
+  
+def getTiddlerVersions(xd,tid,startFrom):
+	text = ""
+	for tlr in Tiddler.all().filter("id", tid):
+		if text == "":
+			text = initHist(tlr.title if startFrom == 0 else None);
+		if tlr.version >= startFrom:
+			text += "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + getAuthor(tlr) \
+				 + "|<<diff " + str(tlr.version) + ' ' + tid + '>>' \
+				 + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
+	eVersions = xd.createElement('versions')
+	eVersions.appendChild(xd.createTextNode(text))
+	return eVersions
+
 def getAuthor(t):
 	if t.author_ip != None and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',t.author_ip) == None:
 		return t.author_ip # It's not an IP address
