@@ -139,8 +139,8 @@ def getTiddlerVersions(xd,tid,startFrom):
 		if text == "":
 			text = initHist(tlr.title if startFrom == 0 else None);
 		if tlr.version >= startFrom:
-			text += "|" + tlr.modified.strftime("%Y-%m-%d %H:%M") + "|" + getAuthor(tlr) \
-				 + "|<<diff " + str(tlr.version) + ' ' + tid + '>>' \
+			text += '|' + tlr.modified.strftime('%Y-%m-%d %H:%M') + '|<<author "' + getAuthor(tlr) + '">>' \
+				 + '|<<diff ' + str(tlr.version) + ' ' + tid + '>>' \
 				 + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
 	eVersions = xd.createElement('versions')
 	eVersions.appendChild(xd.createTextNode(text))

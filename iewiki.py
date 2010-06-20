@@ -320,14 +320,14 @@ class MainPage(webapp.RequestHandler):
   def tiddlerDiff(self):
 	vn1 = int(self.request.get('vn1'))
 	try:
-		v1t = "" if vn1 == 0 else Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn1).get().text
+		v1t = self.request.get('shadowText') if vn1 == 0 else Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn1).get().text
 	except Exception,x:
-		raise Exception("Cannot get version " + vn1 + " of " + self.request.get('tid'))
+		raise Exception("Cannot get version " + str(vn1) + " of " + self.request.get('tid'))
 	vn2 = int(self.request.get('vn2'))
 	try:
 		v2t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn2).get().text
 	except Exception,x:
-		raise Exception("Cannot get version " + vn2 + " of " + self.request.get('tid'))
+		raise Exception("Cannot get version " + str(vn2) + " of " + self.request.get('tid'))
 	ndiff = difflib.ndiff(v1t.splitlines(),v2t.splitlines())
 	pdiff = []
 	for dl in ndiff:

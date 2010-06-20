@@ -7511,7 +7511,7 @@ config.macros.author = {
 		if (tiddler.version == 0)
 			return createTiddlyButton(place,config.views.wikified.shadowModifier,"This is a special-purpose tiddler",null,'shadowTiddler');
 			
-		var au = authors[tiddler.modifier];
+		var au = authors[paramString || tiddler.modifier];
 		if (!au)
 			au = authors[tiddler.modifier] = http.getUserInfo({'user': tiddler.modifier});
 		if (au.tiddler == null || au.tiddler == "")
@@ -7628,7 +7628,14 @@ config.macros.diff = {
 		}
 		var tel = story.findContainingTiddler(place);
 		var tlr = store.getTiddler(tel.getAttribute("tiddler"));
-		var htr = http.tiddlerDiff({ tid: tlr.id, vn1: vnx, vn2: vny });
+		var args = { tid: tlr.id, vn1: vnx, vn2: vny };
+		if (vnx == 0)
+			args.shadowText = tlr.ovs[0].text;
+		if (!args.tid) // shadow tiddler is current
+			for (var ix in tlr.ovs)
+				if (tlr.ovs[ix].id)
+					args.tid = tlr.ovs[ix].id;
+		var htr = http.tiddlerDiff(args);
 		var deid = 'diff' + tlr.title;
 		var de = document.getElementById(deid);
 		if (de) removeNode(de);
