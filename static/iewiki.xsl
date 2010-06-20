@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!-- Copyright (c) UnaMesa Association 2004-2009; see /static/iewiki.js -->
-<!-- giewiki ver.: 1.3.1 -->
+<!-- giewiki ver.: 1.4 -->
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:output method='html' version='1.0' encoding='UTF-8' indent='yes'/>
@@ -364,7 +364,7 @@ table.listView th, table.listView td, table.listView tr {padding:0px 3px 0px 3px
 .replyTD { padding-left:1.25em }
 .buttonftr {position:relative; top:0em; right:0em; }
 
-.diffout { font-size:0.9em; font-family: courier; }
+.diffout { font-size:1.0em; font-family: courier; }
 .diffplus { background-color: #d0ffdd; }
 .diffminus { background-color: #ffd0dd; }
 /*}}}*/

@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.3.1.3
+# ver.:	1.4
 
 import cgi
 import difflib

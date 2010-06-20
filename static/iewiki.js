@@ -29,7 +29,7 @@ DAMAGE.
 */
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
-var giewikiVersion = { title: "giewiki", major: 1, minor: 3, revision: 1, date: new Date("May 14, 2010"), extensions: {} };
+var giewikiVersion = { title: "giewiki", major: 1, minor: 4, revision: 0, date: new Date("June 20, 2010"), extensions: {} };
 
 // Modified by Poul Staugaard, (poul [dot] staugaard [at] gmail [dot] com)
 // Portions with spaces for tabs are mostly original, while portions with
@@ -7514,11 +7514,11 @@ config.macros.author = {
 		var au = authors[tiddler.modifier];
 		if (!au)
 			au = authors[tiddler.modifier] = http.getUserInfo({'user': tiddler.modifier});
-		if (au.tiddler == null)
-			createTiddlyLink(place,tiddler.modifier, true);
+		if (au.tiddler == null || au.tiddler == "")
+			createTiddlyElement(place,'a',null,null,tiddler.modifier, { title: au.about });
 		else if (au.tiddler.indexOf('#') > 0)
 			createTiddlyButton(place,tiddler.modifier,au.about,config.macros.author.onclick,'penname','user/' + tiddler.modifier);
-		else
+		else 
 			createTiddlyText(createExternalLink(place,au.tiddler),tiddler.modifier);
 	},
 	onclick: function(ev)
@@ -7612,7 +7612,7 @@ config.macros.diff = {
 	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
 	{
 		if (tiddler.version == params[0])
-			createTiddlyElement(place,'a',null,'disabled',params[0]);
+			createTiddlyElement(place,'div',null,'disabled',params[0]);
 		else
 			createTiddlyButton(place,params[0],'compare to this version', this.onClick);
 	},

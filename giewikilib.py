@@ -1,7 +1,7 @@
 # this:	giewikilib.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.3.1
+# ver.:	1.4
 
 import xml.dom.minidom
 import datetime
