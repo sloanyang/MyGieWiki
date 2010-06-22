@@ -677,7 +677,7 @@ class MainPage(webapp.RequestHandler):
 	xd = XmlDocument()
 	tr = xd.add(xd,"reply")
 	pg = self.request.get("page")
-	page = Page.all().filter("path =",pg).get()
+	page = Page.all().filter('sub',self.subdomain).filter('path',pg).get()
 	error = None
 	if page != None:
 		who = userWho()
@@ -690,7 +690,7 @@ class MainPage(webapp.RequestHandler):
 					error = "You do not have access to this page"
 			
 	if error == None:
-		tiddlers = Tiddler.all().filter("page = ", pg).filter("current = ", True)
+		tiddlers = Tiddler.all().filter('page', self.request.path).filter('sub',self.subdomain).filter('current', True)
 		if tiddlers.count() > 0:
 			tr.setAttribute('type', 'string[]')
 			for t in tiddlers:
@@ -768,17 +768,29 @@ class MainPage(webapp.RequestHandler):
   def getRecentChanges(self):
 	xd = self.initXmlResponse()
 	re = xd.add(xd,'result')
+	ta = xd.add(re,'changes',attrs={'type':'object[]'})
 	offset = eval(self.request.get('offset'))
 	limit = eval(self.request.get('limit'))
-	ts = Tiddler.all().filter("sub",self.subdomain).order("-modified").fetch(limit,offset)
-	ta = xd.add(re,"changes",attrs={'type':'object[]'})
-	for t in ts:
-		rt = xd.add(ta,"tiddler")
-		xd.add(rt,"time",t.modified)
-		xd.add(rt,"who",t.author)
-		xd.add(rt,"page",t.page)
-		xd.add(rt,"title",t.title)
-	xd.add(re,"Success",True)
+	while True:
+		extra = 0
+		ts = Tiddler.all().filter('sub',self.subdomain).order('-modified').fetch(limit,offset)
+		cnt = 0
+		for t in ts:
+			cnt += 1
+			if t.title in ['DefaultTiddlers','MainMenu','SiteTitle','SiteSubtitle']:
+				extra += 1
+			else:
+				rt = xd.add(ta,'tiddler')
+				xd.add(rt,'time',t.modified)
+				xd.add(rt,'who',t.author)
+				xd.add(rt,'page',t.page)
+				xd.add(rt,'title',t.title)
+		if cnt < limit or extra == 0:
+			break
+		else:
+			offset += limit
+			limit = extra
+	xd.add(re,'Success',True)
 	self.sendXmlResponse(xd)
 
   def getRecentComments(self):

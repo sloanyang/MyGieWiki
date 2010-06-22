@@ -7399,14 +7399,18 @@ function OnAddMember(reply)
 config.macros.recentChanges = {
 	handler: function(place)
 	{
+		config.macros.recentChanges.cache = [];
 		var ta = createTiddlyElement(place,"table");
 		var tbody = createTiddlyElement(ta,"tbody");
 		this.fill(tbody,0,10);
 	},
 	fill: function(tbody,off,max)
 	{
-		var rcl = http.getRecentChanges({ offset: off, limit: max });
+		var rcl = config.macros.recentChanges.cache[off];
+		if (!rcl)
+			rcl = http.getRecentChanges({ offset: off, limit: max });
 		if (rcl.Success) {
+			config.macros.recentChanges.cache[off] = rcl;
 			for (var i = 0; i < rcl.changes.length; i++) {
 				var c = rcl.changes[i];
 				var tr = createTiddlyElement(tbody,"tr",null,i % 2 ? "evenRow":"oddRow");
