@@ -328,15 +328,56 @@ class MainPage(webapp.RequestHandler):
 		v2t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn2).get().text
 	except Exception,x:
 		raise Exception("Cannot get version " + str(vn2) + " of " + self.request.get('tid'))
-	ndiff = difflib.ndiff(v1t.splitlines(),v2t.splitlines())
+	ndiffg = difflib.ndiff(v1t.replace('\r\n','\n').splitlines(),v2t.replace('\r\n','\n').splitlines())
+	ndiff = []
+	for v in ndiffg:
+		ndiff.append(v)
 	pdiff = []
-	for dl in ndiff:
+	adiff = []
+	bdiff = []
+	rdiff = []
+	ix = 0
+	for ix in range(0,len(ndiff)):
+		v = ndiff[ix]
+		if v.startswith('  '):
+			if len(adiff) == 1 and len(bdiff) == 1:
+				tdiff = difflib.ndiff(adiff[0][2:].split(' '),bdiff[0][2:].split(' '))
+				for s in tdiff:
+					rdiff.append(s[0] + '.' + s[2:])
+				adiff = []
+				bdiff = []
+			else:
+				rdiff += adiff + bdiff
+				rdiff.append(v)
+				adiff = []
+				bdiff = []
+		elif v.startswith('+ '):
+			adiff.append(v)
+		elif v.startswith('- '):
+			bdiff.append(v)
+		elif not v.startswith('? '):
+			rdiff.append(v)
+		ix += 1
+	
+	idiff = []
+	for dl in rdiff:
+		if dl[1:2] == ' ':
+			if len(idiff) > 0:
+				idiff.append('<br>')
+				pdiff.append(''.join(idiff))
+				idiff = []
 		if dl[:2] == '  ':
 			pdiff.append(html_escape(dl[2:]))
 		elif dl[:2] == '+ ':
-			pdiff.append('<span class="diffplus">' + html_escape(dl[2:]) + '</span>');
+			pdiff.append('<span class="diffplus">' + html_escape(dl[2:]) + '</span>')
 		elif dl[:2] == '- ':
-			pdiff.append('<span class="diffminus">' + html_escape(dl[2:]) + '</span>');
+			pdiff.append('<span class="diffminus">' + html_escape(dl[2:]) + '</span>')
+		elif dl[:2] == ' .':
+			idiff.append(html_escape(dl[2:] + ' '))
+		elif dl[:2] == '+.':
+			idiff.append('<span class="diffplus">' + html_escape(dl[2:]) + ' </span>')
+		elif dl[:2] == '-.':
+			idiff.append('<span class="diffminus">' + html_escape(dl[2:]) + ' </span>')
 	self.response.out.write('<br>'.join(pdiff))
 
   def deleteTiddler(self):
