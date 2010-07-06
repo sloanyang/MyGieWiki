@@ -5,6 +5,7 @@
 
 import xml.dom.minidom
 import datetime
+import difflib
 import re
 
 from google.appengine.api import users
@@ -43,6 +44,14 @@ def MimetypeFromFiletype(ft):
 		return "image/gif"
 	return "application/octet-stream"
 	
+def subDiff(adiff,bdiff,rdiff):
+	if len(adiff) == 1 and len(bdiff) == 1:
+		tdiff = difflib.ndiff(adiff[0][2:].split(' '),bdiff[0][2:].split(' '))
+		for s in tdiff:
+			rdiff.append(s[0] + '.' + s[2:])
+	else:
+		rdiff += adiff + bdiff
+  
 html_escape_table = {
 	"&": "&amp;",
 	'"': "&quot;",

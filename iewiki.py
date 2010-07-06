@@ -340,17 +340,10 @@ class MainPage(webapp.RequestHandler):
 	for ix in range(0,len(ndiff)):
 		v = ndiff[ix]
 		if v.startswith('  '):
-			if len(adiff) == 1 and len(bdiff) == 1:
-				tdiff = difflib.ndiff(adiff[0][2:].split(' '),bdiff[0][2:].split(' '))
-				for s in tdiff:
-					rdiff.append(s[0] + '.' + s[2:])
-				adiff = []
-				bdiff = []
-			else:
-				rdiff += adiff + bdiff
-				rdiff.append(v)
-				adiff = []
-				bdiff = []
+			subDiff(adiff,bdiff,rdiff)
+			rdiff.append(v)
+			adiff = []
+			bdiff = []
 		elif v.startswith('+ '):
 			adiff.append(v)
 		elif v.startswith('- '):
@@ -358,12 +351,13 @@ class MainPage(webapp.RequestHandler):
 		elif not v.startswith('? '):
 			rdiff.append(v)
 		ix += 1
+	subDiff(adiff,bdiff,rdiff)
 	
 	idiff = []
 	for dl in rdiff:
 		if dl[1:2] == ' ':
 			if len(idiff) > 0:
-				idiff.append('<br>')
+				# idiff.append('<br>')
 				pdiff.append(''.join(idiff))
 				idiff = []
 		if dl[:2] == '  ':
@@ -378,6 +372,7 @@ class MainPage(webapp.RequestHandler):
 			idiff.append('<span class="diffplus">' + html_escape(dl[2:]) + ' </span>')
 		elif dl[:2] == '-.':
 			idiff.append('<span class="diffminus">' + html_escape(dl[2:]) + ' </span>')
+	pdiff.append(''.join(idiff))
 	self.response.out.write('<br>'.join(pdiff))
 
   def deleteTiddler(self):
