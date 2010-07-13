@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.4
+# ver.:	1.4.1
 
 import cgi
 import difflib
@@ -537,8 +537,8 @@ class MainPage(webapp.RequestHandler):
 			'authenticated': Page.access[page.authAccess],
 			'group': Page.access[page.groupAccess],
 			'groups': page.groups,
-			'viewbutton': page.viewbutton if hasattr(page,'viewbutton') else True,
-			'viewprior': page.viewprior if hasattr(page,'viewprior') else True,
+			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
+			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
 
   def getNewAddress(self):
@@ -726,7 +726,7 @@ class MainPage(webapp.RequestHandler):
 					error = "You do not have access to this page"
 			
 	if error == None:
-		tiddlers = Tiddler.all().filter('page', self.request.path).filter('sub',self.subdomain).filter('current', True)
+		tiddlers = Tiddler.all().filter('page', pg).filter('sub',self.subdomain).filter('current', True)
 		if tiddlers.count() > 0:
 			tr.setAttribute('type', 'string[]')
 			for t in tiddlers:

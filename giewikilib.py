@@ -86,6 +86,9 @@ def userNameOrAddress(u,a):
 		return u.nickname()
 	else:
 		return a
+		
+def NoneIsFalse(v):
+	return False if v == None else v
 
 def toDict(iter,keyName):
 	d = dict()
