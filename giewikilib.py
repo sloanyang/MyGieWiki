@@ -3,6 +3,7 @@
 # URL:	http://code.google.com/p/giewiki
 # ver.:	1.4
 
+import logging
 import xml.dom.minidom
 import datetime
 import difflib
@@ -147,7 +148,7 @@ def initHist(shadowTitle):
   
 def getTiddlerVersions(xd,tid,startFrom):
 	text = ""
-	for tlr in Tiddler.all().filter("id", tid):
+	for tlr in Tiddler.all().filter('id', tid).order('version'):
 		if text == "":
 			text = initHist(tlr.title if startFrom == 0 else None);
 		if tlr.version >= startFrom:
@@ -158,6 +159,15 @@ def getTiddlerVersions(xd,tid,startFrom):
 	eVersions.appendChild(xd.createTextNode(text))
 	return eVersions
 
+def deleteTiddlerVersion(tid,ver):
+	tlv = Tiddler.all().filter('id', tid).filter('version',ver).get()
+	if tlv != None:
+		tlv.delete()
+		logging.info("Deleted " + str(tid) + " version " + str(ver))
+		return True
+	else:
+		return False
+		
 def getAuthor(t):
 	if t.author_ip != None and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',t.author_ip) == None:
 		return t.author_ip # It's not an IP address

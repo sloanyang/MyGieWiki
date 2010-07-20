@@ -288,8 +288,8 @@ a.tiddlyLinkNonExisting.shadow {font-weight:bold;}
 .popup li.disabled {padding:0.4em;}
 .popup li a {display:block; padding:0.4em; font-weight:normal; cursor:pointer;}
 .listBreak {font-size:1px; line-height:1px;}
-.listBreak div {margin:2px 0;}
 
+.listBreak div {margin:2px 0;}
 .tabset {padding:1em 0em 0em 0.5em;}
 .tab {margin:0em 0em 0em 0.25em; padding:2px;}
 .tabContents {padding:0.5em;}
@@ -365,8 +365,8 @@ table.listView th, table.listView td, table.listView tr {padding:0px 3px 0px 3px
 .buttonftr {position:relative; top:0em; right:0em; }
 
 .diffout { font-size:1.0em; font-family: courier; }
-.diffplus { background-color: #d0ffdd; }
-.diffminus { background-color: #ffd0dd; }
+.diffminus { background-color: #d0ffdd; }
+.diffplus { background-color: #ffd0dd; }
 /*}}}*/
 </pre>
 </div>

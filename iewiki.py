@@ -158,31 +158,39 @@ class MainPage(webapp.RequestHandler):
 	else:
 		error = page.UpdateViolation()
 
-	if tlr.id != '':
+	if tlr.id == '':
+		tlr.version = 1
+	else:
 		if tlr.id.startswith('include-'):
 			# break the link and create a new tiddler
 			nt = self.SaveNewTiddler(tlr.page, self.request.get("tiddlerName"),self.request.get("text"))
 			return self.reply({"Success": True, "id": nt.id})
-		key = self.request.get("key")
-		if key == "":
-			t = Tiddler.all().filter("id", tlr.id).get()
-			if t == None:
-				error = "Tiddler doesnt' exist"
+		t = Tiddler.all().filter('id', tlr.id).filter('current',True).get()
+		if t == None:
+			error = "Tiddler doesnt' exist"
+		else:
+			tlr.version = t.version + 1
+			key = self.request.get("key")
+			if key != "":
+				if self.unlock(key) == False:
+					return
 			else:
-				el = EditLock().all().filter("id",t.id).get() # locked by someone else?
+				el = EditLock().all().filter("id",tlr.id).get() # locked by someone else?
 				if el != None:
 					error = "Locked by " + userNameOrAddress(el.user,el.user_ip)
-		elif self.unlock(key) == False:
-			return
+				else:
+					sv = self.request.get("version")
+					v = eval(sv)
+					if v < tlr.version:
+						return "Edit conflict: version " + sv + " already exists"
 			
-	if error!= None:
+	if error != None:
 		return self.fail(error)
 		
 	tlr.public = page.anonAccess > page.NoAccess
 	tlr.title = self.request.get("tiddlerName")
 	tlr.text = self.request.get("text")
 	tlr.tags = self.request.get("tags")
-	tlr.version = eval(self.request.get("version"))
 	tlr.comments = 0
 	if (tlr.id == ""):
 		tlr.id = str(uuid.uuid4())
@@ -262,9 +270,11 @@ class MainPage(webapp.RequestHandler):
 	we.appendChild(xd.createTextNode(tlr.modified.strftime("%Y%m%d%H%M%S")))
 	ide = xd.createElement('id')
 	ide.appendChild(xd.createTextNode(str(tlr.id)))
-
+	vne = xd.createElement('currentVer')
+	vne.appendChild(xd.createTextNode(str(tlr.version)))
 	esr.appendChild(we)
 	esr.appendChild(ide)
+	esr.appendChild(vne)
 	esr.appendChild(getTiddlerVersions(xd,str(tlr.id),1 if tlr.version == 1 else tlr.version - 1))
 	self.response.out.write(xd.toxml())
 	
@@ -276,8 +286,11 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write(xd.toxml())
 
   def tiddlerVersion(self):
+	return self.ReplyWithTiddlerVersion(self.request.get("tiddlerId"),int(self.request.get("version")))
+	
+  def ReplyWithTiddlerVersion(self,id,version):
+	tls = Tiddler.all().filter('id', id).filter('version',version)
 	self.initXmlResponse()
-	tls = Tiddler.all().filter('id', self.request.get("tiddlerId")).filter('version',int(self.request.get("version")))
 	xd = xml.dom.minidom.Document()
 	tv = xd.createElement('TiddlerVersion')
 	xd.appendChild(tv)
@@ -375,6 +388,35 @@ class MainPage(webapp.RequestHandler):
 	pdiff.append(''.join(idiff))
 	self.response.out.write('<br>'.join(pdiff))
 
+  def revertTiddler(self):
+	if users.is_current_user_admin() == False:
+		return self.fail("Only an admin can revert")
+	tid = self.request.get("tiddlerId")
+	tls = Tiddler.all().filter('id', tid)
+	tplv = None
+	tpcv = None
+	for t in tls:
+		if (tplv == None or tplv < t.version) and t.current == False:
+			tplv = t.version
+		elif t.current:
+			tpcv = t.version
+	if tplv == None:
+		return self.fail("No prior version found")
+	elif tpcv == None:
+		return self.fail("Current not found")
+	else:
+		logging.info("revert " + tid + " v. " + str(tpcv) + " to " + str(tplv))
+		if deleteTiddlerVersion(tid,tpcv):
+			tpl = Tiddler.all().filter('id', tid).filter('version',tplv).get()
+			tpl.current = True
+			tpl.put()
+			k = self.request.get('key',None)
+			if k != None:
+				self.unlock(k)
+			return self.ReplyWithTiddlerVersion(tpl.id,tpl.version)
+		else:
+			return self.fail("Delete failed")
+		
   def deleteTiddler(self):
 	self.initXmlResponse()
 	tid = self.request.get("tiddlerId")

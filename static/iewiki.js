@@ -340,6 +340,12 @@ config.commands = {
         tooltip: "Delete this tiddler",
         warning: "Are you sure you want to delete '%0'?"
     },
+    revertTiddler: { 
+        hideReadOnly: true,
+        text: "revert",
+        tooltip: "Revert last edit",
+        warning: "Are you sure you want to revert '%0'?"
+    },
     permalink: {
         text: "permalink",
         tooltip: "Permalink for this tiddler"
@@ -465,7 +471,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\nrevertTiddler\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -475,7 +481,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler|\n|~TextToolbar|preview tag help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
     SiteTitle: "SiteTitle",
@@ -2737,10 +2743,40 @@ config.commands.deleteTiddler.handler = function(event, src, title) {
     return false;
 };
 
+config.commands.revertTiddler.handler = function(event, src, title) {
+    var revertIt = true;
+    if (config.options.chkConfirmDelete)
+        revertIt = confirm(this.warning.format([title]));
+    if (revertIt) {
+		var tiddler = store.fetchTiddler(title);
+		var pt = http.revertTiddler( { tiddlerId: tiddler.id, key: tiddler.key } );
+		if (pt) {
+			tiddler.set(pt.title,pt.text,pt.modifier,pt.modified,pt.tags,pt.created);
+			var tvs = tiddler.versions
+			if (tvs) {
+				for (tvs = tvs.split('\n'); tvs.length > 0;) {
+					if (tvs.pop() != "")
+						break;
+				}
+				tiddler.versions = tvs.join('\n')
+			}
+			tiddler.version = pt.version;
+			story.refreshTiddler(pt.title,null,true);
+			story.setDirty(pt.title,false);
+		}
+    }
+    return false;
+};
+
+config.commands.revertTiddler.isEnabled = function(t)
+{
+	return t.version > 1 && config.admin;
+};
+
 config.commands.excludeTiddler.handler = function(event, src, title) {
     store.removeTiddler(title);
     story.closeTiddler(title, true);
-}
+};
 
 config.commands.permalink.handler = function(event, src, title) {
     var t = encodeURIComponent(String.encodeTiddlyLink(title));
@@ -3361,7 +3397,6 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 	if (tiddler.key)
 		m.key = tiddler.key;
     var result = http.saveTiddler(m);
-
     if (result.error)
         displayMessage(result.error);
     else
@@ -3371,7 +3406,7 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
     if (title != newTitle)
         this.notify(title, true);
     this.notify(newTitle, true);
-    this.setDirty(true);
+    //this.setDirty(true);
     return tiddler;
 };
 
@@ -7899,5 +7934,22 @@ config.macros.importTiddlerStatus = {
 			}
 		if (n == 0)
 			wikify(' (none)',place);
+	}
+}
+
+config.macros.youtube = {
+	handler: function (place, macroName, params, wikifier, paramString) {
+		if (params.length > 0)
+		{
+			var t = createTiddlyElement(place,"span",null,null,null);
+			var w = place.offsetWidth;
+			var rh = params.length > 1 ? Number(params[1]) : 81;
+			var h = w * rh / 100;
+			t.innerHTML = ['<object width="', 
+				w, '" height="', h,
+				'"><param name="movie" value="http://www.youtube.com/v/Y8yIpH_VI50&color1=0xb1b1b1&color2=0xcfcfcf&hl=en&feature=player_embedded&fs=1"></param><param name="allowFullScreen" value="true"></param><param name="allowScriptAccess" value="always"></param><embed src="http://www.youtube.com/v/',
+				params[0], '&color1=0xb1b1b1&color2=0xcfcfcf&hl=en&feature=player_embedded&fs=1" type="application/x-shockwave-flash" allowfullscreen="true" allowScriptAccess="always" width="', 
+				w, '" height="', h, '"></embed></object>'].join('');
+		}
 	}
 }
