@@ -14,6 +14,7 @@ class Tiddler(db.Model):
   author = db.UserProperty()
   author_ip = db.StringProperty()
   version = db.IntegerProperty()
+  vercnt = db.IntegerProperty()
   current = db.BooleanProperty()
   public = db.BooleanProperty()
   locked = db.BooleanProperty()
@@ -43,6 +44,11 @@ class Tiddler(db.Model):
 	d['comments'] = s.comments
 	d['messages'] = s.messages
 	d['notes'] = s.notes
+  def versionCount(self):
+	if hasattr(self,'vercnt') and self.vercnt != None:
+		return self.vercnt
+	else:
+		return Tiddler.all(keys_only=True).filter('id',self.id).count()
 
 class SiteInfo(db.Model):
   title = db.StringProperty()

@@ -344,7 +344,14 @@ config.commands = {
         hideReadOnly: true,
         text: "revert",
         tooltip: "Revert last edit",
-        warning: "Are you sure you want to revert '%0'?"
+        warning: "Are you sure you want to revert '%0' to version '%1'?",
+        adminWarning : "Reverting from the most recent version as admin will delete it - proceed ?"
+    },
+    truncateTiddler: { 
+        hideReadOnly: true,
+        text: "delete versions",
+        tooltip: "Delete prior versions",
+        warning: "Are you sure you want to delete all prior versions?"
     },
     permalink: {
         text: "permalink",
@@ -471,7 +478,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\nrevertTiddler\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\nrevertTiddler\ndeleteVersions\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -481,7 +488,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler|\n|~TextToolbar|preview tag help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
     SiteTitle: "SiteTitle",
@@ -2744,12 +2751,17 @@ config.commands.deleteTiddler.handler = function(event, src, title) {
 };
 
 config.commands.revertTiddler.handler = function(event, src, title) {
-    var revertIt = true;
-    if (config.options.chkConfirmDelete)
-        revertIt = confirm(this.warning.format([title]));
-    if (revertIt) {
-		var tiddler = store.fetchTiddler(title);
-		var pt = http.revertTiddler( { tiddlerId: tiddler.id, key: tiddler.key } );
+	var revertIt = true;
+	var tiddler = store.fetchTiddler(title);
+	if (config.options.chkConfirmDelete)
+	{
+		if (config.admin && tiddler.version == tiddler.currentVer)
+			revertIt = confirm(this.adminWarning.format([title,tiddler.version]));
+		else
+			revertIt = confirm(this.warning.format([title,tiddler.version]));
+	}
+	if (revertIt) {
+		var pt = http.revertTiddler( { tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version } );
 		if (pt) {
 			tiddler.set(pt.title,pt.text,pt.modifier,pt.modified,pt.tags,pt.created);
 			var tvs = tiddler.versions
@@ -2761,6 +2773,7 @@ config.commands.revertTiddler.handler = function(event, src, title) {
 				tiddler.versions = tvs.join('\n')
 			}
 			tiddler.version = pt.version;
+			tiddler.currentVer = pt.version;
 			story.refreshTiddler(pt.title,null,true);
 			story.setDirty(pt.title,false);
 		}
@@ -2769,6 +2782,21 @@ config.commands.revertTiddler.handler = function(event, src, title) {
 };
 
 config.commands.revertTiddler.isEnabled = function(t)
+{
+	return t.version > 1;
+};
+
+config.commands.truncateTiddler.handler = function(event,src,title) {
+	var tiddler = store.fetchTiddler(title);
+	if (confirm(this.warning.format([title]))) {
+		http.deleteVersions( { tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version})
+		tiddler.versions = null;
+		tiddler.fields['vercnt'] = 0;
+		story.refreshTiddler(tiddler.title,null,true);
+	}
+};
+
+config.commands.truncateTiddler.isEnabled = function(t)
 {
 	return t.version > 1 && config.admin;
 };
@@ -6684,20 +6712,21 @@ function HttpRequest(args,debug) {
 config.macros.history = {
     handler: function(place, macroName, params, wikifier, paramString, tiddler) {
         if (tiddler instanceof Tiddler) {
-            var hist = tiddler.version;
-            if (hist == undefined || hist == "0") {
+            var hist = eval(tiddler.fields['vercnt']);
+            if (hist === undefined || hist == 0) {
                 var inclFrom = tiddler["includedFrom"];
                 if (inclFrom)
                     wikify("included from [[" + inclFrom + "|" + encodeURIComponent(inclFrom) + window.location.fileType + "#" + encodeURIComponent(String.encodeTiddlyLink(tiddler.title)) + "]]", place);
             }
             else {
+				var desc = hist > tiddler.version ? " other " : " prior ";
                 hist = hist - 1;
                 if (store.isShadowTiddler(tiddler.title))
                     hist++;
                 if (!hist || (readOnly == true && config.viewPrior == false))
                     return;
                 createTiddlyText(place, " (");
-                var snVersions = hist + " prior " + (hist != "1" ? "versions" : "version");
+                var snVersions = hist + desc + (hist != "1" ? "versions" : "version");
                 if (tiddler.historyLoaded)
                     createTiddlyText(place, snVersions + " listed");
                 else {
@@ -7549,16 +7578,16 @@ config.macros.author = {
 	{
 		if (tiddler.version == 0)
 			return createTiddlyButton(place,config.views.wikified.shadowModifier,"This is a special-purpose tiddler",null,'shadowTiddler');
-			
-		var au = authors[paramString || tiddler.modifier];
+		var an = params.length > 0 ? params[0] : tiddler.modifier;
+		var au = authors[an];
 		if (!au)
-			au = authors[tiddler.modifier] = http.getUserInfo({'user': tiddler.modifier});
+			au = authors[an] = http.getUserInfo({'user': an});
 		if (au.tiddler == null || au.tiddler == "")
-			createTiddlyElement(place,'a',null,null,tiddler.modifier, { title: au.about });
+			createTiddlyElement(place,'a',null,null,au.about,{title:au.about});
 		else if (au.tiddler.indexOf('#') > 0)
 			createTiddlyButton(place,tiddler.modifier,au.about,config.macros.author.onclick,'penname','user/' + tiddler.modifier);
 		else 
-			createTiddlyText(createExternalLink(place,au.tiddler),tiddler.modifier);
+			createTiddlyText(createExternalLink(place,au.tiddler),an);
 	},
 	onclick: function(ev)
 	{

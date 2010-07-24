@@ -43,10 +43,13 @@ class MainPage(webapp.RequestHandler):
 		return
 
 	self.subdomain = hostc[pos]
-	self.merge = False
-	if pos > 0:
-		if hostc[0] == 'merge':
-			self.merge = True
+	if self.subdomain == 'latest': # App engine uses this for alternate versions
+		self.subdomain = None
+	else:
+		self.merge = False
+		if pos > 0:
+			if hostc[0] == 'merge':
+				self.merge = True
 
   def initXmlResponse(self):
 	self.response.headers['Content-Type'] = 'text/xml'
@@ -73,6 +76,7 @@ class MainPage(webapp.RequestHandler):
 	p.author = users.get_current_user()
 	p.author_ip = self.AuthorIP()
 	p.version = 1
+	p.vercnt = 1
 	p.comments = 0
 	p.current = True
 	p.title = name
@@ -160,6 +164,7 @@ class MainPage(webapp.RequestHandler):
 
 	if tlr.id == '':
 		tlr.version = 1
+		tlr.vercnt = 1
 	else:
 		if tlr.id.startswith('include-'):
 			# break the link and create a new tiddler
@@ -170,6 +175,7 @@ class MainPage(webapp.RequestHandler):
 			error = "Tiddler doesnt' exist"
 		else:
 			tlr.version = t.version + 1
+			tlr.vercnt = t.vercnt + 1 if hasattr(t,'vercnt') and t.vercnt != None else tlr.version
 			key = self.request.get("key")
 			if key != "":
 				if self.unlock(key) == False:
@@ -205,6 +211,7 @@ class MainPage(webapp.RequestHandler):
 			tlr.version = atl.version + 1
 			tlr.comments = atl.comments;
 		if atl.current:
+			tlr.vercnt = atl.versionCount() + 1
 			if atl.sub == self.subdomain:
 				atl.current = False
 				tlr.comments = atl.comments
@@ -389,8 +396,6 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write('<br>'.join(pdiff))
 
   def revertTiddler(self):
-	if users.is_current_user_admin() == False:
-		return self.fail("Only an admin can revert")
 	tid = self.request.get("tiddlerId")
 	tls = Tiddler.all().filter('id', tid)
 	tplv = None
@@ -406,20 +411,42 @@ class MainPage(webapp.RequestHandler):
 		return self.fail("Current not found")
 	else:
 		logging.info("revert " + tid + " v. " + str(tpcv) + " to " + str(tplv))
-		if deleteTiddlerVersion(tid,tpcv):
-			tpl = Tiddler.all().filter('id', tid).filter('version',tplv).get()
-			tpl.current = True
-			tpl.put()
-			k = self.request.get('key',None)
-			if k != None:
-				self.unlock(k)
-			return self.ReplyWithTiddlerVersion(tpl.id,tpl.version)
-		else:
-			return self.fail("Delete failed")
+		tpl = self.revertFromVersion(tid,tpcv,tplv)
+		k = self.request.get('key',None)
+		if k != None:
+			self.unlock(k)
+		return self.ReplyWithTiddlerVersion(tpl.id,tpl.version)
 		
+  def revertFromVersion(self,tid,cv,lv):
+	tpc = Tiddler.all().filter('id', tid).filter('version',cv).get()
+	tpl = Tiddler.all().filter('id', tid).filter('version',lv).get()
+	tpl.current = True
+	# The current version maintains the version count:
+	tpl.vercnt = tpc.vercnt if hasattr(tpc,'vercnt') else tpc.version
+	if users.is_current_user_admin() == False:
+		tpc.current = False
+		tpc.put()
+	else:
+		deleteTiddlerVersion(tid,cv)
+		tpl.vercnt = tpl.versionCount() - 1
+	tpl.put()
+	return tpl
+
+  def deleteVersions(self):
+	tlrs = Tiddler.all().filter('id',self.request.get('tiddlerId'))
+	for t in tlrs:
+		if t.version < self.request.get('version') and t.current == False:
+			t.delete()
+	tlc = Tiddler.all().filter('id', self.request.get("tiddlerId")).filter('current',True).get()
+	if tlc != None:
+		tlc.vercnt = tlrs.count()
+		tlc.put()
+	self.unlockTiddler()
+	self.reply({'vercnt': tlc.vercnt })
+
   def deleteTiddler(self):
 	self.initXmlResponse()
-	tid = self.request.get("tiddlerId")
+	tid = self.request.get('tiddlerId')
 	if tid.startswith('include-'):
 		page = self.CurrentPage()
 		urlparts = tid[8:].split('#')
@@ -860,7 +887,7 @@ class MainPage(webapp.RequestHandler):
 			else:
 				rt = xd.add(ta,'tiddler')
 				xd.add(rt,'time',t.modified)
-				xd.add(rt,'who',t.author)
+				xd.add(rt,'who',getAuthor(t))
 				xd.add(rt,'page',t.page)
 				xd.add(rt,'title',t.title)
 		if cnt < limit or extra == 0:
@@ -1425,7 +1452,7 @@ class MainPage(webapp.RequestHandler):
 	if pn == None:
 		return self.reply({ 'about': user })
 	self.reply( { 'about': pn.user.aboutme, 'tiddler': pn.user.tiddler } )
-
+	
   def traceMethod(self,m,method):
 	r = method()
 	if self.trace != False:
@@ -1471,9 +1498,10 @@ class MainPage(webapp.RequestHandler):
 
 	if t.modified != None:
 		div.setAttribute('modified', t.modified.strftime("%Y%m%d%H%M%S"))
+	
 	div.setAttribute('modifier', getAuthor(t))
-		
 	div.setAttribute('version', str(t.version))
+	div.setAttribute('vercnt', str(t.vercnt if hasattr(t,'vercnt') and t.vercnt != None else t.version))
 	div.setAttribute('comments', str(t.comments))
 	if t.notes != None and user != None:
 		if t.notes.find(user.nickname()) >= 0:

@@ -152,13 +152,17 @@ def getTiddlerVersions(xd,tid,startFrom):
 		if text == "":
 			text = initHist(tlr.title if startFrom == 0 else None);
 		if tlr.version >= startFrom:
-			text += '|' + tlr.modified.strftime('%Y-%m-%d %H:%M') + '|<<author "' + getAuthor(tlr) + '">>' \
+			text += '|' + BoldCurrent(tlr) + tlr.modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
+				 + '|<<author "' + getAuthor(tlr) + '">>' \
 				 + '|<<diff ' + str(tlr.version) + ' ' + tid + '>>' \
 				 + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
 	eVersions = xd.createElement('versions')
 	eVersions.appendChild(xd.createTextNode(text))
 	return eVersions
 
+def BoldCurrent(tlr):
+	return "''" if tlr.current else ""
+	
 def deleteTiddlerVersion(tid,ver):
 	tlv = Tiddler.all().filter('id', tid).filter('version',ver).get()
 	if tlv != None:
