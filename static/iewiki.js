@@ -7585,7 +7585,7 @@ config.macros.author = {
 		if (au.tiddler == null || au.tiddler == "")
 			createTiddlyElement(place,'a',null,null,au.about,{title:au.about});
 		else if (au.tiddler.indexOf('#') > 0)
-			createTiddlyButton(place,tiddler.modifier,au.about,config.macros.author.onclick,'penname','user/' + tiddler.modifier);
+			createTiddlyButton(place,an,au.about,config.macros.author.onclick,'penname','user/' + an);
 		else 
 			createTiddlyText(createExternalLink(place,au.tiddler),an);
 	},
