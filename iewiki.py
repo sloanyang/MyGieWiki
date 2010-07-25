@@ -105,10 +105,14 @@ class MainPage(webapp.RequestHandler):
 	else:
 		error = page.UpdateViolation()
 	if error == None:
-		tid = self.request.get("id")
+		tid = self.request.get('id')
+		version = eval(self.request.get('version'))
 		if tid.startswith('include-'):
 			return self.fail("Included from " + tid[8:])
-		t = Tiddler.all().filter("id",tid).filter("current",True).get()
+		if version == -1:
+			t = Tiddler.all().filter('id',tid).filter('current',True).get()
+		else:
+			t = Tiddler.all().filter('id',tid).filter('version',version).get()
 		if t == None:
 			error = "Tiddler doesn't exist"
 		else:
@@ -279,9 +283,12 @@ class MainPage(webapp.RequestHandler):
 	ide.appendChild(xd.createTextNode(str(tlr.id)))
 	vne = xd.createElement('currentVer')
 	vne.appendChild(xd.createTextNode(str(tlr.version)))
+	aue = xd.createElement('modifier')
+	aue.appendChild(xd.createTextNode(getAuthor(tlr)))
 	esr.appendChild(we)
 	esr.appendChild(ide)
 	esr.appendChild(vne)
+	esr.appendChild(aue)
 	esr.appendChild(getTiddlerVersions(xd,str(tlr.id),1 if tlr.version == 1 else tlr.version - 1))
 	self.response.out.write(xd.toxml())
 	
@@ -295,7 +302,7 @@ class MainPage(webapp.RequestHandler):
   def tiddlerVersion(self):
 	return self.ReplyWithTiddlerVersion(self.request.get("tiddlerId"),int(self.request.get("version")))
 	
-  def ReplyWithTiddlerVersion(self,id,version):
+  def ReplyWithTiddlerVersion(self,id,version,hist=False):
 	tls = Tiddler.all().filter('id', id).filter('version',version)
 	self.initXmlResponse()
 	xd = xml.dom.minidom.Document()
@@ -335,6 +342,8 @@ class MainPage(webapp.RequestHandler):
 		err = xd.createElement('error')
 		tv.appendChild(err)
 		err.appendChild(xd.createTextNode(self.request.get("tiddlerId") + ': ' + self.request.get("version") + ' found ' + str(found)))
+	if hist:
+		tv.appendChild(getTiddlerVersions(xd,self.request.get("tiddlerId"), 0 if self.request.get("shadow") == '1' else 1))
 	self.response.out.write(xd.toxml())
 	
   def tiddlerDiff(self):
@@ -396,39 +405,57 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write('<br>'.join(pdiff))
 
   def revertTiddler(self):
-	tid = self.request.get("tiddlerId")
+	tid = self.request.get('tiddlerId')
 	tls = Tiddler.all().filter('id', tid)
+	version = eval(self.request.get('version'))
 	tplv = None
 	tpcv = None
+	tpn = 0
 	for t in tls:
-		if (tplv == None or tplv < t.version) and t.current == False:
-			tplv = t.version
-		elif t.current:
+		if t.version > tpn:
+			tpn = t.version
+		if t.current:
 			tpcv = t.version
+		elif t.version == version and t.current == False: # specific version
+			tplv = version
+		elif tplv != version and t.current == False: # find last prior version
+			if tplv == None:
+				tplv = t.version
+			elif tplv != None and t.version > tplv and t.version < version:
+				tplv = t.version
 	if tplv == None:
 		return self.fail("No prior version found")
 	elif tpcv == None:
 		return self.fail("Current not found")
 	else:
 		logging.info("revert " + tid + " v. " + str(tpcv) + " to " + str(tplv))
-		tpl = self.revertFromVersion(tid,tpcv,tplv)
+		tpl = self.revertFromVersion(tid,tpcv,tplv,version,tpn)
 		k = self.request.get('key',None)
 		if k != None:
 			self.unlock(k)
-		return self.ReplyWithTiddlerVersion(tpl.id,tpl.version)
+		return self.ReplyWithTiddlerVersion(tpl.id,tpl.version,True)
 		
-  def revertFromVersion(self,tid,cv,lv):
+  def revertFromVersion(self,tid,cv,lv,version,newestver):
 	tpc = Tiddler.all().filter('id', tid).filter('version',cv).get()
 	tpl = Tiddler.all().filter('id', tid).filter('version',lv).get()
 	tpl.current = True
-	# The current version maintains the version count:
-	tpl.vercnt = tpc.vercnt if hasattr(tpc,'vercnt') else tpc.version
-	if users.is_current_user_admin() == False:
+	if users.is_current_user_admin() == False or version != cv:
 		tpc.current = False
+		if tpl.reverted != None:
+			tpc.modified = tpl.reverted
+			tpc.reverted = None
 		tpc.put()
 	else:
 		deleteTiddlerVersion(tid,cv)
 		tpl.vercnt = tpl.versionCount() - 1
+	# The current version maintains the version count:
+	tpl.vercnt = Tiddler.all(keys_only=True).filter('id',tpl.id).count()
+	if tpl.version == newestver:
+		tpl.reverted = None
+	else:
+		tpl.reverted = tpl.modified
+	tpl.reverted_by = users.get_current_user()
+	tpl.modified = datetime.datetime.now()
 	tpl.put()
 	return tpl
 
@@ -441,7 +468,8 @@ class MainPage(webapp.RequestHandler):
 	if tlc != None:
 		tlc.vercnt = tlrs.count()
 		tlc.put()
-	self.unlockTiddler()
+	self.unlock(self.request.get("key"))
+	# self.unlockTiddler()
 	self.reply({'vercnt': tlc.vercnt })
 
   def deleteTiddler(self):
@@ -1496,12 +1524,21 @@ class MainPage(webapp.RequestHandler):
 		div.setAttribute('from',t.page)
 		div.setAttribute('locked','true')
 
-	if t.modified != None:
-		div.setAttribute('modified', t.modified.strftime("%Y%m%d%H%M%S"))
-	
 	div.setAttribute('modifier', getAuthor(t))
 	div.setAttribute('version', str(t.version))
 	div.setAttribute('vercnt', str(t.vercnt if hasattr(t,'vercnt') and t.vercnt != None else t.version))
+	modified = t.modified
+	if hasattr(t,'reverted'): # reverted/modified is switched for recentChanges to show reverted:
+		reverted = t.reverted
+		if reverted != None:
+			div.setAttribute('reverted', modified.strftime('%Y%m%d%H%M%S'))
+			rby = t.reverted_by
+			if rby != None:
+				div.setAttribute('reverted_by', rby.nickname())
+			modified = reverted
+	if modified != None:
+		div.setAttribute('modified', t.modified.strftime('%Y%m%d%H%M%S'))
+
 	div.setAttribute('comments', str(t.comments))
 	if t.notes != None and user != None:
 		if t.notes.find(user.nickname()) >= 0:

@@ -21,6 +21,8 @@ class Tiddler(db.Model):
   text = db.TextProperty()
   created = db.DateTimeProperty(auto_now_add=True)
   modified = db.DateTimeProperty(auto_now_add=True)
+  reverted = db.DateTimeProperty()
+  reverted_by = db.UserProperty()
   tags = db.StringProperty()
   id = db.StringProperty()
   comments = db.IntegerProperty(0)
@@ -39,6 +41,7 @@ class Tiddler(db.Model):
 	d['text'] = s.text
 	d['created'] = s.created
 	d['modified'] = s.modified
+	d['reverted'] = s.reverted
 	d['tags'] = s.tags
 	d['id'] = s.id
 	d['comments'] = s.comments

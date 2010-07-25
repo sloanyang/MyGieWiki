@@ -2632,7 +2632,14 @@ config.commands.editTiddler.handler = function(event, src, title) {
 	if (!st)
 		st = TryGetTiddler(title);
 	if (st && st.id && (!st.from) && config.options.txtLockDuration != "") {
-		var reply = http.editTiddler({id: st.id, duration: config.options.txtLockDuration });
+		var editVer = -1;
+		if (st.version != st.currentVer) {
+			if (window.confirm("Version " + st.version + " is not the current version!\nProceed to edit starting with this version?") == false)
+				return;
+			else
+				editVer = st.version;
+		}
+		var reply = http.editTiddler({id: st.id, version: editVer, duration: config.options.txtLockDuration });
 		st.key = reply.key;
 		if (reply.Success) {
 			st.lock = reply.now;
@@ -2647,6 +2654,7 @@ config.commands.editTiddler.handler = function(event, src, title) {
 			}
 		}
 	}
+	config.commands.revertTiddler.tooltip = st.version != st.currentVer ? "revert to this version" : "revert last edit";
     story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, fields);
     story.focusTiddler(title, config.options.txtEditorFocus || "text");
     return false;
@@ -2764,14 +2772,7 @@ config.commands.revertTiddler.handler = function(event, src, title) {
 		var pt = http.revertTiddler( { tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version } );
 		if (pt) {
 			tiddler.set(pt.title,pt.text,pt.modifier,pt.modified,pt.tags,pt.created);
-			var tvs = tiddler.versions
-			if (tvs) {
-				for (tvs = tvs.split('\n'); tvs.length > 0;) {
-					if (tvs.pop() != "")
-						break;
-				}
-				tiddler.versions = tvs.join('\n')
-			}
+			tiddler.versions = pt.versions;
 			tiddler.version = pt.version;
 			tiddler.currentVer = pt.version;
 			story.refreshTiddler(pt.title,null,true);
@@ -2783,7 +2784,8 @@ config.commands.revertTiddler.handler = function(event, src, title) {
 
 config.commands.revertTiddler.isEnabled = function(t)
 {
-	return t.version > 1;
+	return t && t.fields ? 
+		eval(t.fields['vercnt']) > 1 && (t.currentVer != t.version || (config.admin && !t.fields['reverted'])) : false;
 };
 
 config.commands.truncateTiddler.handler = function(event,src,title) {
@@ -2792,6 +2794,7 @@ config.commands.truncateTiddler.handler = function(event,src,title) {
 		http.deleteVersions( { tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version})
 		tiddler.versions = null;
 		tiddler.fields['vercnt'] = 0;
+		story.setDirty(tiddler.title, false);
 		story.refreshTiddler(tiddler.title,null,true);
 	}
 };
@@ -6719,7 +6722,8 @@ config.macros.history = {
                     wikify("included from [[" + inclFrom + "|" + encodeURIComponent(inclFrom) + window.location.fileType + "#" + encodeURIComponent(String.encodeTiddlyLink(tiddler.title)) + "]]", place);
             }
             else {
-				var desc = hist > tiddler.version ? " other " : " prior ";
+				var rv = tiddler.fields['reverted']
+				var desc = rv ? " other " : " prior ";
                 hist = hist - 1;
                 if (store.isShadowTiddler(tiddler.title))
                     hist++;
@@ -7583,7 +7587,7 @@ config.macros.author = {
 		if (!au)
 			au = authors[an] = http.getUserInfo({'user': an});
 		if (au.tiddler == null || au.tiddler == "")
-			createTiddlyElement(place,'a',null,null,au.about,{title:au.about});
+			createTiddlyElement(place,'a',null,null,an,{title:au.about});
 		else if (au.tiddler.indexOf('#') > 0)
 			createTiddlyButton(place,an,au.about,config.macros.author.onclick,'penname','user/' + an);
 		else 
