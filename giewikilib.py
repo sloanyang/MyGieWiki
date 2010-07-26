@@ -152,7 +152,10 @@ def getTiddlerVersions(xd,tid,startFrom):
 		if text == "":
 			text = initHist(tlr.title if startFrom == 0 else None);
 		if tlr.version >= startFrom:
-			text += '|' + BoldCurrent(tlr) + tlr.modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
+			modified = tlr.modified
+			if hasattr(tlr,'reverted') and tlr.reverted != None:
+				modified = tlr.reverted;
+			text += '|' + BoldCurrent(tlr) + modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
 				 + '|<<author "' + getAuthor(tlr) + '">>' \
 				 + '|<<diff ' + str(tlr.version) + ' ' + tid + '>>' \
 				 + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'

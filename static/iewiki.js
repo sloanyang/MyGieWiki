@@ -351,7 +351,8 @@ config.commands = {
         hideReadOnly: true,
         text: "delete versions",
         tooltip: "Delete prior versions",
-        warning: "Are you sure you want to delete all prior versions?"
+        warning: "Are you sure you want to delete all your prior versions?",
+        adminWarning: "Are you sure you want to delete all prior versions?"
     },
     permalink: {
         text: "permalink",
@@ -2790,10 +2791,11 @@ config.commands.revertTiddler.isEnabled = function(t)
 
 config.commands.truncateTiddler.handler = function(event,src,title) {
 	var tiddler = store.fetchTiddler(title);
-	if (confirm(this.warning.format([title]))) {
-		http.deleteVersions( { tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version})
-		tiddler.versions = null;
-		tiddler.fields['vercnt'] = 0;
+	var doit = config.admin ? confirm(this.adminWarning.format([title])) : confirm(this.warning.format([title]));
+	if (doit) {
+		var res = http.deleteVersions({ tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version})
+		tiddler.versions = res.versions;
+		tiddler.fields['vercnt'] = res.vercnt;
 		story.setDirty(tiddler.title, false);
 		story.refreshTiddler(tiddler.title,null,true);
 	}
@@ -2801,7 +2803,7 @@ config.commands.truncateTiddler.handler = function(event,src,title) {
 
 config.commands.truncateTiddler.isEnabled = function(t)
 {
-	return t.version > 1 && config.admin;
+	return t.version > 1 && config.options.txtUserName != "";
 };
 
 config.commands.excludeTiddler.handler = function(event, src, title) {
@@ -3406,9 +3408,13 @@ TiddlyWiki.prototype.addTiddlerFields = function(title, fields) {
 
 TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, modified, tags, fields) {
     var tiddler = this.fetchTiddler(title);
+	fromVersion = 0;
     if (tiddler) {
         var created = tiddler.created; // Preserve created date
         var versions = tiddler.versions;
+        var fromVersion = tiddler.fromversion;
+        if (!fromVersion)
+			fromVersion = tiddler.currentVer;
         this.deleteTiddler(title);
         tiddler.currentVer++;
     } else {
@@ -3423,16 +3429,19 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		tags: tags, 
 		version: tiddler.currentVer, 
 		modifier: modifier, 
-		versions: versions, 
+		versions: versions,
+		fromVer: fromVersion,
 		shadow: tiddler.hasShadow ? 1 : 0 }
 	if (tiddler.key)
 		m.key = tiddler.key;
     var result = http.saveTiddler(m);
     if (result.error)
         displayMessage(result.error);
-    else
+    else {
         merge(tiddler, result);
-
+		tiddler.fromversion = fromVersion;
+		tiddler.fields['vercnt'] = result.vercnt;
+	}
     this.addTiddler(tiddler);
     if (title != newTitle)
         this.notify(title, true);
@@ -6713,36 +6722,37 @@ function HttpRequest(args,debug) {
 }
 
 config.macros.history = {
-    handler: function(place, macroName, params, wikifier, paramString, tiddler) {
-        if (tiddler instanceof Tiddler) {
-            var hist = eval(tiddler.fields['vercnt']);
-            if (hist === undefined || hist == 0) {
-                var inclFrom = tiddler["includedFrom"];
-                if (inclFrom)
-                    wikify("included from [[" + inclFrom + "|" + encodeURIComponent(inclFrom) + window.location.fileType + "#" + encodeURIComponent(String.encodeTiddlyLink(tiddler.title)) + "]]", place);
-            }
-            else {
+	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
+		if (tiddler instanceof Tiddler) {
+			var hist = eval(tiddler.fields['vercnt']);
+			if (hist === undefined || hist == 0) {
+				var inclFrom = tiddler["includedFrom"];
+				if (inclFrom)
+					wikify("included from [[" + inclFrom + "|" + encodeURIComponent(inclFrom) + window.location.fileType + "#" + encodeURIComponent(String.encodeTiddlyLink(tiddler.title)) + "]]", place);
+			}
+			else {
 				var rv = tiddler.fields['reverted']
 				var desc = rv ? " other " : " prior ";
-                hist = hist - 1;
-                if (store.isShadowTiddler(tiddler.title))
-                    hist++;
-                if (!hist || (readOnly == true && config.viewPrior == false))
-                    return;
-                createTiddlyText(place, " (");
-                var snVersions = hist + desc + (hist != "1" ? "versions" : "version");
-                if (tiddler.historyLoaded)
-                    createTiddlyText(place, snVersions + " listed");
-                else {
-                    var btn = createTiddlyButton(place, snVersions, "Get prior versions", onClickTiddlerHistory, "tiddlyLink");
-                    btn.setAttribute("refresh", "link");
-                    btn.setAttribute("tiddlyLink", snVersions);
-                    btn.setAttribute("tiddler", tiddler.title);
-                }
-                createTiddlyText(place, ")");
-            }
-        }
-    }
+				hist = hist - 1;
+				if (store.isShadowTiddler(tiddler.title))
+					hist++;
+				if (!hist || (readOnly == true && config.viewPrior == false))
+					return;
+				createTiddlyText(place, " (");
+				if (rv) {
+					var rby = tiddler.fields['reverted_by'];
+					rby = rby ? " by " + rby : "";
+					createTiddlyText(place,"reverted to version " + tiddler.currentVer + " on " + Date.convertFromYYYYMMDDHHMM(rv).formatString(config.macros.timeline.dateFormat) + rby + ", ");
+				}
+				var snVersions = hist + desc + (hist != "1" ? "versions" : "version");
+				var btn = createTiddlyButton(place, snVersions, "Get prior versions", onClickTiddlerHistory, "tiddlyLink");
+				btn.setAttribute("refresh", "link");
+				btn.setAttribute("tiddlyLink", snVersions);
+				btn.setAttribute("tiddler", tiddler.title);
+				createTiddlyText(place, ")");
+			}
+		}
+	}
 }
 
 function onClickTiddlerHistory(e) {

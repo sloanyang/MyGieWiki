@@ -147,7 +147,7 @@ class MainPage(webapp.RequestHandler):
 		self.reply({})
 
   def lockTiddler(self):
-	t = Tiddler.all().filter('id',self.request.get("tiddlerId")).filter('current',True).get()
+	t = Tiddler.all().filter('id',self.request.get('tiddlerId')).filter('current',True).get()
 	if t != None:
 		t.locked = self.request.get("lock") == 'true'
 		t.put()
@@ -159,7 +159,7 @@ class MainPage(webapp.RequestHandler):
 	"http tiddlerName text tags version tiddlerId versions"
 	tlr = Tiddler()
 	tlr.page = self.request.path
-	tlr.id = self.request.get("tiddlerId")
+	tlr.id = self.request.get('tiddlerId')
 	page = Page.all().filter("path",tlr.page).get()
 	if page == None:
 		error = "Page does not exist: " + tlr.page
@@ -285,22 +285,25 @@ class MainPage(webapp.RequestHandler):
 	vne.appendChild(xd.createTextNode(str(tlr.version)))
 	aue = xd.createElement('modifier')
 	aue.appendChild(xd.createTextNode(getAuthor(tlr)))
+	vce = xd.createElement('vercnt')
+	vce.appendChild(xd.createTextNode(str(tlr.vercnt)))
 	esr.appendChild(we)
 	esr.appendChild(ide)
 	esr.appendChild(vne)
 	esr.appendChild(aue)
-	esr.appendChild(getTiddlerVersions(xd,str(tlr.id),1 if tlr.version == 1 else tlr.version - 1))
+	esr.appendChild(vce)
+	esr.appendChild(getTiddlerVersions(xd,str(tlr.id),eval(self.request.get('fromVer'))))
 	self.response.out.write(xd.toxml())
 	
   def tiddlerHistory(self):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
 	eHist = xd.add(xd,'Hist')
-	eHist.appendChild(getTiddlerVersions(xd,self.request.get("tiddlerId"), 0 if self.request.get("shadow") == '1' else 1))
+	eHist.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1))
 	self.response.out.write(xd.toxml())
 
   def tiddlerVersion(self):
-	return self.ReplyWithTiddlerVersion(self.request.get("tiddlerId"),int(self.request.get("version")))
+	return self.ReplyWithTiddlerVersion(self.request.get('tiddlerId'),int(self.request.get("version")))
 	
   def ReplyWithTiddlerVersion(self,id,version,hist=False):
 	tls = Tiddler.all().filter('id', id).filter('version',version)
@@ -341,9 +344,9 @@ class MainPage(webapp.RequestHandler):
 	if found != 1:
 		err = xd.createElement('error')
 		tv.appendChild(err)
-		err.appendChild(xd.createTextNode(self.request.get("tiddlerId") + ': ' + self.request.get("version") + ' found ' + str(found)))
+		err.appendChild(xd.createTextNode(self.request.get('tiddlerId') + ': ' + self.request.get("version") + ' found ' + str(found)))
 	if hist:
-		tv.appendChild(getTiddlerVersions(xd,self.request.get("tiddlerId"), 0 if self.request.get("shadow") == '1' else 1))
+		tv.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1))
 	self.response.out.write(xd.toxml())
 	
   def tiddlerDiff(self):
@@ -462,15 +465,14 @@ class MainPage(webapp.RequestHandler):
   def deleteVersions(self):
 	tlrs = Tiddler.all().filter('id',self.request.get('tiddlerId'))
 	for t in tlrs:
-		if t.version < self.request.get('version') and t.current == False:
+		if t.version < self.request.get('version') and t.current == False and (t.author == users.get_current_user() or users.is_current_user_admin()):
 			t.delete()
-	tlc = Tiddler.all().filter('id', self.request.get("tiddlerId")).filter('current',True).get()
+	tlc = Tiddler.all().filter('id', self.request.get('tiddlerId')).filter('current',True).get()
 	if tlc != None:
 		tlc.vercnt = tlrs.count()
 		tlc.put()
-	self.unlock(self.request.get("key"))
-	# self.unlockTiddler()
-	self.reply({'vercnt': tlc.vercnt })
+	self.unlock(self.request.get('key'))
+	self.reply({'vercnt': tlc.vercnt }, versions = True)
 
   def deleteTiddler(self):
 	self.initXmlResponse()
@@ -539,7 +541,7 @@ class MainPage(webapp.RequestHandler):
 	self.reply({"Success": True, "Comments": tls.comments, "author": users.get_current_user(), "text": comment.text,"created": datetime.datetime.now() })
 		
   def getComments(self):
-	cs = Comment.all().filter("tiddler = ",self.request.get("tiddlerId"))
+	cs = Comment.all().filter("tiddler = ",self.request.get('tiddlerId'))
 	ref = self.request.get("ref")
 	if ref != "":
 		cs = cs.filter("ref = ", ref)
@@ -556,7 +558,7 @@ class MainPage(webapp.RequestHandler):
 	self.sendXmlResponse(xd)
 
   def getNotes(self):
-	ns = Note.all().filter("tiddler =",self.request.get("tiddlerId")).filter("author =",users.get_current_user())
+	ns = Note.all().filter("tiddler =",self.request.get('tiddlerId')).filter("author =",users.get_current_user())
 	xd = XmlDocument()
 	tce = xd.add(xd,'TiddlerNotes', attrs={'type':'object[]'})
 	for ac in ns:
@@ -567,7 +569,7 @@ class MainPage(webapp.RequestHandler):
 	self.sendXmlResponse(xd)
 	
   def getMessages(self):
-	ms = Message.all().filter("tiddler =",self.request.get("tiddlerId")).filter("receiver =", users.get_current_user())
+	ms = Message.all().filter("tiddler =",self.request.get('tiddlerId')).filter("receiver =", users.get_current_user())
 	xd = XmlDocument()
 	tce = xd.add(xd,'TiddlerMessages', attrs={'type':'object[]'})
 	for ac in ms:
@@ -768,7 +770,7 @@ class MainPage(webapp.RequestHandler):
 	self.reply(aux)
 	return True
 
-  def reply(self, values = { 'Success': True }, de = 'reply'):
+  def reply(self, values = { 'Success': True }, de = 'reply', versions = False):
 	self.initXmlResponse()
 	xd = xml.dom.minidom.Document()
 	tr = xd.createElement(de)
@@ -779,7 +781,12 @@ class MainPage(webapp.RequestHandler):
 		if type(v) == bool:
 			av.setAttribute("type","bool")
 			v = "true" if v else "false"
+		elif type(v) == datetime.datetime:
+			av.setAttribute('type','datetime')
+			v = v.strftime("%Y%m%d%H%M%S")
 		av.appendChild(xd.createTextNode(unicode(v)))
+	if versions:
+		tr.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1))
 	self.response.out.write(xd.toxml())
 	return True
 	
@@ -1537,7 +1544,7 @@ class MainPage(webapp.RequestHandler):
 				div.setAttribute('reverted_by', rby.nickname())
 			modified = reverted
 	if modified != None:
-		div.setAttribute('modified', t.modified.strftime('%Y%m%d%H%M%S'))
+		div.setAttribute('modified', modified.strftime('%Y%m%d%H%M%S'))
 
 	div.setAttribute('comments', str(t.comments))
 	if t.notes != None and user != None:
