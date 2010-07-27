@@ -2632,7 +2632,7 @@ config.commands.editTiddler.handler = function(event, src, title) {
 	}
 	if (!st)
 		st = TryGetTiddler(title);
-	if (st && st.id && (!st.from) && config.options.txtLockDuration != "") {
+	if (st && st.id && (!st.from)) {
 		var editVer = -1;
 		if (st.version != st.currentVer) {
 			if (window.confirm("Version " + st.version + " is not the current version!\nProceed to edit starting with this version?") == false)
@@ -2640,18 +2640,20 @@ config.commands.editTiddler.handler = function(event, src, title) {
 			else
 				editVer = st.version;
 		}
-		var reply = http.editTiddler({id: st.id, version: editVer, duration: config.options.txtLockDuration });
-		st.key = reply.key;
-		if (reply.Success) {
-			st.lock = reply.now;
-			st.until = reply.until;
-			st.title = reply.title;
-			st.text = reply.text;
-			st.tags = reply.tags.split("|")
-		}
-		else {
-			if (!window.confirm(reply.Message + " - proceed anyway?")) {
-				return;
+		if (config.options.txtLockDuration != "") {
+			var reply = http.editTiddler({id: st.id, version: editVer, duration: config.options.txtLockDuration });
+			st.key = reply.key;
+			if (reply.Success) {
+				st.lock = reply.now;
+				st.until = reply.until;
+				st.title = reply.title;
+				st.text = reply.text;
+				st.tags = reply.tags.split("|")
+			}
+			else {
+				if (!window.confirm(reply.Message + " - proceed anyway?")) {
+					return;
+				}
 			}
 		}
 	}
@@ -2990,7 +2992,6 @@ Tiddler.prototype.stashVersion = function() {
         return;
     if (this.ovs == undefined)
         this.ovs = [];
-
     if (this.ovs[version] === undefined) {
         this.ovs[version] = {};
         merge(this.ovs[version], this);
@@ -3408,7 +3409,6 @@ TiddlyWiki.prototype.addTiddlerFields = function(title, fields) {
 
 TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, modified, tags, fields) {
     var tiddler = this.fetchTiddler(title);
-	fromVersion = 0;
     if (tiddler) {
         var created = tiddler.created; // Preserve created date
         var versions = tiddler.versions;
@@ -3416,9 +3416,9 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
         if (!fromVersion)
 			fromVersion = tiddler.currentVer;
         this.deleteTiddler(title);
-        tiddler.currentVer++;
     } else {
         var created = modified;
+		fromVersion = 1;
         tiddler = new Tiddler(null,1);
     }
     tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
@@ -3427,7 +3427,7 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		tiddlerName: newTitle, 
 		text: newBody, 
 		tags: tags, 
-		version: tiddler.currentVer, 
+		currentVer: tiddler.currentVer, 
 		modifier: modifier, 
 		versions: versions,
 		fromVer: fromVersion,
@@ -3438,7 +3438,8 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
     if (result.error)
         displayMessage(result.error);
     else {
-        merge(tiddler, result);
+		merge(tiddler, result);
+		tiddler.version = result.currentVer;
 		tiddler.fromversion = fromVersion;
 		tiddler.fields['vercnt'] = result.vercnt;
 	}

@@ -185,14 +185,14 @@ class MainPage(webapp.RequestHandler):
 				if self.unlock(key) == False:
 					return
 			else:
-				el = EditLock().all().filter("id",tlr.id).get() # locked by someone else?
+				el = EditLock().all().filter('id',tlr.id).get() # locked by someone else?
 				if el != None:
 					error = "Locked by " + userNameOrAddress(el.user,el.user_ip)
 				else:
-					sv = self.request.get("version")
+					sv = self.request.get('currentVer')
 					v = eval(sv)
 					if v < tlr.version:
-						return "Edit conflict: version " + sv + " already exists"
+						return "Edit conflict: version " + sv + " is not the current version"
 			
 	if error != None:
 		return self.fail(error)
