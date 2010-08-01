@@ -1,4 +1,8 @@
-/* Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
+/* this:	iewiki.py			version: 1.5
+   by:  	Poul Staugaard
+   URL: 	http://code.google.com/p/giewiki
+
+Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
 Copyright (c) UnaMesa Association 2004-2009
 
@@ -29,24 +33,14 @@ DAMAGE.
 */
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
-var giewikiVersion = { title: "giewiki", major: 1, minor: 4, revision: 1, date: new Date("July 4, 2010"), extensions: {} };
 
 // Modified by Poul Staugaard, (poul [dot] staugaard [at] gmail [dot] com)
 // Portions with spaces for tabs are mostly original, while portions with
 // tabs for tabs are mine. Set tab size to 4 characters for readability.
 
 //--
-//-- Configuration repository
+//-- Configuration repository constructor removed (constructed server-side as /config.js)
 //--
-
-// Miscellaneous options
-var config = {
-    animDuration: 400, // Duration of UI animations in milliseconds
-    cascadeFast: 20, // Speed for cascade animations (higher == slower)
-    cascadeSlow: 60, // Speed for EasterEgg cascade animations
-    cascadeDepth: 5, // Depth of cascade animation
-    locale: "en" // W3C language tag
-};
 
 var Type = {
     System: { Exception: "System.Exception" }
@@ -108,12 +102,11 @@ config.messages = {
 };
 
 // Options that can be set in the options panel and/or cookies
-config.options = {
+merge(config.options, {
     chkRegExpSearch: false,
     chkCaseSensitiveSearch: false,
     chkIncrementalSearch: true,
     chkAnimate: true,
-    chkSaveEmptyTemplate: false,
     chkOpenInNewWindow: true,
     chkToggleLinks: false,
     chkForceMinorUpdate: false,
@@ -128,17 +121,15 @@ config.options = {
     txtTheme: "",
     txtEmptyTiddlyWiki: "empty.html", // Template for stand-alone export
     txtLockDuration: "60",
-    txtUserName: ""
-};
+    txtUserName: "" },
+    true);
 
 config.optionsDesc = {
     // Options that can be set in the options panel and/or cookies
-    txtUserName: "Username for signing your edits",
     chkRegExpSearch: "Enable regular expressions for searches",
     chkCaseSensitiveSearch: "Case-sensitive searching",
     chkIncrementalSearch: "Incremental key-by-key searching",
     chkAnimate: "Enable animations",
-    chkSaveEmptyTemplate: "Generate an empty template when saving changes",
     chkOpenInNewWindow: "Open external links in a new window",
     chkToggleLinks: "Clicking on links to open tiddlers causes them to close",
     chkForceMinorUpdate: "Don't update modifier username and date when editing tiddlers",
@@ -495,7 +486,7 @@ config.shadowTiddlers = {
     SiteTitle: "SiteTitle",
     SiteSubtitle: "",
     SiteUrl: "http://giewiki.appspot.com/",
-    SideBarOptions: '<<login edit UserMenu "My stuff" m !readOnly>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e !readOnly>><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
+    SideBarOptions: '<<login edit UserMenu "My stuff" m !readOnly>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "More" "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
@@ -543,6 +534,8 @@ config.read = function(t) {
 	this.clientip = fields.clientip;
 	this.owner = fields.owner;
 	this.access = fields.access;
+	if (this.access == "none" || this.access == "read")
+		readOnly = true;
 	this.anonAccess = fields.anonaccess;
 	this.authAccess = fields.authaccess;
 	this.groupAccess = fields.groupaccess;
@@ -552,7 +545,10 @@ config.read = function(t) {
 	this.locked = fields.locked;
 	this.pages = this.readPages(t.ace);
 	this.warnings = fields.warnings;
-	SetUserName(fields.username,fields.groupmember);
+}
+
+config.isLoggedIn = function() {
+	return config.options.isLoggedIn;
 }
 
 config.readPages = function(pgs) {
@@ -593,7 +589,6 @@ function main() {
     invokeParamifier(params, "oninit");
     story = new Story("tiddlerDisplay", "tiddler");
     addEvent(document, "click", Popup.onDocumentClick);
-    loadOptionsCookie();
     for (var s = 0; s < config.notifyTiddlers.length; s++)
         store.addNotification(config.notifyTiddlers[s].name, config.notifyTiddlers[s].notify);
     loadShadowTiddlers();
@@ -632,9 +627,9 @@ function main() {
 function restart() {
     invokeParamifier(params, "onstart");
     if (story.isEmpty()) {
-        if (config.owner == null)
-            story.displayTiddler(null, "PageProperties");
-        else
+//        if (config.owner == null)
+//            story.displayTiddler(null, "PageProperties");
+//        else
             story.displayDefaultTiddlers();
     }
     window.scrollTo(0, 0);
@@ -2075,7 +2070,6 @@ config.macros.slider.onClickSlider = function(ev) {
     else
         n.style.display = isOpen ? "none" : "block";
     config.options[cookie] = !isOpen;
-    saveOptionCookie(cookie);
     return false;
 };
 
@@ -2471,7 +2465,6 @@ config.macros.tabs.switchTab = function(tabset, tab) {
         wikify(store.getTiddlerText(contentTitle), tabContent, null, store.getTiddler(contentTitle));
         if (cookie) {
             config.options[cookie] = tab;
-            saveOptionCookie(cookie);
         }
     }
 };
@@ -2805,7 +2798,7 @@ config.commands.truncateTiddler.handler = function(event,src,title) {
 
 config.commands.truncateTiddler.isEnabled = function(t)
 {
-	return t.version > 1 && config.options.txtUserName != "";
+	return t.version > 1 && config.isLoggedIn;
 };
 
 config.commands.excludeTiddler.handler = function(event, src, title) {
@@ -4360,7 +4353,6 @@ Story.prototype.switchTheme = function(theme) {
             setStylesheet(store.getRecursiveTiddlerText(config.refresherData.styleSheet, "", 10), config.refreshers.styleSheet);
         }
         config.options.txtTheme = theme;
-        saveOptionCookie("txtTheme");
     }
 };
 
@@ -4577,60 +4569,6 @@ function refreshAll() {
     refreshStyles("StyleSheetPrint");
 }
 
-
-//--
-//-- Options stuff
-//--
-
-config.optionHandlers = {
-    'txt': {
-        get: function(name) { return encodeCookie(config.options[name].toString()); },
-        set: function(name, value) { config.options[name] = decodeCookie(value); }
-    },
-    'chk': {
-        get: function(name) { return config.options[name] ? "true" : "false"; },
-        set: function(name, value) { config.options[name] = value == "true"; }
-    }
-};
-
-function loadOptionsCookie() {
-    if (safeMode)
-        return;
-    var cookies = document.cookie.split(";");
-    for (var c = 0; c < cookies.length; c++) {
-        var p = cookies[c].indexOf("=");
-        if (p != -1) {
-            var name = cookies[c].substr(0, p).trim();
-            var value = cookies[c].substr(p + 1).trim();
-            var optType = name.substr(0, 3);
-            if (config.optionHandlers[optType] && config.optionHandlers[optType].set)
-                config.optionHandlers[optType].set(name, value);
-        }
-    }
-}
-
-function saveOptionCookie(name) {
-    if (safeMode)
-        return;
-    var c = name + "=";
-    var optType = name.substr(0, 3);
-    if (config.optionHandlers[optType] && config.optionHandlers[optType].get)
-        c += config.optionHandlers[optType].get(name);
-    c += "; expires=Fri, 1 Jan 2038 12:00:00 UTC; path=/";
-    document.cookie = c;
-}
-
-function encodeCookie(s) {
-    return escape(convertUnicodeToHtmlEntities(s));
-}
-
-function decodeCookie(s) {
-    s = unescape(s);
-    var re = /&#[0-9]{1,5};/g;
-    return s.replace(re, function($0) { return String.fromCharCode(eval($0.replace(/[&#;]/g, ""))); });
-}
-
-
 config.macros.option.genericCreate = function(place, type, opt, className, desc) {
     var typeInfo = config.macros.option.types[type];
     var c = document.createElement(typeInfo.elementType);
@@ -4648,13 +4586,32 @@ config.macros.option.genericCreate = function(place, type, opt, className, desc)
     return c;
 };
 
+config.macros.option.onChangeHandlers = {
+	txtUserName: function(e) {
+		if (config.isLoggedIn())
+			return confirm("This actually changes your penname");
+		else {
+			alert("Cannot be changed unless you are logged in!");
+			return false;
+		}
+	}
+};
+
 config.macros.option.genericOnChange = function(e) {
     var opt = this.getAttribute("option");
     if (opt) {
+		var cha = config.macros.option.onChangeHandlers[opt];
+		if (cha)
+			if (!cha())
+				return;
         var optType = opt.substr(0, 3);
         var handler = config.macros.option.types[optType];
-        if (handler.elementType && handler.valueField)
+        if (handler.elementType && handler.valueField) {
+			args = {};
+			args[opt] = this[handler.valueField];
+			http.userProfile(args);
             config.macros.option.propagateOption(opt, handler.valueField, this[handler.valueField], handler.elementType, this);
+        }
     }
     return true;
 };
@@ -4681,7 +4638,6 @@ config.macros.option.types = {
 
 config.macros.option.propagateOption = function(opt, valueField, value, elementType, elem) {
     config.options[opt] = value;
-    saveOptionCookie(opt);
     var nodes = document.getElementsByTagName(elementType);
     for (var t = 0; t < nodes.length; t++) {
         var optNode = nodes[t].getAttribute("option");
@@ -4711,6 +4667,7 @@ config.macros.options.handler = function(place, macroName, params, wikifier, par
     var chkUnknown = wizard.getElement("chkUnknown");
     chkUnknown.checked = showUnknown == "yes";
     chkUnknown.onchange = this.onChangeUnknown;
+    chkUnknown.onclick = this.onChangeUnknown;
     var listWrapper = document.createElement("div");
     markList.parentNode.insertBefore(listWrapper, markList);
     wizard.setValue("listWrapper", listWrapper);
@@ -7296,11 +7253,12 @@ config.macros.login = {
 		story.displayTiddler(null,"LoginDialog");
 	},
 	handler: function(place,macroName,params,wikifier,paramString,tiddler) {
-		if (config.options.txtUserName == null || config.options.txtUserName == "")	{
-			var label = "login";
-			var tip = "Log in with your Google id";
+		var label = "login";
+		var tip = "Log in with your Google id";
+		if (paramString == "LoginOnly" && config.isLoggedIn())
+			createTiddlyText(place,label);
+		else if (config.isLoggedIn() == false)
 			createTiddlyButton(place, label, tip, this.displayLoginDialog);
-		}
 		else {
 			this.open = true;
 			params[0] = config.options.txtUserName + " \u00bb";
@@ -7324,34 +7282,9 @@ config.macros.userName = {
     }
 }
 
-function SetUserName(name,grpmember) {
-	var currAccess = config.access;
-	config.options.txtUserName = name;
-	if (name == "" || name === undefined)
-		config.access = config.anonAccess;
-	else if (name == config.owner)
-		config.access = "all";
-	else
-		config.access = grpmember ? config.groupAccess : config.authAccess;
-
-	if (currAccess != config.access) {
-		window.location.reload();
-	}
-    readOnly = (config.locked || config.access == "none" || config.access == "view" || config.access == "comment") || (config.owner === undefined);
-    if (config.access == "none")
-		store.getTiddler("DefaultTiddlers").text = "LoginDialog";
-    return currAccess != config.access;
-}
-
-function onLogin(usn,path,grpmember)
+function onLogin()
 {
-    story.closeTiddler("LoginDialog", true);
-    if (SetUserName(usn,grpmember)) {
-        story.refreshAllTiddlers();
-    }
-    refreshAll();
-    if (!config.owner)
-		story.displayTiddler(null,"PageProperties");
+	window.location.reload();
 }
 
 function trace(f) {
@@ -7410,7 +7343,7 @@ function OnCommitCloseForm(fn,reply)
 config.macros.defineGroup = {
     handler: function(place,macroName,params,wikifier,paramString,tiddler) 
     {
-		if (config.options.txtUserName != "")
+		if (config.isLoggedIn())
 			createTiddlyButton(place,"define group",null,function() {story.displayTiddler(null, "DefineGroup") },"buttonftr")
     }
 }
@@ -7966,18 +7899,21 @@ config.macros.importTiddlers = {
 
 config.macros.importTiddlerStatus = {
 	handler: function (place, macroName, params, wikifier, paramString) {
-		list = eval(params.shift()).split('\n');
-		var n = 0;
-		for (var i = 0; i < list.length; i++)
-			if (list[i].trim() != "") {
-				var data = list[i].trim().split('#', 2);
-				var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve("', data[0], '","', data[1], '")</script><br>'].join('');
-				if (++n == 1)
-					wikify('<br>', place);
-				wikify(wt, place);
-			}
-		if (n == 0)
-			wikify(' (none)',place);
+		try { var evv = eval(paramString) } catch(e) { return; }
+		if (evv) {
+			var list = evv.split('\n');
+			var n = 0;
+			for (var i = 0; i < list.length; i++)
+				if (list[i].trim() != "") {
+					var data = list[i].trim().split('#', 2);
+					var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve("', data[0], '","', data[1], '")</script><br>'].join('');
+					if (++n == 1)
+						wikify('<br>', place);
+					wikify(wt, place);
+				}
+			if (n == 0)
+				wikify(' (none)',place);
+		}
 	}
 }
 
@@ -7997,3 +7933,51 @@ config.macros.youtube = {
 		}
 	}
 }
+
+/***
+Name:	InlineJavascriptPlugin  (static/inlinescript.htm)
+Source:	http://www.TiddlyTools.com/#InlineJavascriptPlugin
+Author:	Eric Shulman - ELS Design Studios (http://www.elsdesign.com)
+License:Creative Commons Attribution-ShareAlike 2.5 License (http://creativecommons.org/licenses/by-sa/2.5/)
+ ***/
+ 
+version.extensions.inlineJavascript= {major: 1, minor: 6, revision: 0, date: new Date(2007,2,19)};
+
+config.formatters.push( {
+	name: "inlineJavascript",
+	match: "\\<script",
+	lookahead: "\\<script(?: src=\\\"((?:.|\\n)*?)\\\")?(?: label=\\\"((?:.|\\n)*?)\\\")?(?: title=\\\"((?:.|\\n)*?)\\\")?( show)?\\>((?:.|\\n)*?)\\</script\\>",
+
+	handler: function(w) {
+		var lookaheadRegExp = new RegExp(this.lookahead,"mg");
+		lookaheadRegExp.lastIndex = w.matchStart;
+		var lookaheadMatch = lookaheadRegExp.exec(w.source)
+		if(lookaheadMatch && lookaheadMatch.index == w.matchStart) {
+			if (lookaheadMatch[1]) { // load a script library
+				// make script tag, set src, add to body to execute, then remove for cleanup
+				var script = document.createElement("script"); script.src = lookaheadMatch[1];
+				document.body.appendChild(script); document.body.removeChild(script);
+			}
+			if (lookaheadMatch[5]) { // there is script code
+				if (lookaheadMatch[4]) // show inline script code in tiddler output
+					wikify("{{{\n"+lookaheadMatch[0]+"\n}}}\n",w.output);
+				if (lookaheadMatch[2]) { // create a link to an 'onclick' script
+					// add a link, define click handler, save code in link (pass 'place'), set link attributes
+					var link=createTiddlyElement(w.output,"a",null,"tiddlyLinkExisting",lookaheadMatch[2]);
+					link.onclick=function(){try{return(eval(this.code))}catch(e){alert(e.description?e.description:e.toString())}}
+					link.code="function _out(place){"+lookaheadMatch[5]+"\n};_out(this);"
+					link.setAttribute("title",lookaheadMatch[3]?lookaheadMatch[3]:"");
+					link.setAttribute("href","javascript:;");
+					link.style.cursor="pointer";
+				}
+				else { // run inline script code
+					var code="function _out(place){"+lookaheadMatch[5]+"\n};_out(w.output);"
+					code=code.replace(/document.write\(/gi,'place.innerHTML+=(');
+					try { var out = eval(code); } catch(e) { out = e.description?e.description:e.toString(); }
+					if (out && out.length) wikify(out,w.output,w.highlightRegExp,w.tiddler);
+				}
+			}
+			w.nextMatch = lookaheadMatch.index + lookaheadMatch[0].length;
+		}
+	}
+} )

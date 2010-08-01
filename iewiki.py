@@ -1,3 +1,4 @@
+# /*************************************
 # this:	iewiki.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
@@ -23,6 +24,17 @@ from google.appengine.api import urlfetch
 from Tiddler import *
 from Plugins import *
 from giewikilib import *
+
+jsProlog = '\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 4, revision: 2, date: new Date("July 28, 2010"), extensions: {} };\n\
+var config = {\n\
+	animDuration: 400,\n\
+	cascadeFast: 20,\n\
+	cascadeSlow: 60,\n\
+	cascadeDepth: 5,\n\
+	locale: "en",\n\
+	options: {\n\
+		' # the rest is built dynamically
 
 class MainPage(webapp.RequestHandler):
   "Serves wiki pages and updates"
@@ -67,7 +79,7 @@ class MainPage(webapp.RequestHandler):
 	p = UserProfile.all().filter('user',u).get()
 	if p == None:
 		return self.request.remote_addr
-	return p.penname
+	return p.txtUserName
   
   def SaveNewTiddler(self,page,name,value):
 	p = Tiddler()
@@ -589,12 +601,13 @@ class MainPage(webapp.RequestHandler):
 		self.fail(str(x))
 	
   def pageProperties(self):
-	if users.get_current_user() == None:
+	user = users.get_current_user()
+	if user == None:
 		return self.fail("You are not logged in");
 	path = self.request.path
 	page = self.CurrentPage()
 	if page == None:
-		if path == "/" and users.get_current_user() != None: # Root page
+		if path == "/" and user != None: # Root page
 			page = Page()
 			page.gwversion = "2.4"
 			page.path = "/"
@@ -605,14 +618,15 @@ class MainPage(webapp.RequestHandler):
 			page.anonAccess = 0
 			page.authAccess = 0
 			page.groupAccess = 2
-			page.owner = users.get_current_user()
+			page.owner = user
+			page.ownername = getUserPenName(user)
 			page.groups = ""
 			page.viewbutton = False
 			page.viewprior = False
 		else:
 			return self.fail("Page does not exist")
 	if self.request.get("title") != "": # Put
-		if users.get_current_user() != page.owner and users.is_current_user_admin() == False:
+		if user != page.owner and users.is_current_user_admin() == False:
 			self.fail("You cannot change the properties of this pages")
 		else:
 			page.title = self.request.get('title')
@@ -642,17 +656,17 @@ class MainPage(webapp.RequestHandler):
 
   def getNewAddress(self):
 	path = self.request.path
-	lsp = path.rfind("/")
+	lsp = path.rfind('/')
 	parent = path[0:1+lsp]
-	title = self.request.get("title")
-	prex = Page.all().filter("path =",parent).filter("title =", title).get()
+	title = self.request.get('title')
+	prex = Page.all().filter('path',parent).filter('title', title).get()
 	if prex != None:
 		self.fail("Page already exists")
-	npt = title.replace(' ',"_").replace("/","-")
-	prex = Page.all().filter("path =",parent + "/" + npt).get()
+	npt = title.replace(' ','_').replace('/','-')
+	prex = Page.all().filter('path',parent + '/' + npt).get()
 	if prex != None:
 		self.fail("Page already exists")
-	self.reply({"Success": True, "Address": npt })
+	self.reply({'Success': True, 'Address': npt })
 	
   def siteMap(self):
 	pal = Page.all().filter('sub',self.subdomain).order('path')
@@ -666,18 +680,20 @@ class MainPage(webapp.RequestHandler):
 	self.sendXmlResponse(xd)
 	
   def createPage(self):
+	user = users.get_current_user()
 	path = self.request.path
 	lsp = path.rfind("/")
 	parent = path[0:1+lsp]
 	pad = Page.all().filter("path =",parent).get()
 	if pad == None: # parent folder doesn't exist
 		if self.request.get("title") == "":
-			if parent == "/" and users.get_current_user() != None:
+			if parent == "/" and user != None:
 				pad = Page()
 				pad.gwversion = "2.4"
 				pad.path = "/"
 				pad.sub = self.subdomain
-				pad.owner = users.get_current_user()
+				pad.owner = user
+				pad.ownername = getUserPenName(user)
 				pad.locked = False
 				pad.anonAccess = Page.access[self.request.get("anonymous")]
 				pad.authAccess = Page.access[self.request.get("authenticated")]
@@ -688,7 +704,7 @@ class MainPage(webapp.RequestHandler):
 				return self.fail("Root folder not created")
 		else:
 			return self.fail("Parent folder doesn't exist")
-	if users.get_current_user() == None and pad.anonAccess != "":
+	if user == None and pad.anonAccess != "":
 		return self.fail("You cannot create new pages")
 
 	if self.request.get("defaults") == "get":
@@ -704,7 +720,8 @@ class MainPage(webapp.RequestHandler):
 		page.gwversion = "2.4"
 		page.path = url
 		page.sub = self.subdomain
-		page.owner = users.get_current_user()
+		page.owner = user
+		page.ownername = getUserPenName(user)
 		page.title = self.request.get("title")
 		page.subtitle = self.request.get("subtitle")
 		page.locked = False
@@ -803,7 +820,7 @@ class MainPage(webapp.RequestHandler):
 '<header><title>Login succeeded</title>'
 '<script>'
 'function main() { \n'
-'	act = "onLogin(\''  + userWho() + '\',\'' + self.request.get("path") + '\',' + grpaccess + ')";'
+'	act = "onLogin()";'
 '	window.parent.setTimeout(act,100);\n'
 '}\n'
 '</script></header>'
@@ -1425,33 +1442,62 @@ class MainPage(webapp.RequestHandler):
 		self.fail(str(x))
 
   def userProfile(self):
-	" Store or retrieve current user's profile "
-	u = UserProfile.all().filter('user', users.get_current_user()).get()
-	penname = self.request.get('penname',None)
-	if u == None and penname != None: # data supplied and not stored
-		u = UserProfile(user = users.get_current_user(), penname = '', aboutme = '', tiddler = '', projects = '') # new record
-	if penname != None: # update data
-		pn = PenName.all().filter('penname',penname).get()
-		if pn != None and pn.user.user != users.get_current_user():
-			return self.fail("This penname belongs to someone else (" + pn.user.nickname() + ")")
-		u.penname = penname
-		u.aboutme = self.request.get('aboutme')
-		u.tiddler = self.request.get('tiddler')
+	"Store or retrieve current user's profile data"
+	cu = users.get_current_user()
+	if cu == None:
+		return self.fail('Not logged in')
+	u = UserProfile.all().filter('user', cu).get()
+	an = None
+	al = self.request.arguments()
+	al.remove('method') # ignore
+	for an in al:
+		av = self.request.get(an)
+		if u == None: # data supplied and not stored
+			u = UserProfile(user = cu, txtUserName = cu.nickname()) # new record
+			u.put()
+		if an == 'txtUserName':
+			pn = PenName.all().filter('penname',av).get()
+			if pn != None and pn.user.user != users.get_current_user():
+				return self.fail( "This penname belongs to someone else (" + pn.user.nickname() + ")" \
+								  if users.is_current_user_admin() else \
+								  "This penname belongs to someone else")
+			elif pn == None:
+				pn = PenName.all().filter('user',cu).get()
+			if pn == None:
+				pn = PenName(user=u)
+			pn.penname = av
+			pn.put()
+		if an in dir(UserProfile):
+			attype = type(getattr(UserProfile,an))
+		elif an.startswith('chk'):
+			attype =  db.BooleanProperty
+		else:
+			attype = db.StringProperty
+			
+		if attype == db.BooleanProperty:
+			av = True if av == 'true' else False
+		elif attype == db.IntegerProperty:
+			try:
+				av = int(av)
+			except Exception, x:
+				return self.fail(str(x))
+		setattr(u,an,av)
+	if an != None:
 		u.put()
-		if pn == None:
-			pn = PenName(user=u)
-		pn.penname = penname
-		pn.put() 
 		self.reply()
 	elif u != None: # retrieve data
 		self.reply({ \
 			'Success': True, \
-			'penname': u.penname, \
+			'txtUserName': u.txtUserName, \
 			'aboutme': u.aboutme,
 			'tiddler': u.tiddler,
 			'projects': u.projects})
+	elif users.get_current_user() != None:
+		self.reply({ \
+			'Success': True, \
+			'txtUserName': users.get_current_user().nickname() })
 	else:
-		self.reply();
+		self.reply()
 
   def addProject(self):
 	up = UserProfile.all().filter('user', users.get_current_user()).get()
@@ -1471,9 +1517,9 @@ class MainPage(webapp.RequestHandler):
 		if ev.public == False:
 			return self.fail("This project belongs to someone else")
 		if not ReadAccessToPage('/',sd):
-			return self.fail("This project belongs to " + ev.ownerprofile.penname)
+			return self.fail("This project belongs to " + ev.ownerprofile.txtUserName)
 		if not self.request.get('confirmed',False):
-			return self.warn("This project is managed by " + ev.ownerprofile.penname + '\nProceed?')
+			return self.warn("This project is managed by " + ev.ownerprofile.txtUserName + '\nProceed?')
 	currp = up.projects.split() if up.projects != None else []
 	if not sd in currp:
 		currp.append(sd)
@@ -1528,7 +1574,8 @@ class MainPage(webapp.RequestHandler):
 	if getattr(t,'locked',False):
 		div.setAttribute('locked','true')
 	elif t.page != self.request.path:
-		div.setAttribute('from',t.page)
+		if t.page != None:
+			div.setAttribute('from',t.page)
 		div.setAttribute('locked','true')
 
 	div.setAttribute('modifier', getAuthor(t))
@@ -1543,19 +1590,25 @@ class MainPage(webapp.RequestHandler):
 			if rby != None:
 				div.setAttribute('reverted_by', rby.nickname())
 			modified = reverted
+
 	if modified != None:
 		div.setAttribute('modified', modified.strftime('%Y%m%d%H%M%S'))
 
-	div.setAttribute('comments', str(t.comments))
+	if t.comments != None:
+		div.setAttribute('comments', str(t.comments))
+
 	if t.notes != None and user != None:
 		if t.notes.find(user.nickname()) >= 0:
 			div.setAttribute('notes', "true")
+
 	if t.messages != None and user != None:
 		msgCnt = t.messages.count("|" + user.nickname())
 		if msgCnt > 0:
 			div.setAttribute('messages', str(msgCnt))
+
 	if t.tags != None:
 		div.setAttribute('tags', t.tags);
+
 	pre = xd.createElement('pre')
 	pre.appendChild(xd.createTextNode(t.text))
 	div.appendChild(pre)
@@ -1610,7 +1663,48 @@ class MainPage(webapp.RequestHandler):
 			return page
 	return None
 
+  def ConfigJs(self):
+	'Dynamically construct file "/config.js"'
+	isLoggedIn = self.user != None
+	self.response.headers['Content-Type'] = 'application/x-javascript'
+	self.response.headers['Cache-Control'] = 'no-cache'
+	self.response.out.write(jsProlog)
+	if isLoggedIn:
+		upr = UserProfile.all().filter('user',self.user).get() # my profile
+		if upr == None:
+			upr = UserProfile(txtUserName=self.user.nickname()) # my null profile
+	else:
+		upr = UserProfile(txtUserName='IP \t' + self.request.remote_addr) # anon null profile
+		
+	optlist = [ 'isLoggedIn: ' + ('true' if isLoggedIn else 'false') ]
+	for (fn,ft) in upr._properties.iteritems():
+		fv = getattr(upr,fn)
+		if fv != None:
+			if type(getattr(UserProfile,fn)) == db.BooleanProperty:
+				fv = 'true' if fv else 'false'
+			else:
+				fv = '"' + str(fv).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
+			if isNameAnOption(fn):
+				optlist.append(fn + ': ' + fv)
+	for (fn,ft) in upr._dynamic_properties.iteritems():
+		fv = getattr(upr,fn)
+		if fv != None:
+			if fn.startswith('chk'):
+				fv = 'true' if fv else 'false'
+			else:
+				fv = '"' + str(fv).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
+			if isNameAnOption(fn):
+				optlist.append(fn + ': ' + fv)
+	self.response.out.write(',\n\t\t'.join(optlist))
+	self.response.out.write('\n\t}\n};')
+	
   def get(self): # this is where it all starts
+	self.user = users.get_current_user()
+	if self.user != None:
+		username = self.user.nickname()
+	else:
+		username = ""
+	
 	trace = self.request.get('trace')
 	if trace == '':
 		self.trace = False # disabled by default
@@ -1630,18 +1724,26 @@ class MainPage(webapp.RequestHandler):
 
 	if self.request.path == "/_tasks":
 		return self.task(method)
+	elif self.request.path == '/config.js':
+		return self.ConfigJs()
 	elif self.request.path == "/_export.xml" and users.is_current_user_admin():
 		return self.export()
+	else:
+		rootpath = self.request.path == '/'
 
 	tiddict = dict()
-	defaultTiddlers = ""
+	defaultTiddlers = None
 	self.warnings = []
+	includeNumber = 0
+	disregard = 0
+	includefiles = self.request.get('include').split()
 
 	page = self.CurrentPage()
 	if page != None and page.gwversion == None:
 		Upgrade(self)
 		self.warnings.append("DataStore was upgraded")
 	if page != None:
+		readAccess = ReadAccessToPage(page,self.subdomain,self.user)
 		if page.systemInclude != None:
 			includeDisabled = self.request.get('disable')
 			if includeDisabled != '*':
@@ -1657,10 +1759,20 @@ class MainPage(webapp.RequestHandler):
 									if tdo.id == None or tdo.id == '':
 										tdo.id = 'include-' + urlPath + '#' + tdo.title
 									tiddict[tdo.id] = tdo
+	else:
+		readAccess = False
+		if rootpath and self.request.get('include') == '':
+			if self.user == None:
+				includefiles.append('help-anonymous.xml')
+				defaultTiddlers = "Welcome" # title from help-anonymous.xml
+			else:
+				includefiles.append('help-authenticated.xml')
+				defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
+			
+			disregard = disregard + 1
+		elif self.user == None:
+			defaultTiddlers = 'LoginDialog'
 
-	includeNumber = 0
-	disregard = 0
-	includefiles = self.request.get("include").split()
 	if self.subdomain != None:
 		includefiles.append('PublishPlugin.xml')
 		disregard = disregard + 1
@@ -1703,9 +1815,9 @@ class MainPage(webapp.RequestHandler):
 				self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
 					' has been deleted! <a href="', self.request.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
 	
-	tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",self.subdomain).filter("current", True)
-		
-	mergeDict(tiddict, tiddlers)
+	if readAccess:
+		tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",self.subdomain).filter("current", True)
+		mergeDict(tiddict, tiddlers)
 	
 	if self.merge == True:
 		tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",None).filter("current", True)
@@ -1761,12 +1873,6 @@ class MainPage(webapp.RequestHandler):
 			if p.path.startswith(paw):
 				pages.append(p)
 		
-	user = users.get_current_user()
-	if user != None:
-		username = user.nickname()
-	else:
-		username = ""
-	
 	twd = self.request.get('twd',None)
 	xsl = self.request.get('xsl',None)
 	if twd == None and xsl == None:	# Unless a TiddlyWiki is required or a style sheet is specified
@@ -1786,11 +1892,13 @@ class MainPage(webapp.RequestHandler):
 		metaDiv.setAttribute('title', "_MetaData")
 		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
 		metaDiv.setAttribute('clientip', self.request.remote_addr)
-		if page != None:
+		if page == None:
+			metaDiv.setAttribute('access','all' if users.is_current_user_admin() else 'none')
+		else:
 			metaDiv.setAttribute('timestamp',str(datetime.datetime.now()))
 			metaDiv.setAttribute('username',username)
 			metaDiv.setAttribute('owner', page.owner.nickname())
-			metaDiv.setAttribute('access', AccessToPage(page,self.subdomain,user))
+			metaDiv.setAttribute('access', AccessToPage(page,self.subdomain,self.user))
 			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
 			metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
 			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
@@ -1821,8 +1929,7 @@ class MainPage(webapp.RequestHandler):
 			xpage.setAttribute('href', p.path);
 			xpage.appendChild(xd.createTextNode(p.subtitle))
 
-		if page == None and user == None: # Main page not defined
-			defaultTiddlers = "LoginDialog"
+		if defaultTiddlers != None:
 			td = Tiddler()
 			td.title = "DefaultTiddlers"
 			td.version = 0
@@ -1839,11 +1946,11 @@ class MainPage(webapp.RequestHandler):
 	elDoc.appendChild(elStArea) # the root element
 	elDoc.appendChild(elShArea)
 	
-	if ReadAccessToPage(page,self.subdomain,user):
+	if len(tiddict) > 0:
 		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
 		for id, t in tiddict.iteritems():
 			# pages at /_python/ are executable script...
-			if t.page.startswith("/_python/") and t.page != self.request.path:
+			if t.page != None and t.page.startswith("/_python/") and t.page != self.request.path:
 				# ...either to be called from a http (XmlHttpRequest) method
 				if t.tags == 'HttpMethod':
 					if httpMethods != None:
@@ -1867,13 +1974,13 @@ class MainPage(webapp.RequestHandler):
 					tags = t.tags.split()
 					tags.remove("shadowTiddler")
 					t.tags = ' '.join(tags)
-				elShArea.appendChild(self.BuildTiddlerDiv(xd,id,t,user))
+				elShArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
 			else:
-				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,user))
+				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
 
 		if httpMethods != None:
 			httpMethodTiddler.text = '\n'.join(httpMethods)
-			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,user))
+			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,self.user))
 
 	text = xd.toxml()
 	if twd != None:

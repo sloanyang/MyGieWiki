@@ -186,10 +186,7 @@ def getAuthor(t):
 		return "?"
 
 def LogEvent(what,text):
-	le = LogEntry()
-	le.what = str(what)
-	le.text = str(text)
-	le.put()
+	logging.info(what + ": " + text)
 
 def exportTable(xd,xr,c,wnn,enn):
 	tr = xd.createElement(wnn)
@@ -229,6 +226,13 @@ def mergeDict(td,ts):
 				td[id] = t
 		else:
 			td[id] = t
+
+def isNameAnOption(name):
+	return name.startswith('txt') or name.startswith('chk')
+	
+def getUserPenName(user):
+	up = UserProfile.all().filter('user',user).get()
+	return user.nickname() if up == None else up.txtUserName
 
 def TiddlerFromXml(te,path):
 	id = None

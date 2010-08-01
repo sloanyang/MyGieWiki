@@ -201,13 +201,13 @@ class UploadedFile(db.Model):
   data = db.BlobProperty()
   date = db.DateTimeProperty(auto_now_add=True)
   
-class UserProfile(db.Model):
+class UserProfile(db.Expando):
   user = db.UserProperty()
-  penname = db.StringProperty()
-  aboutme = db.TextProperty()
-  tiddler = db.StringProperty()
-  projects = db.StringProperty()
-  
+  aboutme = db.TextProperty("")
+  tiddler = db.StringProperty("")
+  projects = db.StringProperty("")
+  txtUserName = db.StringProperty() # penname, using TW's term
+
 class PenName(db.Model):
   penname = db.StringProperty()
   user = db.ReferenceProperty(UserProfile)

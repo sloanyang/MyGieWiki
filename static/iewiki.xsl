@@ -18,8 +18,8 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 #shadowArea {display:none;}
 #javascriptWarning {width:100%; text-align:center; font-weight:bold; background-color:#dd1100; color:#fff; padding:1em 0em;}
 	</style>
+<script src="/config.js" />
 <script src="/static/iewiki.js" />
-<script src="/static/inlinescript.js" />
 </head>
 <body onload="main()">
 <div id="copyright">
@@ -461,7 +461,7 @@ To get started with this blank page, you'll need to modify the following tiddler
 <div title="UserProfile" viewTemplate="ViewOnlyTemplate">
 <pre>
 &lt;script&gt;forms.UserProfile = http.userProfile();&lt;/script&gt;
-|My pen name&lt;br&gt;&lt;&lt;input text penname 40&gt;&gt;|
+|My pen name&lt;br&gt;&lt;&lt;input text txtUserName 40&gt;&gt;|
 |About me (displayed as a tooltip)&lt;br&gt;&lt;&lt;input textarea aboutme 5*50&gt;&gt;|
 |When my pen name is clicked, display this page or tiddler (/path#title)&lt;br&gt;&lt;&lt;input text tiddler 55&gt;&gt; &lt;script label=&quot;Display&quot; title=&quot;Display tiddler now&quot;&gt;DisplayNonLocalTiddler(null,forms.UserProfile.tiddler);&lt;/script&gt;|
 |My projects&lt;br&gt; &lt;&lt;myprojects&gt;&gt;&lt;&lt;input text newproject 55&gt;&gt; &lt;script label=&quot;Add&quot; title=&quot;Add project&quot;&gt;var n = 'newproject'; if (config.macros.input.showField(n)) { if (ConfirmIfMessage(http.addProject({'domain': forms.UserProfile.newproject}))) if (http.addProject({'domain': forms.UserProfile.newproject, 'confirmed': true}).Success) story.refreshTiddler("UserProfile",null,true)} else config.macros.input.showField(n,true);&lt;/script&gt;&lt;br&gt;|
@@ -551,8 +551,10 @@ if (http.deletePage(window.location.href).Success) {
 <div title="PageProperties" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;script&gt;
 	accessTypes = &quot;all|edit|add|comment|view|none|&quot;;
-	if (!config.options.txtUserName) return story.closeTiddler("PageProperties") || displayMessage("You are not logged in");
-	forms.PageProperties = http.pageProperties();
+	if (config.isLoggedIn())
+		forms.PageProperties = http.pageProperties();
+	else
+		return "''[As you are not logged in, this dialog is not functional]''&lt;br&gt;";
 	&lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Page properties&lt;/div&gt;&lt;/html&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 95&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 95&gt;&gt;|
