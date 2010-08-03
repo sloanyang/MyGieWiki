@@ -2620,8 +2620,12 @@ config.commands.editTiddler.handler = function(event, src, title) {
     var fields = tiddlerElem.getAttribute("tiddlyFields");
     var st = store.getTiddler(title);
     if (st && st.from) {
-		var a = st.from + '#' + encodeURIComponent(String.encodeTiddlyLink(title));
-		config.annotations[title] = [ "Go to [[", a,'|', a, "]] to edit this tiddler, if so permitted"].join('');
+		if (st.id.startsWith('include'))
+			config.annotations[title] = "Included from " + st.from;
+		else {
+			var a = st.from + '#' + encodeURIComponent(String.encodeTiddlyLink(title));
+			config.annotations[title] = [ "Go to [[", a,'|', a, "]] to edit this tiddler, if so permitted"].join('');
+		}
 	}
 	if (!st)
 		st = TryGetTiddler(title);
