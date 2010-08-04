@@ -91,6 +91,9 @@ def userNameOrAddress(u,a):
 def NoneIsFalse(v):
 	return False if v == None else v
 
+def NoneIsBlank(v):
+    return "" if v == None else str(v)
+
 def toDict(iter,keyName):
 	d = dict()
 	for e in iter:

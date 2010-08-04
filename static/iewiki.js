@@ -486,7 +486,7 @@ config.shadowTiddlers = {
     SiteTitle: "SiteTitle",
     SiteSubtitle: "",
     SiteUrl: "http://giewiki.appspot.com/",
-    SideBarOptions: '<<login edit UserMenu "My stuff" m !readOnly>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
+    SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "More" "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };

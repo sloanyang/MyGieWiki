@@ -1488,10 +1488,10 @@ class MainPage(webapp.RequestHandler):
 	elif u != None: # retrieve data
 		self.reply({ \
 			'Success': True, \
-			'txtUserName': u.txtUserName, \
-			'aboutme': u.aboutme,
-			'tiddler': u.tiddler,
-			'projects': u.projects})
+			'txtUserName': NoneIsBlank(u.txtUserName), \
+			'aboutme': NoneIsBlank(u.aboutme),
+			'tiddler': NoneIsBlank(u.tiddler),
+			'projects': NoneIsBlank(u.projects)})
 	elif users.get_current_user() != None:
 		self.reply({ \
 			'Success': True, \
