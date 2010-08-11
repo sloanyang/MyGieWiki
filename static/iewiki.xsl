@@ -495,7 +495,7 @@ tiddler|File list|file list|list of uploaded files|f
 </div>
 <div title="OptionsPanel">
 <pre>
-These options are saved in your browser
+These options are saved in your profile
 &lt;&lt;option chkRegExpSearch&gt;&gt; RegExpSearch
 &lt;&lt;option chkCaseSensitiveSearch&gt;&gt; CaseSensitiveSearch
 &lt;&lt;option chkAnimate&gt;&gt; EnableAnimations

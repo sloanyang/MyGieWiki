@@ -239,7 +239,7 @@ config.macros = {
     option: {},
     options: {
         wizardTitle: "Tweak advanced options",
-        step1Title: "These options are saved in cookies in your browser",
+        step1Title: "These options are saved online in your profile if you are logged in (otherwise not)",
         step1Html: "<input type='hidden' name='markList'></input><br><input type='checkbox' checked='false' name='chkUnknown'>Show unknown options</input>",
         unknownDescription: "//(unknown)//",
         listViewTemplate: {
