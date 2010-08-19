@@ -147,6 +147,8 @@ class MainPage(webapp.RequestHandler):
 	self.fail(error)
 
   def unlock(self,key):
+	if key == '' or key == None:
+		return True
 	lock = EditLock.get(key)
 	if lock != None:
 		lock.delete()
@@ -199,12 +201,12 @@ class MainPage(webapp.RequestHandler):
 			else:
 				el = EditLock().all().filter('id',tlr.id).get() # locked by someone else?
 				if el != None:
-					error = "Locked by " + userNameOrAddress(el.user,el.user_ip)
+					error = t.title + " locked by " + userNameOrAddress(el.user,el.user_ip)
 				else:
 					sv = self.request.get('currentVer')
 					v = eval(sv)
-					if v < tlr.version:
-						return "Edit conflict: version " + sv + " is not the current version"
+					if v != t.version:
+						error = "Edit conflict: '" +  t.title + "' version " + sv + " is not the current version (" + str(t.version) + " is)"
 			
 	if error != None:
 		return self.fail(error)
@@ -1902,6 +1904,8 @@ class MainPage(webapp.RequestHandler):
 			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
 			metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
 			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
+			metaDiv.setAttribute('sitetitle',page.title);
+			metaDiv.setAttribute('subtitle',page.subtitle);
 			if page.groups != None:
 				metaDiv.setAttribute('groups',page.groups);
 				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):

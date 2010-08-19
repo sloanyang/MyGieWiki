@@ -103,6 +103,7 @@ config.messages = {
 
 // Options that can be set in the options panel and/or cookies
 merge(config.options, {
+    chkAutoSyncAddress: false,
     chkRegExpSearch: false,
     chkCaseSensitiveSearch: false,
     chkIncrementalSearch: true,
@@ -126,6 +127,7 @@ merge(config.options, {
 
 config.optionsDesc = {
     // Options that can be set in the options panel and/or cookies
+    chkAutoSyncAddress: "Auto sync adress bar with displayed tiddlers",
     chkRegExpSearch: "Enable regular expressions for searches",
     chkCaseSensitiveSearch: "Case-sensitive searching",
     chkIncrementalSearch: "Incremental key-by-key searching",
@@ -234,6 +236,10 @@ config.macros = {
         addMessagePrompt: "message to author",
         addNoteLabel: "add note",
         addNotePrompt: "add personal note"
+    },
+    deletePage: {
+		label:  "Delete",
+		prompt: "Delete this page"
     },
     slider: {},
     option: {},
@@ -545,6 +551,10 @@ config.read = function(t) {
 	this.locked = fields.locked;
 	this.pages = this.readPages(t.ace);
 	this.warnings = fields.warnings;
+	if (!store.getTiddler('SiteTitle'))
+		config.shadowTiddlers.SiteTitle = fields.sitetitle;
+	if (!store.getTiddler('SiteSubtitle'))
+		config.shadowTiddlers.SiteSubtitle = fields.subtitle;
 }
 
 config.isLoggedIn = function() {
@@ -591,13 +601,13 @@ function main() {
     addEvent(document, "click", Popup.onDocumentClick);
     for (var s = 0; s < config.notifyTiddlers.length; s++)
         store.addNotification(config.notifyTiddlers[s].name, config.notifyTiddlers[s].notify);
+    store.loadFromDiv("storeArea", "store", true);
+    debugger;
+    config.read(store.fetchTiddler("_MetaData"));
     loadShadowTiddlers();
 
-    store.loadFromDiv("storeArea", "store", true);
-    
     invokeParamifier(params, "onload");
-    
-    config.read(store.fetchTiddler("_MetaData"));
+
     http._init(store.getTiddlerText("HttpMethods").split('\n'));
 
     var pluginProblem = loadPlugins();
@@ -2060,6 +2070,20 @@ config.macros.comments.replyClick = function(ev) {
 	config.macros.comments.createInputBox(tdc, "Your reply",config.macros.comments.onSaveReplyClick,config.macros.comments.onCancelReplyClick);
 }
 
+config.macros.deletePage.handler = function(place) {
+	if (config.access == 'all' && window.location.pathname != '/')
+		createTiddlyButton(place, this.label, this.prompt, this.onClick, "linkbutton");
+};
+
+config.macros.deletePage.onClick = function(e) {
+	if (!confirm("Do you really want to delete this page?")) return;
+	if (http.deletePage(window.location.href).Success) {
+		story.closeAllTiddlers();
+		story.displayTiddler(null, "SiteMap");
+		displayMessage("This page has now been deleted");
+	}
+}
+
 config.macros.slider.onClickSlider = function(ev) {
     var e = ev || window.event;
     var n = this.nextSibling;
@@ -2693,10 +2717,16 @@ function DisplayNonLocalTiddler(from, url)
 }
 
 config.commands.saveTiddler.handler = function(event, src, title) {
-    var newTitle = story.saveTiddler(title, event.shiftKey);
-    if (newTitle)
-        story.displayTiddler(null, newTitle);
-    return false;
+	try {
+		var newTitle = story.saveTiddler(title, event.shiftKey);
+		if (newTitle)
+			story.displayTiddler(null, newTitle);
+		return false;
+	} catch (x) {
+		if (x)
+			displayMessage(x);
+	}
+	
 };
 
 config.commands.editTiddler.isEnabled = function(tdlr) {
@@ -3407,18 +3437,17 @@ TiddlyWiki.prototype.addTiddlerFields = function(title, fields) {
 TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, modified, tags, fields) {
     var tiddler = this.fetchTiddler(title);
     if (tiddler) {
+		var et = tiddler;
         var created = tiddler.created; // Preserve created date
         var versions = tiddler.versions;
         var fromVersion = tiddler.fromversion;
         if (!fromVersion)
 			fromVersion = tiddler.currentVer;
-        this.deleteTiddler(title);
     } else {
         var created = modified;
 		fromVersion = 1;
         tiddler = new Tiddler(null,1);
     }
-    tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
 	var m = { 
 		tiddlerId: tiddler.id, 
 		tiddlerName: newTitle, 
@@ -3431,15 +3460,17 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		shadow: tiddler.hasShadow ? 1 : 0 }
 	if (tiddler.key)
 		m.key = tiddler.key;
-    var result = http.saveTiddler(m);
-    if (result.error)
-        displayMessage(result.error);
-    else {
-		merge(tiddler, result);
-		tiddler.version = result.currentVer;
-		tiddler.fromversion = fromVersion;
-		tiddler.fields['vercnt'] = result.vercnt;
-	}
+	var result = http.saveTiddler(m);
+	if (result.Success == false)
+		throw(false);
+
+	tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
+	merge(tiddler, result);
+	tiddler.version = result.currentVer;
+	tiddler.fromversion = fromVersion;
+	tiddler.fields['vercnt'] = result.vercnt;
+	if (et)
+		this.deleteTiddler(title);
     this.addTiddler(tiddler);
     if (title != newTitle)
         this.notify(title, true);
@@ -3897,7 +3928,7 @@ Story.prototype.displayTiddler = function(srcElement, tiddler, template, animate
     if (animationSrc && typeof animationSrc !== "string") {
         srcElement = animationSrc;
     }
-    if (!startingUp && title != "LoginDialog")
+    if (!startingUp && config.options.chkAutoSyncAddress && title != "LoginDialog")
         this.permaView();
     if (srcElement && typeof srcElement !== "string") {
         if (config.options.chkAnimate && (animate == undefined || animate == true) && anim && typeof Zoomer == "function" && typeof Scroller == "function")
@@ -6323,7 +6354,8 @@ function removeNode(e) {
 function removeTiddlerNode(e) {
     scrubNode(e);
     e.parentNode.removeChild(e);
-    story.permaView();
+    if (config.options.chkAutoSyncAddress)
+	    story.permaView();
 }
 
 // Remove any event handlers or non-primitve custom attributes
@@ -7324,13 +7356,22 @@ TiddlyWiki.prototype.saveIfChanged = function(title,text) {
     }
 }	
 
-function OnSavePageProperties(reply)
+function OnSavePageProperties()
 {
-	if (!reply) return;
-	var sts = store.saveIfChanged("SiteTitle",forms.PageProperties.title);
-	var sss = store.saveIfChanged("SiteSubtitle",forms.PageProperties.subtitle);
+	return true;
+	try {
+		var sts = store.saveIfChanged("SiteTitle",forms.PageProperties.title);
+		var sss = store.saveIfChanged("SiteSubtitle",forms.PageProperties.subtitle);
+	} catch (x) {
+		if (x)
+			displayMessage(x.Message);
+		if (sts || sss)
+			refreshAll();
+		return false;
+	}
 	if (sts || sss)
 		refreshAll();
+	return true;
 }
 
 function OnCommitCloseForm(fn,reply)

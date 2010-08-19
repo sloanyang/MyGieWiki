@@ -363,6 +363,7 @@ table.listView th, table.listView td, table.listView tr {padding:0px 3px 0px 3px
 .commentToolbar { padding-bottom:5px;}
 .replyTD { padding-left:1.25em }
 .buttonftr {position:relative; top:0em; right:0em; }
+.linkbutton { font-weight: bold }
 
 .diffout { font-size:1.0em; font-family: courier; }
 .diffminus { background-color: #d0ffdd; }
@@ -519,15 +520,6 @@ See also the AdvancedOptions
   <pre>&lt;html&gt;&lt;div class='title'&gt;Recent comments&lt;/div&gt;&lt;/html&gt;
 &lt;&lt;recentComments&gt;&gt;</pre>
 </div>
-<div title="DeletePage" viewTemplate="ViewOnlyTemplate">
-	<pre>&lt;script&gt;if (!confirm("Do you really want to delete this page?")) return;
-if (http.deletePage(window.location.href).Success) {
-	story.closeAllTiddlers();
-	story.displayTiddler(null, "SiteMap");
-	displayMessage("This page has now been deleted");
-	}&lt;/script&gt;
-</pre>
-</div>
 <div title="DebugConsole">
 <pre>&lt;script label="Python"&gt;
 	var re = document.getElementById(formName() + 'output');
@@ -563,7 +555,7 @@ if (http.deletePage(window.location.href).Success) {
 |Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes &gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
 |&gt;|&gt;|Includes:&lt;&lt;importTiddlerStatus forms.PageProperties.systeminclude&gt;&gt;|
 |Read-only view options|Access to prior versions&lt;br&gt;&lt;&lt;input checkbox viewprior true&gt;&gt;|Show view button&lt;br&gt;&lt;&lt;input checkbox viewbutton true&gt;&gt;|
-|&lt;script label=&quot;Save&quot; title=&quot;Save properties&quot;&gt;OnSavePageProperties(OnCommitCloseForm("PageProperties",http.pageProperties(forms.PageProperties)));&lt;/script&gt;|DeletePage|&lt;script label=&quot;Close&quot; title=&quot;Close&quot;&gt;story.closeTiddler("PageProperties");&lt;/script&gt;|</pre>
+|&lt;script label=&quot;Save&quot; title=&quot;Save properties&quot;&gt;OnCommitCloseForm("PageProperties",http.pageProperties(forms.PageProperties));&lt;/script&gt;|&lt;&lt;deletePage&gt;&gt;|&lt;script label=&quot;Close&quot; title=&quot;Close&quot;&gt;story.closeTiddler("PageProperties");&lt;/script&gt;|</pre>
 </div>
 <div title="CreateNewPage" viewTemplate="ViewOnlyTemplate">
     <pre>&lt;script&gt;accessTypes = &quot;all|edit|add|comment|view|none|&quot;
