@@ -493,7 +493,7 @@ config.shadowTiddlers = {
     SiteSubtitle: "",
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
-    SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "More" "More lists" TabMore>>',
+    SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~More" "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
 
@@ -540,7 +540,7 @@ config.read = function(t) {
 	this.clientip = fields.clientip;
 	this.owner = fields.owner;
 	this.access = fields.access;
-	if (this.access == "none" || this.access == "read")
+	if (this.access == "none" || this.access == "view")
 		readOnly = true;
 	this.anonAccess = fields.anonaccess;
 	this.authAccess = fields.authaccess;
@@ -602,7 +602,6 @@ function main() {
     for (var s = 0; s < config.notifyTiddlers.length; s++)
         store.addNotification(config.notifyTiddlers[s].name, config.notifyTiddlers[s].notify);
     store.loadFromDiv("storeArea", "store", true);
-    debugger;
     config.read(store.fetchTiddler("_MetaData"));
     loadShadowTiddlers();
 
@@ -2450,12 +2449,21 @@ config.macros.tabs.handler = function(place, macroName, params) {
         var label = params[t * 3 + 1];
         var prompt = params[t * 3 + 2];
         var content = params[t * 3 + 3];
-        var tab = createTiddlyButton(tabset, label, prompt, this.onClickTab, "tab tabUnselected");
-        tab.setAttribute("tab", label);
-        tab.setAttribute("content", content);
-        tab.title = prompt;
-        if (config.options[cookie] == label)
-            validTab = true;
+        var skip = false;
+        if (label.startsWith('~')) {
+			if (readOnly)
+				skip = true;
+			else
+				label = label.substring(1);
+		}
+		if (skip == false) {
+			var tab = createTiddlyButton(tabset, label, prompt, this.onClickTab, "tab tabUnselected");
+			tab.setAttribute("tab", label);
+			tab.setAttribute("content", content);
+			tab.title = prompt;
+			if (config.options[cookie] == label)
+				validTab = true;
+		}
     }
     if (!validTab)
         config.options[cookie] = params[1];
