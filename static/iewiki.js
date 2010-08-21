@@ -7820,6 +7820,8 @@ config.macros.importTiddlers = {
 			displayMessage("Getting <br>" + aurl + "</br>");
 			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter || '' });
 			clearMessage();
+			var nCurrent = 0;
+			var nExcluded = 0;
 			if (libs) {
 				this.aurl = aurl;
 				this.libs = libs;
@@ -7831,9 +7833,9 @@ config.macros.importTiddlers = {
 					if (tiddlers && tiddlers.indexOf(lt.title) == -1)
 						continue;
 					if (lt.current)
-						var checked = 'checked="1"';
+						{ var checked = 'checked="1"'; nCurrent++; }
 					else
-						var checked = '';
+						{ var checked = ''; nExcluded++; }
 					var ltav = t;
 					var line = ['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td><input type="checkbox" id="cht', ltav, '" ', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl, '">', lt.title.htmlEncode(), '</a></td><td>', lt.tags, '</td></tr>'].join('');
 					links[t] = 'itl' + ltav;
@@ -7844,7 +7846,9 @@ config.macros.importTiddlers = {
 				if (afilter)
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers.", afilter];
-				if (tiddlers)
+				if (nCurrent < libs.length)
+					resmsg.push( "Currently ", nCurrent > 0 ? nCurrent : "none", " are included.");
+				if (libs.length > nCurrent + nExcluded)
 					resmsg.push(' <a href="javascript:;" id="sea',aurl,'"> Show all</a>');
 				wd.innerHTML = resmsg.join('') + hta.join('');
 				if (tiddlers)
@@ -7899,8 +7903,12 @@ config.macros.importTiddlers = {
 			t.modified = null;
 			return t;
 		};
-		if ((!store.fetchTiddler(file)) || override)
-			store.addTiddler(ms(new Tiddler(file, 0, ['<<importTiddlers "', file, '" ', selected ? 'tiddlers' : '', ' "', selected, '">>'].join(''))));
+		if ((!store.fetchTiddler(file)) || override) {
+			var bas = [	'<<importTiddlers "', file,'" ', 
+						selected ? 'tiddlers' : '',
+						' ', selected ? selected.toJSONString() : "", '>>'];
+			store.addTiddler(ms(new Tiddler(file, 0, bas.join(''))));
+		}
 		if (story.getTiddler(file))
 			story.refreshTiddler(file,null,true);
 		else
@@ -7912,7 +7920,7 @@ config.macros.importTiddlers = {
 			return ".";
 		var mls = [" or select from the following previously retrieved files:"];
 		for (var i = 0; i < filelist.length; i++)
-			mls.push(['<script label="', filelist[i], '">config.macros.importTiddlers.serve("', filelist[i], '")</script>'].join(''));
+			mls.push(['<script label="', filelist[i], '">config.macros.importTiddlers.serve(', filelist[i].toJSONString(), ')</script>'].join(''));
 		return mls.join('<br>');
 	},
 	importSelected: function (ev) {
@@ -7959,7 +7967,7 @@ config.macros.importTiddlerStatus = {
 			for (var i = 0; i < list.length; i++)
 				if (list[i].trim() != "") {
 					var data = list[i].trim().split('#', 2);
-					var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve("', data[0], '","', data[1], '")</script><br>'].join('');
+					var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve(', data[0].toJSONString(), ',', data[1].toJSONString(),',true)</script><br>'].join('');
 					if (++n == 1)
 						wikify('<br>', place);
 					wikify(wt, place);
