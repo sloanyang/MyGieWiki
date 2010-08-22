@@ -7978,23 +7978,6 @@ config.macros.importTiddlerStatus = {
 	}
 }
 
-config.macros.youtube = {
-	handler: function (place, macroName, params, wikifier, paramString) {
-		if (params.length > 0)
-		{
-			var t = createTiddlyElement(place,"span",null,null,null);
-			var w = place.offsetWidth;
-			var rh = params.length > 1 ? Number(params[1]) : 81;
-			var h = w * rh / 100;
-			t.innerHTML = ['<object width="', 
-				w, '" height="', h,
-				'"><param name="movie" value="http://www.youtube.com/v/Y8yIpH_VI50&color1=0xb1b1b1&color2=0xcfcfcf&hl=en&feature=player_embedded&fs=1"></param><param name="allowFullScreen" value="true"></param><param name="allowScriptAccess" value="always"></param><embed src="http://www.youtube.com/v/',
-				params[0], '&color1=0xb1b1b1&color2=0xcfcfcf&hl=en&feature=player_embedded&fs=1" type="application/x-shockwave-flash" allowfullscreen="true" allowScriptAccess="always" width="', 
-				w, '" height="', h, '"></embed></object>'].join('');
-		}
-	}
-}
-
 /***
 Name:	InlineJavascriptPlugin  (static/inlinescript.htm)
 Source:	http://www.TiddlyTools.com/#InlineJavascriptPlugin
