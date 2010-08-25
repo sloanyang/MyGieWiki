@@ -104,6 +104,7 @@ config.messages = {
 // Options that can be set in the options panel and/or cookies
 merge(config.options, {
     chkAutoSyncAddress: false,
+    chkAutoReloadOnSystemConfigSave: true,
     chkRegExpSearch: false,
     chkCaseSensitiveSearch: false,
     chkIncrementalSearch: true,
@@ -128,6 +129,7 @@ merge(config.options, {
 config.optionsDesc = {
     // Options that can be set in the options panel and/or cookies
     chkAutoSyncAddress: "Auto sync adress bar with displayed tiddlers",
+    chkAutoReloadOnSystemConfigSave: "Auto reload on saving systemConfig tiddlers",
     chkRegExpSearch: "Enable regular expressions for searches",
     chkCaseSensitiveSearch: "Case-sensitive searching",
     chkIncrementalSearch: "Incremental key-by-key searching",
@@ -3471,8 +3473,10 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 	var result = http.saveTiddler(m);
 	if (result.Success == false)
 		throw(false);
-
 	tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
+	if (tiddler.isTagged("systemConfig") && config.options.chkAutoReloadOnSystemConfigSave)
+		window.location.reload();
+
 	merge(tiddler, result);
 	tiddler.version = result.currentVer;
 	tiddler.fromversion = fromVersion;

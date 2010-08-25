@@ -881,7 +881,7 @@ class MainPage(webapp.RequestHandler):
 			self.fail("File or tiddler not found")
 		else:
 			self.fail("id should be like path#tiddlerTitle")
-		
+
 	title = self.request.get("title")
 	if title == "":
 		url = self.request.get("url").split("#",1)
@@ -1737,7 +1737,6 @@ class MainPage(webapp.RequestHandler):
 	defaultTiddlers = None
 	self.warnings = []
 	includeNumber = 0
-	disregard = 0
 	includefiles = self.request.get('include').split()
 
 	page = self.CurrentPage()
@@ -1746,7 +1745,7 @@ class MainPage(webapp.RequestHandler):
 		self.warnings.append("DataStore was upgraded")
 	if page != None:
 		readAccess = ReadAccessToPage(page,self.subdomain,self.user)
-		if page.systemInclude != None:
+		if readAccess and page.systemInclude != None:
 			includeDisabled = self.request.get('disable')
 			if includeDisabled != '*':
 				for sf in page.systemInclude.replace('\r','').split('\n'):
@@ -1763,21 +1762,30 @@ class MainPage(webapp.RequestHandler):
 									tiddict[tdo.id] = tdo
 	else:
 		readAccess = False
-		if rootpath and self.request.get('include') == '':
-			if self.user == None:
-				includefiles.append('help-anonymous.xml')
-				defaultTiddlers = "Welcome" # title from help-anonymous.xml
-			else:
-				includefiles.append('help-authenticated.xml')
-				defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
+		if rootpath:
+			if self.request.get('include') == '':
+				if self.user == None:
+					includefiles.append('help-anonymous.xml')
+					defaultTiddlers = "Welcome" # title from help-anonymous.xml
+				else:
+					includefiles.append('help-authenticated.xml')
+					defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
 			
-			disregard = disregard + 1
-		elif self.user == None:
-			defaultTiddlers = 'LoginDialog'
+		else:
+			# Not an existing page, perhaps an uploaded file ?
+			file = UploadedFile.all().filter("sub",self.subdomain).filter("path =", self.request.path).get()
+			LogEvent("Get file", self.request.path)
+			if file != None:
+				self.response.headers['Content-Type'] = file.mimetype
+				self.response.headers['Cache-Control'] = 'no-cache'
+				self.response.out.write(file.data)
+				return
+			else:
+				self.response.set_status(404)
+				return
 
 	if self.subdomain != None:
 		includefiles.append('PublishPlugin.xml')
-		disregard = disregard + 1
 		
 	for tn in includefiles:
 		try:
@@ -1809,15 +1817,15 @@ class MainPage(webapp.RequestHandler):
 			self.response.out.write("<html>Error including " + tn + ":<br>" + str(x))
 			return
 	
-	for st in ShadowTiddler.all():
-		if self.request.path.startswith(st.path):
-			try:
-				tiddict[st.tiddler.id] = st.tiddler
-			except Exception, x:
-				self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
-					' has been deleted! <a href="', self.request.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
-	
 	if readAccess:
+		for st in ShadowTiddler.all():
+			if self.request.path.startswith(st.path):
+				try:
+					tiddict[st.tiddler.id] = st.tiddler
+				except Exception, x:
+					self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
+						' has been deleted! <a href="', self.request.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
+	
 		tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",self.subdomain).filter("current", True)
 		mergeDict(tiddict, tiddlers)
 	
@@ -1825,22 +1833,23 @@ class MainPage(webapp.RequestHandler):
 		tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",None).filter("current", True)
 		mergeDict(tiddict,tiddlers)
 	
-	includes = Include.all().filter("page", self.request.path)
-	for t in includes:
-		tv = t.version
-		tq = Tiddler.all().filter("id = ", t.id)
-		if t.version == None:
-			tq = tq.filter("current = ", True)
-		else:
-			tq = tq.filter("version = ", tv)
-		t = tq.get()
-		if t != None:
-			id = t.id
-			if id in tiddict:
-				if t.version > tiddict[id].version:
-					tiddict[id] = t
+	if page != None:
+		includes = Include.all().filter("page", self.request.path)
+		for t in includes:
+			tv = t.version
+			tq = Tiddler.all().filter("id = ", t.id)
+			if t.version == None:
+				tq = tq.filter("current = ", True)
 			else:
-				tiddict[id] = t
+				tq = tq.filter("version = ", tv)
+			t = tq.get()
+			if t != None:
+				id = t.id
+				if id in tiddict:
+					if t.version > tiddict[id].version:
+						tiddict[id] = t
+				else:
+					tiddict[id] = t
 
 	httpMethodTiddler = None
 	for id, t in tiddict.iteritems():
@@ -1855,25 +1864,14 @@ class MainPage(webapp.RequestHandler):
 	for id, t in tiddict.iteritems():
 		self.Trace(id + ':' + t.title)
 	pages = []
-	if len(tiddict) == disregard: # Not an existing page, perhaps an uploaded file ?
-		file = UploadedFile.all().filter("sub",self.subdomain).filter("path =", self.request.path).get()
-		LogEvent("Get file", self.request.path)
-		if file != None:
-			self.response.headers['Content-Type'] = file.mimetype
-			self.response.headers['Cache-Control'] = 'no-cache'
-			self.response.out.write(file.data)
-			return
-		else:
-			LogEvent("No file", self.request.path)
-	else: # list pages next to this
-		papalen = self.request.path.rfind('/')
-		if papalen == -1:
-			paw = "";
-		else:
-			paw = self.request.path[0:papalen + 1]
-		for p in Page.all():
-			if p.path.startswith(paw):
-				pages.append(p)
+	papalen = self.request.path.rfind('/')
+	if papalen == -1:
+		paw = "";
+	else:
+		paw = self.request.path[0:papalen + 1]
+	for p in Page.all():
+		if p.path.startswith(paw):
+			pages.append(p)
 		
 	twd = self.request.get('twd',None)
 	xsl = self.request.get('xsl',None)
