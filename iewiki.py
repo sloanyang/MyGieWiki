@@ -1877,7 +1877,10 @@ class MainPage(webapp.RequestHandler):
 	xsl = self.request.get('xsl',None)
 	if twd == None and xsl == None:	# Unless a TiddlyWiki is required or a style sheet is specified
 		xsl = "/static/iewiki.xsl"	# use the default,
-
+		metaData = True
+	else:
+		metaData = False
+		
 	xd = self.initXmlResponse()
 	if xsl != None and xsl != "":	# except if no CSS is desired
 		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
@@ -1888,48 +1891,49 @@ class MainPage(webapp.RequestHandler):
 	if twd == None: # normal giewiki output
 		elStArea = xd.createElement("storeArea")
 		elShArea = xd.createElement("shadowArea")
-		metaDiv = xd.createElement('div')
-		metaDiv.setAttribute('title', "_MetaData")
-		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
-		metaDiv.setAttribute('clientip', self.request.remote_addr)
-		if page == None:
-			metaDiv.setAttribute('access','all' if users.is_current_user_admin() else 'none')
-		else:
-			metaDiv.setAttribute('timestamp',str(datetime.datetime.now()))
-			metaDiv.setAttribute('username',username)
-			metaDiv.setAttribute('owner', page.owner.nickname())
-			metaDiv.setAttribute('access', AccessToPage(page,self.subdomain,self.user))
-			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
-			metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
-			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
-			metaDiv.setAttribute('sitetitle',page.title);
-			metaDiv.setAttribute('subtitle',page.subtitle);
-			if page.groups != None:
-				metaDiv.setAttribute('groups',page.groups);
-				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
-					metaDiv.setAttribute('groupmember','true')
-			metaDiv.setAttribute('viewbutton', 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false')
-			metaDiv.setAttribute('viewprior', 'true' if hasattr(page,'viewprior') and page.viewprior else 'false')
-			# metaDiv.setAttribute('server', self.gwserverVersion)
-			if page.locked:
-				metaDiv.setAttribute('locked','true')
-			if len(self.warnings) > 0:
-				metaDiv.setAttribute('warnings','<br>'.join(self.warnings))
-		if self.trace != None and self.trace != False and len(self.trace) > 0:
-			metaPre = xd.createElement('pre')
-			metaDiv.appendChild(metaPre)
-			metaPre.appendChild(xd.createTextNode('\n'.join(self.trace)))
-		elStArea.appendChild(metaDiv)
+		if metaData:
+			metaDiv = xd.createElement('div')
+			metaDiv.setAttribute('title', "_MetaData")
+			metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
+			metaDiv.setAttribute('clientip', self.request.remote_addr)
+			if page == None:
+				metaDiv.setAttribute('access','all' if users.is_current_user_admin() else 'none')
+			else:
+				metaDiv.setAttribute('timestamp',str(datetime.datetime.now()))
+				metaDiv.setAttribute('username',username)
+				metaDiv.setAttribute('owner', page.owner.nickname())
+				metaDiv.setAttribute('access', AccessToPage(page,self.subdomain,self.user))
+				metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
+				metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
+				metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
+				metaDiv.setAttribute('sitetitle',page.title);
+				metaDiv.setAttribute('subtitle',page.subtitle);
+				if page.groups != None:
+					metaDiv.setAttribute('groups',page.groups);
+					if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
+						metaDiv.setAttribute('groupmember','true')
+				metaDiv.setAttribute('viewbutton', 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false')
+				metaDiv.setAttribute('viewprior', 'true' if hasattr(page,'viewprior') and page.viewprior else 'false')
+				# metaDiv.setAttribute('server', self.gwserverVersion)
+				if page.locked:
+					metaDiv.setAttribute('locked','true')
+				if len(self.warnings) > 0:
+					metaDiv.setAttribute('warnings','<br>'.join(self.warnings))
+			if self.trace != None and self.trace != False and len(self.trace) > 0:
+				metaPre = xd.createElement('pre')
+				metaDiv.appendChild(metaPre)
+				metaPre.appendChild(xd.createTextNode('\n'.join(self.trace)))
+			elStArea.appendChild(metaDiv)
 		
-		pgse = xd.createElement("div")
-		metaDiv.appendChild(pgse);
-		pgse.setAttribute('title',"pages")
-		for p in pages:
-			xpage = xd.createElement("a")
-			pgse.appendChild(xpage)
-			xpage.setAttribute('title',"page")
-			xpage.setAttribute('href', p.path);
-			xpage.appendChild(xd.createTextNode(p.subtitle))
+			pgse = xd.createElement("div")
+			metaDiv.appendChild(pgse);
+			pgse.setAttribute('title',"pages")
+			for p in pages:
+				xpage = xd.createElement("a")
+				pgse.appendChild(xpage)
+				xpage.setAttribute('title',"page")
+				xpage.setAttribute('href', p.path);
+				xpage.appendChild(xd.createTextNode(p.subtitle))
 
 		if defaultTiddlers != None:
 			td = Tiddler()

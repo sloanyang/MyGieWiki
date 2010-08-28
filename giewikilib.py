@@ -179,7 +179,7 @@ def deleteTiddlerVersion(tid,ver):
 		return False
 		
 def getAuthor(t):
-	if t.author_ip != None and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',t.author_ip) == None:
+	if hasattr(t,'author_ip') and t.author_ip != None and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',t.author_ip) == None:
 		return t.author_ip # It's not an IP address
 	elif t.author != None:
 		return str(t.author.nickname());

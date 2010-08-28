@@ -553,9 +553,11 @@ config.read = function(t) {
 	this.locked = fields.locked;
 	this.pages = this.readPages(t.ace);
 	this.warnings = fields.warnings;
-	if (!store.getTiddler('SiteTitle'))
+	var st = store.getTiddler('SiteTitle');
+	if (!st || st.hasShadow)
 		config.shadowTiddlers.SiteTitle = fields.sitetitle;
-	if (!store.getTiddler('SiteSubtitle'))
+	st = store.getTiddler('SiteSubtitle');
+	if (!st || st.hasShadow)	
 		config.shadowTiddlers.SiteSubtitle = fields.subtitle;
 }
 
@@ -603,9 +605,9 @@ function main() {
     addEvent(document, "click", Popup.onDocumentClick);
     for (var s = 0; s < config.notifyTiddlers.length; s++)
         store.addNotification(config.notifyTiddlers[s].name, config.notifyTiddlers[s].notify);
+    loadShadowTiddlers();
     store.loadFromDiv("storeArea", "store", true);
     config.read(store.fetchTiddler("_MetaData"));
-    loadShadowTiddlers();
 
     invokeParamifier(params, "onload");
 
@@ -655,11 +657,20 @@ function loadShadowTiddlers() {
 		t.modified = null; 
 		return t; 
 	} 
-    for(t in config.shadowTiddlers) {
-		store.addTiddler(ms(new Tiddler(t,0,config.shadowTiddlers[t])));
+	for(t in config.shadowTiddlers) {
+		var st = ms(new Tiddler(t,0,config.shadowTiddlers[t]));
+		var et = store.getTiddler(t);
+		if (et) {
+			et.hasShadow = true;
+		    if (!et.ovs)
+				et.ovs = [];
+			et.ovs[0] = st;
+		}
+		else
+			store.addTiddler(st);
 		delete config.shadowTiddlers[t];
 	}
-    store.loadFromDiv("shadowArea", "shadows", true, ms);
+	store.loadFromDiv("shadowArea", "shadows", true, ms);
 }
 
 function loadPlugins() {
@@ -2688,7 +2699,8 @@ config.commands.editTiddler.handler = function(event, src, title) {
 			}
 		}
 	}
-	config.commands.revertTiddler.tooltip = st.version != st.currentVer ? "revert to this version" : "revert last edit";
+	if (st)
+		config.commands.revertTiddler.tooltip = st.version != st.currentVer ? "revert to this version" : "revert last edit";
     story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, fields);
     story.focusTiddler(title, config.options.txtEditorFocus || "text");
     return false;
@@ -7834,7 +7846,7 @@ config.macros.importTiddlers = {
 				var links = [];
 				for (var t = 0; t < libs.length; t++) {
 					var lt = libs[t];
-					if (tiddlers && tiddlers.indexOf(lt.title) == -1)
+					if (tiddlers && tiddlers.indexOf(lt.title) == -1 || lt.title == "_MetaData")
 						continue;
 					if (lt.current)
 						{ var checked = 'checked="1"'; nCurrent++; }
