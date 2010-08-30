@@ -4,7 +4,7 @@
 
 The parameter is the portion of the youtube URL between ''?v='' and the first ''&amp;'' (if you take it from the browser address bar).
 
-You may have noticed (depending on the with of your browser window), that the youtube macro will - by default - size the player window to the width of the story column. If you would rather have it appear at a fixed size, you can add a second parameter specifying the with in pixels, like this: {{{&lt;&lt;youtube YrLk4vdY28Q 300&gt;&gt;}}}.
+You may have noticed (depending on the with of your browser window), that the youtube macro will - by default - size the player window to the width of the story coulumn. If you would rather have it appear at a fixed size, you can add a second parameter specifying the with in pixels, like this: {{{&lt;&lt;youtube YrLk4vdY28Q 300&gt;&gt;}}}.
 
 &lt;&lt;youtube YrLk4vdY28Q 300&gt;&gt;
 
@@ -16,7 +16,7 @@ the height in percent of the width: {{{&lt;&lt;youtube P_NpxTWbovE 350,67%&gt;&g
 You can omit the width part and just specify the aspect ratio, like I do in this next example, which uses an additional option, which is to specify a label which is rendered as link text in stead of the player being embedded immediately. The reader can then chose to click the link and have the play open: {{{&lt;&lt;youtube 7muBBSQniho 67% &quot;Amy MacDonald's version&quot;&gt;&gt;}}}.
 &lt;&lt;youtube 7muBBSQniho 67% &quot;Amy MacDonald's version&quot;&gt;&gt; starts out a little loud, but bear with her, it's not half bad.
 
-Perhaps you would like the player to start playing immediately, just add the keyword ''play'', as in [[this example|Halleluja]].</pre></div><div comments="0" id="3fa5602a-173b-4a73-879a-71739bb50d1c" modified="20120822083100" modifier="tester" tags="" title="SiteTitle" vercnt="1" version="1"><pre>YouTube</pre></div><div comments="0" id="40a17b92-6833-46ee-b692-a1e7cbb8c125" modified="20120822134516" modifier="poul.staugaard@example.com" tags="" title="Youtube embedding code sample" vercnt="5" version="5"><pre>{{{
+Perhaps you would like the player to start playing immediately, just add the keyword ''play'', as in [[this example|Hallelujah]].</pre></div><div comments="0" id="3fa5602a-173b-4a73-879a-71739bb50d1c" modified="20120822083100" modifier="tester" tags="" title="SiteTitle" vercnt="1" version="1"><pre>YouTube</pre></div><div comments="0" id="40a17b92-6833-46ee-b692-a1e7cbb8c125" modified="20120822134516" modifier="poul.staugaard@example.com" tags="" title="Youtube embedding code sample" vercnt="5" version="5"><pre>{{{
 &lt;html&gt;
   &lt;object width=&quot;425&quot; height=&quot;344&quot;&gt;
     &lt;param name=&quot;movie&quot; value=&quot;http://www.youtube.com/v/YrLk4vdY28Q&amp;color1=0xb1b1b1&amp;color2=0xcfcfcf&amp;hl=en&amp;feature=player_embedded&amp;fs=1&quot;&gt;&lt;/param&gt;
@@ -44,10 +44,13 @@ config.macros.youtube = {
 	handler: function (place, macroName, params, wikifier, paramString) {
 		if (params.length == 0)
 			throw(&quot;Missing required parameter: youtube video id&quot;);
-		var vid = params.shift(); // parameter 1: youtube video id
-		var w = place.offsetWidth;
-		var rh = 81;
-		if (params.length &gt; 0) { // parameter 2: width,relative-height%
+	var vid = params.shift(); // parameter 1: youtube video id
+	var t = place;
+	while (t.tagName != 'td' &amp;&amp; !t.className.startsWith('tiddler') &amp;&amp; t.parentNode)
+		t = t.parentNode;
+	var w = t.offsetWidth;
+	var rh = 81;
+	if (params.length &gt; 0) { // parameter 2: width,relative-height%
 			var dims = params[0].split(',');
 			var da = dims.shift();
 			var na = parseInt(da);
