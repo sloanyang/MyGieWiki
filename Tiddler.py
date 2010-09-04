@@ -6,7 +6,7 @@
 from google.appengine.ext import db
 from google.appengine.api import users
 
-class Tiddler(db.Model):
+class Tiddler(db.Expando):
   "Unit of text storage"
   title = db.StringProperty()
   page = db.StringProperty()

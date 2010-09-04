@@ -215,6 +215,10 @@ class MainPage(webapp.RequestHandler):
 	tlr.title = self.request.get("tiddlerName")
 	tlr.text = self.request.get("text")
 	tlr.tags = self.request.get("tags")
+	for ra in self.request.arguments():
+		if not ra in ('method','tiddlerId','tiddlerName','text','tags','currentVer','modifier','fromVer','shadow','vercnt','key'):
+			setattr(tlr,ra,self.request.get(ra))
+
 	tlr.comments = 0
 	if (tlr.id == ""):
 		tlr.id = str(uuid.uuid4())
@@ -1610,6 +1614,21 @@ class MainPage(webapp.RequestHandler):
 
 	if t.tags != None:
 		div.setAttribute('tags', t.tags);
+		
+	td = t.dynamic_properties()
+	logging.info(str(len(td)) + " dps")
+	for m in td:
+		logging.info("DP " + m)
+		try:
+			tavm = getattr(t,m)
+			if type(tavm) == str:
+				div.setAttribute(m,tavm)
+			elif type(tavm) == unicode:
+				div.setAttribute(m,tavm)
+			else: # if type(tavm) != instancemethod:
+				pass # logging.info("Attr " + m + " is a " + str(type(tavm)) + ": " + str(tavm))
+		except Exception, x:
+			logging.warn("X: " + str(x))
 
 	pre = xd.createElement('pre')
 	pre.appendChild(xd.createTextNode(t.text))

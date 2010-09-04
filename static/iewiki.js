@@ -3477,9 +3477,12 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		tags: tags, 
 		currentVer: tiddler.currentVer, 
 		modifier: modifier, 
-		versions: versions,
+		//versions: versions,
 		fromVer: fromVersion,
 		shadow: tiddler.hasShadow ? 1 : 0 }
+	for (fn in fields) {
+		m[fn] = fields[fn];
+	}
 	if (tiddler.key)
 		m.key = tiddler.key;
 	var result = http.saveTiddler(m);
