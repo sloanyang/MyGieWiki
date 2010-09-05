@@ -537,7 +537,9 @@ class MainPage(webapp.RequestHandler):
 		comment = Note()
 	elif t == "M":
 		comment = Message()
-		comment.receiver = users.User(self.request.get("receiver"))
+		receiver = self.request.get("receiver")
+		pn = PenName.all().filter('penname',receiver).get()
+		comment.receiver = pn.user.user if pn != None else users.User(receiver)
 	else:
 		comment = Comment()
 	comment.tiddler = self.request.get("tiddler")
@@ -546,9 +548,11 @@ class MainPage(webapp.RequestHandler):
 	comment.author = users.get_current_user()
 	comment.ref = self.request.get("ref")
 	comment.save()
+	ms = False
 	if t == "C" and comment.ref == "":
 		tls.comments = tls.comments + 1
 	elif t == "M":
+		ms = SendEmailNotification(comment,tls)
 		if tls.messages == None:
 			tls.messages = '|'
 		tls.messages = tls.messages + comment.receiver.nickname() + '|'
@@ -556,7 +560,7 @@ class MainPage(webapp.RequestHandler):
 		tls.notes = tls.notes + '|' + comment.author.nickname() if tls.notes != None else comment.author.nickname()
 		
 	tls.save()
-	self.reply({"Success": True, "Comments": tls.comments, "author": users.get_current_user(), "text": comment.text,"created": datetime.datetime.now() })
+	self.reply({"Success": True, "Comments": tls.comments, "author": users.get_current_user(), "text": comment.text,"created": datetime.datetime.now(), "mail": ms })
 		
   def getComments(self):
 	cs = Comment.all().filter("tiddler = ",self.request.get('tiddlerId'))
@@ -1463,12 +1467,18 @@ class MainPage(webapp.RequestHandler):
 			u.put()
 		if an == 'txtUserName':
 			pn = PenName.all().filter('penname',av).get()
-			if pn != None and pn.user.user != users.get_current_user():
-				return self.fail( "This penname belongs to someone else (" + pn.user.nickname() + ")" \
-								  if users.is_current_user_admin() else \
-								  "This penname belongs to someone else")
+			if pn != None:
+				try:
+					if pn.user.user != users.get_current_user():
+						return self.fail( "This penname belongs to someone else (" + pn.user.nickname() + ")" \
+										  if users.is_current_user_admin() else \
+										  "This penname belongs to someone else")
+				except Exception,x:
+					logging.error("PenName(" + av + ") ->user mapping failed: " + str(x))
+					pn.delete()
+					pn = None
 			elif pn == None:
-				pn = PenName.all().filter('user',cu).get()
+				pn = PenName.all().filter('user',u).get()
 			if pn == None:
 				pn = PenName(user=u)
 			pn.penname = av
@@ -1494,14 +1504,16 @@ class MainPage(webapp.RequestHandler):
 	elif u != None: # retrieve data
 		self.reply({ \
 			'Success': True, \
-			'txtUserName': NoneIsBlank(u.txtUserName), \
+			'txtUserName': NoneIsBlank(u.txtUserName),
+			'txtEmail': u.txtEmail if hasattr(u,'txtEmail') else cu.email(), 
 			'aboutme': NoneIsBlank(u.aboutme),
 			'tiddler': NoneIsBlank(u.tiddler),
 			'projects': NoneIsBlank(u.projects)})
-	elif users.get_current_user() != None:
+	elif cu != None:
 		self.reply({ \
 			'Success': True, \
-			'txtUserName': users.get_current_user().nickname() })
+			'txtUserName': cu.nickname(),
+			'txtEmail': cu.email() })
 	else:
 		self.reply()
 
@@ -1694,6 +1706,8 @@ class MainPage(webapp.RequestHandler):
 		upr = UserProfile.all().filter('user',self.user).get() # my profile
 		if upr == None:
 			upr = UserProfile(txtUserName=self.user.nickname()) # my null profile
+		else:
+			upr.txtUserName == self.user.nickname()
 	else:
 		upr = UserProfile(txtUserName='IP \t' + self.request.remote_addr) # anon null profile
 		

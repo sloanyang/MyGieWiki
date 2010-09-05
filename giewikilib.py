@@ -8,7 +8,7 @@ import xml.dom.minidom
 import datetime
 import difflib
 import re
-
+from google.appengine.api import mail
 from google.appengine.api import users
 
 from Tiddler import *
@@ -187,6 +187,23 @@ def getAuthor(t):
 		return str(t.author_ip)
 	else:
 		return "?"
+
+def SendEmailNotification(comment,tls):
+	if comment.receiver == None or users.get_current_user() == None:
+		return False
+	ru = UserProfile.all().filter('user', comment.receiver).get()
+	if ru != None and hasattr(ru,'txtEmail'):
+		rma = ru.txtEmail
+	else:
+		rma = comment.receiver.email()
+	if mail.is_email_valid(rma):
+		mail.send_mail(sender=users.get_current_user().email(),
+				to=rma,
+				subject=tls.title,
+				body=comment.text)
+		return True
+	else:
+		return False
 
 def LogEvent(what,text):
 	logging.info(what + ": " + text)

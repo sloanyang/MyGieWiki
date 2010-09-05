@@ -120,10 +120,10 @@ merge(config.options, {
     txtMainTab: "tabTimeline",
     txtMoreTab: "moreTabAll",
     txtMaxEditRows: "30",
+    txtEmail: "",
     txtTheme: "",
     txtEmptyTiddlyWiki: "empty.html", // Template for stand-alone export
-    txtLockDuration: "60",
-    txtUserName: "" },
+    txtLockDuration: "60"},
     true);
 
 config.optionsDesc = {
@@ -141,6 +141,7 @@ config.optionsDesc = {
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
     txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
     txtMaxEditRows: "Maximum number of rows in edit boxes",
+    txtEmail: "Email for receiving messages",
     txtLockDuration: "Lock for edit (if so, duration in minutes)"
 };
 
@@ -2854,7 +2855,7 @@ config.commands.truncateTiddler.handler = function(event,src,title) {
 
 config.commands.truncateTiddler.isEnabled = function(t)
 {
-	return t.version > 1 && config.isLoggedIn;
+	return t.version > 1 && config.isLoggedIn();
 };
 
 config.commands.excludeTiddler.handler = function(event, src, title) {
@@ -2990,6 +2991,10 @@ Tiddler.prototype.addComment = function(text,type) {
 		if (this.commentList)
 			this.commentList.push(sr);
 		this.comments++;
+		if (sr.mail)
+			displayMessage("Mail sent");
+		else if (type == 'M')
+			displayMessage("Mail could not be sent");
 	}
 	return sr;
 }
@@ -3477,7 +3482,6 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		tags: tags, 
 		currentVer: tiddler.currentVer, 
 		modifier: modifier, 
-		//versions: versions,
 		fromVer: fromVersion,
 		shadow: tiddler.hasShadow ? 1 : 0 }
 	for (fn in fields) {
