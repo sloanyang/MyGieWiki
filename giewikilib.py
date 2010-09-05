@@ -249,6 +249,9 @@ def mergeDict(td,ts):
 
 def isNameAnOption(name):
 	return name.startswith('txt') or name.startswith('chk')
+
+def jsEncodeStr(s):
+	return '"' + str(s).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
 	
 def getUserPenName(user):
 	up = UserProfile.all().filter('user',user).get()

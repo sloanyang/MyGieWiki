@@ -1723,7 +1723,7 @@ class MainPage(webapp.RequestHandler):
 			if type(getattr(UserProfile,fn)) == db.BooleanProperty:
 				fv = 'true' if fv else 'false'
 			else:
-				fv = '"' + str(fv).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
+				fv = jsEncodeStr(fv)
 			if isNameAnOption(fn):
 				self.AppendConfigOption(optlist,fn, fv)
 	for (fn,ft) in upr._dynamic_properties.iteritems():
@@ -1732,12 +1732,12 @@ class MainPage(webapp.RequestHandler):
 			if fn.startswith('chk'):
 				fv = 'true' if fv else 'false'
 			else:
-				fv = '"' + str(fv).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
+				fv = jsEncodeStr(fv)
 			if isNameAnOption(fn):
 				self.AppendConfigOption(optlist,fn, fv)
 
 	if isLoggedIn and not 'txtUserName' in self.configOptions:
-		self.AppendConfigOption(optlist,'txtUserName',self.user.nickname())
+		self.AppendConfigOption(optlist,'txtUserName',jsEncodeStr(self.user.nickname()))
 
 	self.response.out.write(',\n\t\t'.join(optlist))
 	self.response.out.write('\n\t}\n};')
