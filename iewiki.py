@@ -1696,8 +1696,13 @@ class MainPage(webapp.RequestHandler):
 			return page
 	return None
 
+  def AppendConfigOption(self,list,fn,fv):
+	self.configOptions.append(fn)
+	list.append(fn + ': ' + fv)
+  
   def ConfigJs(self):
 	'Dynamically construct file "/config.js"'
+	self.configOptions = list()
 	isLoggedIn = self.user != None
 	self.response.headers['Content-Type'] = 'application/x-javascript'
 	self.response.headers['Cache-Control'] = 'no-cache'
@@ -1720,7 +1725,7 @@ class MainPage(webapp.RequestHandler):
 			else:
 				fv = '"' + str(fv).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
 			if isNameAnOption(fn):
-				optlist.append(fn + ': ' + fv)
+				self.AppendConfigOption(optlist,fn, fv)
 	for (fn,ft) in upr._dynamic_properties.iteritems():
 		fv = getattr(upr,fn)
 		if fv != None:
@@ -1729,7 +1734,11 @@ class MainPage(webapp.RequestHandler):
 			else:
 				fv = '"' + str(fv).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
 			if isNameAnOption(fn):
-				optlist.append(fn + ': ' + fv)
+				self.AppendConfigOption(optlist,fn, fv)
+
+	if isLoggedIn and not 'txtUserName' in self.configOptions:
+		self.AppendConfigOption(optlist,'txtUserName',self.user.nickname())
+
 	self.response.out.write(',\n\t\t'.join(optlist))
 	self.response.out.write('\n\t}\n};')
 	
