@@ -216,7 +216,7 @@ class MainPage(webapp.RequestHandler):
 	tlr.text = self.request.get("text")
 	tlr.tags = self.request.get("tags")
 	for ra in self.request.arguments():
-		if not ra in ('method','tiddlerId','tiddlerName','text','tags','currentVer','modifier','fromVer','shadow','vercnt','key'):
+		if not ra in ('method','tiddlerId','tiddlerName','text','tags','currentVer','modifier','fromVer','shadow','vercnt','key','reverted','reverted_by'):
 			setattr(tlr,ra,self.request.get(ra))
 
 	tlr.comments = 0
@@ -1924,11 +1924,8 @@ class MainPage(webapp.RequestHandler):
 		metaData = False
 		
 	xd = self.initXmlResponse()
-	if xsl != None and xsl != "":	# except if no CSS is desired
-		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
 
 	elDoc = xd.createElement("document")
-	xd.appendChild(elDoc)
 		
 	if twd == None: # normal giewiki output
 		elStArea = xd.createElement("storeArea")
@@ -1995,6 +1992,7 @@ class MainPage(webapp.RequestHandler):
 	elDoc.appendChild(elShArea)
 	
 	if len(tiddict) > 0:
+		scripts = dict()
 		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
 		for id, t in tiddict.iteritems():
 			# pages at /_python/ are executable script...
@@ -2023,6 +2021,12 @@ class MainPage(webapp.RequestHandler):
 					tags.remove("shadowTiddler")
 					t.tags = ' '.join(tags)
 				elShArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
+			elif t.tags != None and "systemScript" in t.tags.split():
+				if xsl == "/static/iewiki.xsl":
+					xsl = "/dynamic/iewiki-xsl?path=" + self.request.path
+				scripts[t.title] = t.text
+				memcache.add(self.request.path,scripts,5);
+				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
 			else:
 				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
 
@@ -2030,6 +2034,10 @@ class MainPage(webapp.RequestHandler):
 			httpMethodTiddler.text = '\n'.join(httpMethods)
 			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,self.user))
 
+	if xsl != None and xsl != "":	# except if no CSS is desired
+		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
+
+	xd.appendChild(elDoc)
 	text = xd.toxml()
 	if twd != None:
 		twdtext = None
