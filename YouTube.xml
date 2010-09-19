@@ -41,12 +41,12 @@ type=&quot;application/x-shockwave-flash&quot; allowfullscreen=&quot;true&quot; 
 |''Documentation:''|[[YouTubePlugin documentation]]|
 |''Requires:''|[[SWFObjectPlugin]]|
 |''Version:''|1.0.0|
-|''Date:''|Aug 22, 2010|
+|''Date:''|Sep 19, 2010|
 |''Source:''|http://giewiki.appspot.com/plugins/YoutubePlugin|
 |''Author:''|PoulStaugaard (poul (dot) staugaard (at) gmail (dot) com)|
 |''License:''|[[BSD open source license]]|
 |''~CoreVersion:''|2.1.0|
-|''Browser:''|Firefox 1.0.4+; Firefox 1.5; InternetExplorer 6.0|
+|''Browser:''|Firefox 1.5; InternetExplorer 6.0|
 ***/
 
 //{{{
@@ -59,7 +59,8 @@ config.macros.youtube = {
 	var t = place;
 	while (t.tagName != 'td' &amp;&amp; !t.className.startsWith('tiddler') &amp;&amp; t.parentNode)
 		t = t.parentNode;
-	var w = t.offsetWidth;
+	var cw = t.offsetWidth;
+	var w = cw;
 	var rh = 81;
 	if (params.length &gt; 0) { // parameter 2: width,relative-height%
 		var a2 = params[0];
@@ -79,6 +80,11 @@ config.macros.youtube = {
 				if (da &amp;&amp; da.right(1) == '%')
 					rh = parseInt(da);
 			}
+		}
+		if (w &lt; 0) {
+			w = 0 - w;
+			if (w > cw)
+				w = cw;
 		}
 		var h = w * rh / 100;
 		var playButton = false;
@@ -116,29 +122,30 @@ config.macros.youtube = {
 								return;
 							case 0: // ended
 								clearMessage();
-								config.macros.youtube.updateTiming(aus);
+								if (aus.changes) config.macros.youtube.updateTiming(aus);
 								break;
 							case 1: // playing
 								var t = player.getCurrentTime();
 								for (at in ats) {
 									if (t &gt; at) {
-										aus.textLocation.innerHTML = ats[at];
-										delete ats[at];
+										removeChildren(aus.textLocation);
+										wikify(ats[at],aus.textLocation); //-or-: aus.textLocation.innerHTML = ats[at];
 									}
 								}
 								return;
 							case 2: // paused
+								if (aus.changes) config.macros.youtube.updateTiming(aus);
 								return;
 							case 3: // buffering
-								//start = (new Date()).getTime();
-								//displayMessage(&quot;buffering&quot;);
 								return;
 							//case 5: // cued
 								return;
 						}
-						displayMessage("Stop/" + ps);
+						//displayMessage("Stop/" + ps);
 						window.clearInterval(iv);
-						} catch (x) { }
+						} catch (x) {
+							//displayMessage(x);
+						}
 					},33);
 			}
 			else if (opt == 'label' &amp;&amp; macroName == 'youtube')
@@ -176,6 +183,7 @@ config.macros.youtube = {
 							var me = resolveTarget(ev || window.event);
 							var player = document.getElementById(vid);
 							aus.time[me.id].time = player.getCurrentTime();
+							aus.changes = true;
 							displayMessage(aus.time[me.id].time + &quot;: &quot; + aus.time[me.id].text);
 						}
 						createTiddlyElement(tsde,'br');
@@ -198,12 +206,7 @@ config.macros.youtube = {
 		config.macros.youtube.handler(t, 'youtubePlay',args.readMacroParams(), null, args);
 	},
 	updateTiming: function(aus) {
-		var tstn = aus.transcript;
-		if (aus.time) {
-			var tta = aus.time;
-			delete aus.time;
-		} else
-			return;
+		var tta = aus.time;
 		var atb = [];
 		for (ali in tta) {
 			var time = tta[ali].time;
@@ -218,6 +221,7 @@ config.macros.youtube = {
 			} else
 				atb.push(text);
 		}
+		var tstn = aus.transcript;
 		if (tstn) {
 			var tiddlerElem = story.getTiddlerField(tstn,'text');
 			if (tiddlerElem) {
@@ -225,6 +229,7 @@ config.macros.youtube = {
 				displayMessage(tstn + " updated");
 			} else
 				displayMessage(atb.join(&quot;&lt;br&gt;&quot;));
+			aus.changes = false;
 		}
 	}
 }
