@@ -55,155 +55,156 @@ config.macros.youtube = {
 	handler: function (place, macroName, params, wikifier, paramString) {
 		if (params.length == 0)
 			throw(&quot;Missing required parameter: youtube video id&quot;);
-	var vid = params.shift(); // parameter 1: youtube video id
-	var t = place;
-	while (t.tagName != 'td' &amp;&amp; !t.className.startsWith('tiddler') &amp;&amp; t.parentNode)
-		t = t.parentNode;
-	var cw = t.offsetWidth;
-	var w = cw;
-	var rh = 81;
-	if (params.length &gt; 0) { // parameter 2: width,relative-height%
-		var a2 = params[0];
-		if (a2 == 'text-location') {
-			var tn = story.findContainingTiddler(place).getAttribute('tiddler');
-			config.macros.youtube.textLocation[vid] = createTiddlyElement(place,'span', tn + 'textViewer');
-			return;
-		} else {
-			var dims = a2.split(',');
-			var da = dims.shift();
-			var na = parseInt(da);
-			if (!isNaN(na)) {
-				params.shift();
-				if (da.right(1) != '%') {
-					w = na; da = dims.shift();
-					}
-				if (da &amp;&amp; da.right(1) == '%')
-					rh = parseInt(da);
-			}
-		}
-		if (w &lt; 0) {
-			w = 0 - w;
-			if (w > cw)
-				w = cw;
-		}
-		var h = w * rh / 100;
-		var playButton = false;
-		var ats = {};
-		var aus = { textLocation: config.macros.youtube.textLocation[vid] };
-		var tstn = null;
-		var plwdClass = 'youtubePlayer';
-		var chromeless = false;
-		for (var opt = params.shift(); opt; opt = params.shift()) {
-			if (opt == 'class') // Player wrapper div class
-				plwdClass = params.shift();
-			else if (opt == 'chromeless')
-				chromeless = true;
-			else if (opt == 'play' || opt  == 'time' || opt == 'text') { // options: auto-play / transcript
-				aus[opt] = true;
-				if (opt == 'time' || opt == 'text') {
-					tstn = params.shift(); // transcript TiddlerName
-					if (!tstn)
-						return displayMessage("Missing parameter: TextTiddlerName");
+		var vid = params.shift(); // parameter 1: youtube video id
+		var t = place;
+		while (t.tagName != 'td' &amp;&amp; !t.className.startsWith('tiddler') &amp;&amp; t.parentNode)
+			t = t.parentNode;
+		var cw = t.offsetWidth;
+		var w = cw;
+		var rh = 81;
+		if (params.length &gt; 0) { // parameter 2: width,relative-height%
+			var a2 = params[0];
+			if (a2 == 'text-location') {
+				var tn = story.findContainingTiddler(place).getAttribute('tiddler');
+				config.macros.youtube.textLocation[vid] = createTiddlyElement(place,'span', tn + 'textViewer');
+				return;
+			} else {
+				var dims = a2.split(',');
+				var da = dims.shift();
+				var na = parseInt(da);
+				if (!isNaN(na)) {
+					params.shift();
+					if (da.right(1) != '%') {
+						w = na; da = dims.shift();
+						}
+					if (da &amp;&amp; da.right(1) == '%')
+						rh = parseInt(da);
 				}
-				var vpid = null;
-				var iv = window.setInterval(function() {
-					try {
-						var player = document.getElementById(vid);
-						if (!player)
-							return window.clearInterval(iv); // stop working
-						var ps = player.getPlayerState();
-						//if (ps != aus.ps) { displayMessage("State " + ps); aus.ps = ps; }
-						switch (ps) {
-							case -1: // unstarted
-							case 5:
-								if (aus.play)
-									player.playVideo();
-								if (!aus.transcript) break;
-								return;
-							case 0: // ended
-								clearMessage();
-								if (aus.changes) config.macros.youtube.updateTiming(aus);
-								break;
-							case 1: // playing
-								var t = player.getCurrentTime();
-								for (at in ats) {
-									if (t &gt; at) {
-										removeChildren(aus.textLocation);
-										wikify(ats[at],aus.textLocation); //-or-: aus.textLocation.innerHTML = ats[at];
-									}
-								}
-								return;
-							case 2: // paused
-								if (aus.changes) config.macros.youtube.updateTiming(aus);
-								return;
-							case 3: // buffering
-								return;
-							//case 5: // cued
-								return;
-						}
-						//displayMessage("Stop/" + ps);
-						window.clearInterval(iv);
-						} catch (x) {
-							//displayMessage(x);
-						}
-					},33);
 			}
-			else if (opt == 'label' &amp;&amp; macroName == 'youtube')
-				playButton = params.shift();
-		}
-		if (tstn) {
-			var tstext = store.getTiddlerText(tstn);
-			if (tstext == null)
-				displayMessage(&quot;Tiddler '&quot; + tstn + &quot;' not found&quot;);
-			else {
-				var tsls = tstext.split('\n');
-				var stTime = (new Date()).getTime();
-				for (var i=0; i &lt; tsls.length; i++) {
-					var tsl = tsls[i];
-					if (aus.text &amp;&amp; tsl.startsWith('|')) { // build timing array from table of lines: |time|Text|
-						var lps = tsl.split('|');
-						if (lps.length &gt; 2) {
-							var it = parseInt(lps[1]);
-							if (it &gt; 0) ats[it] = lps[2];
-						}
+			if (w &lt; 0) {
+				w = 0 - w;
+				if (w > cw)
+					w = cw;
+			}
+			var h = w * rh / 100;
+			var playButton = false;
+			var ats = {};
+			var aus = {};
+			var tstn = null;
+			var plwdClass = 'youtubePlayer';
+			var chromeless = false;
+			for (var opt = params.shift(); opt; opt = params.shift()) {
+				if (opt == 'class') // Player wrapper div class
+					plwdClass = params.shift();
+				else if (opt == 'chromeless')
+					chromeless = true;
+				else if (opt == 'play' || opt  == 'time' || opt == 'text') { // options: auto-play / transcript
+					aus[opt] = true;
+					if (opt == 'time' || opt == 'text') {
+						tstn = params.shift(); // transcript TiddlerName
+						if (!tstn)
+							return displayMessage("Missing parameter: TextTiddlerName");
 					}
-					else if (aus.time) {
-						if (!aus.transcript) {
-							aus.transcript = tstn;
-							aus.time = {};
-							story.displayTiddler(null,tstn,DEFAULT_EDIT_TEMPLATE);
-						}
-						var tsde = aus.textLocation; //document.getElementById(tsDiv);
-						if (tsde == null)
-							return displayMessage("text-location not found"); //&quot;Element &quot; + tsDiv + &quot; not found&quot;);
-						var lid = vid + '_' + i;
-						var lel = createTiddlyElement(tsde,'a',lid,null,tsl, { 'href': 'javascript:;' });
-						aus.time[lid] = { text: tsl };
-						lel.onclick = function(ev) {
-							var me = resolveTarget(ev || window.event);
+					var vpid = null;
+					var iv = window.setInterval(function() {
+						try {
+							if (tstn &amp;&amp; !aus.textLocation)
+								config.macros.youtube.setupData(aus,tstn,ats,config.macros.youtube.textLocation[vid],vid);
+							 
 							var player = document.getElementById(vid);
-							aus.time[me.id].time = player.getCurrentTime();
-							aus.changes = true;
-							displayMessage(aus.time[me.id].time + &quot;: &quot; + aus.time[me.id].text);
-						}
-						createTiddlyElement(tsde,'br');
-					}
+							if (!player)
+								return window.clearInterval(iv); // stop working
+							var ps = player.getPlayerState();
+							//if (ps != aus.ps) { displayMessage("State " + ps); aus.ps = ps; }
+							switch (ps) {
+								case -1: // unstarted
+								case 5:
+									if (aus.play)
+										player.playVideo();
+									if (!aus.transcript) break;
+									return;
+								case 0: // ended
+									clearMessage();
+									if (aus.changes) config.macros.youtube.updateTiming(aus);
+									break;
+								case 1: // playing
+									var t = player.getCurrentTime();
+									for (at in ats) {
+										if (t &gt; at) {
+											removeChildren(aus.textLocation);
+											wikify(ats[at],aus.textLocation); //-or-: aus.textLocation.innerHTML = ats[at];
+										}
+									}
+									return;
+								case 2: // paused
+									if (aus.changes) config.macros.youtube.updateTiming(aus);
+									return;
+								case 3: // buffering
+									return;
+								//case 5: // cued
+									return;
+							}
+							//displayMessage("Stop/" + ps);
+							window.clearInterval(iv);
+							} catch (x) {
+								//displayMessage(x);
+							}
+						},33);
 				}
+				else if (opt == 'label' &amp;&amp; macroName == 'youtube')
+					playButton = params.shift();
 			}
-		} }
-		if (playButton)
-			return createTiddlyButton(place, playButton, null, config.macros.youtube.onClick, &quot;linkbutton&quot;, null, null, { args: paramString });
+			if (playButton)
+				return createTiddlyButton(place, playButton, null, config.macros.youtube.onClick, &quot;linkbutton&quot;, null, null, { args: paramString });
 
-		var pen = 'pd'+vid;
-		createTiddlyElement(place,&quot;div&quot;,pen,plwdClass,null);
-		var pUrl = chromeless ? 'http://www.youtube.com/apiplayer?video_id=' + vid + '&amp;version=3&amp;enablejsapi=1&amp;playerapiid=ytplayer' : 'http://www.youtube.com/v/' + vid + '?enablejsapi=1&amp;playerapiid=ytplayer';
-		swfobject.embedSWF( pUrl, pen, w, h, '8', null, null, { allowScriptAccess: &quot;always&quot; }, { id: vid });
-
+			var pen = 'pd'+vid;
+			createTiddlyElement(place,&quot;div&quot;,pen,plwdClass,null);
+			var pUrl = chromeless ? 'http://www.youtube.com/apiplayer?video_id=' + vid + '&amp;version=3&amp;enablejsapi=1&amp;playerapiid=ytplayer' : 'http://www.youtube.com/v/' + vid + '?enablejsapi=1&amp;playerapiid=ytplayer';
+			swfobject.embedSWF( pUrl, pen, w, h, '8', null, null, { allowScriptAccess: &quot;always&quot; }, { id: vid });
+		}
 	},
 	onClick: function(ev) {
 		var t = resolveTarget(ev || window.event);
 		var args = t.getAttribute('args');
 		config.macros.youtube.handler(t, 'youtubePlay',args.readMacroParams(), null, args);
+	},
+	setupData: function(aus,tstn,ats,tl,vid) {
+		aus.textLocation = tl;
+		var tstext = store.getTiddlerText(tstn);
+		if (tstext == null)
+			return displayMessage(&quot;Tiddler '&quot; + tstn + &quot;' not found&quot;);
+		var tsls = tstext.split('\n');
+		for (var i=0; i &lt; tsls.length; i++) {
+			var tsl = tsls[i];
+			if (aus.text &amp;&amp; tsl.startsWith('|')) { // build timing array from table of lines: |time|Text|
+				var lps = tsl.split('|');
+				if (lps.length &gt; 2) {
+					var it = parseInt(lps[1]);
+					if (it &gt; 0) ats[it] = lps[2];
+				}
+			}
+			else if (aus.time) {
+				if (!aus.transcript) {
+					aus.transcript = tstn;
+					aus.time = {};
+					story.displayTiddler(null,tstn,DEFAULT_EDIT_TEMPLATE);
+				}
+				var tsde = aus.textLocation; //document.getElementById(tsDiv);
+				if (tsde == null)
+					return displayMessage("text-location not found"); //&quot;Element &quot; + tsDiv + &quot; not found&quot;);
+				var lid = vid + '_' + i;
+				var lel = createTiddlyElement(tsde,'a',lid,null,tsl, { 'href': 'javascript:;' });
+				aus.time[lid] = { text: tsl };
+				lel.onclick = function(ev) {
+					var me = resolveTarget(ev || window.event);
+					var player = document.getElementById(vid);
+					aus.time[me.id].time = player.getCurrentTime();
+					aus.changes = true;
+					displayMessage(aus.time[me.id].time + &quot;: &quot; + aus.time[me.id].text);
+				}
+				createTiddlyElement(tsde,'br');
+			}
+		}
 	},
 	updateTiming: function(aus) {
 		var tta = aus.time;
