@@ -492,8 +492,6 @@ config.shadowTiddlers = {
     ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
-    SiteTitle: "SiteTitle",
-    SiteSubtitle: "",
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~More" "More lists" TabMore>>',
@@ -658,7 +656,7 @@ function loadShadowTiddlers() {
 		t.modified = null; 
 		return t; 
 	} 
-	for(t in config.shadowTiddlers) {
+	for(var t in config.shadowTiddlers) {
 		var st = ms(new Tiddler(t,0,config.shadowTiddlers[t]));
 		var et = store.getTiddler(t);
 		if (et) {
@@ -6989,75 +6987,6 @@ config.macros.localDiv = {
    }
 }
 
-//function onClickCommandButton(e) {
-//    if (!e) var e = window.event;
-//    var target = resolveTarget(e);
-//    if (target) {
-//        var fields = {};
-//        var cte = story.findContainingTiddler(target);
-//        story.gatherSaveFields(cte, fields);
-//
-//        var ok = true;
-//        var validator = target.getAttribute("clientSide");
-//        if (validator != null) {
-//            try {
-//                var hdlr = new Function("args", "target", validator);
-//                ok = hdlr(fields, target);
-//            }
-//            catch (e) {
-//                alert("Exception thrown by clientSide handler" + e.toString());
-//            }
-//        }
-//
-//        if (ok) {
-//            var url = target.getAttribute("serverUrl");
-//            var rph = target.getAttribute("replyHandler");
-//            HttpRequest(rph ? new Function("resp", "args", "url", "rh", rph) : null, fields, url ? url : undefined, target);
-//        }
-//    }
-//}
-//
-//config.macros.commandButton = {
-//    handler: function(place, macroName, params, wikifier, paramString, tiddler) {
-//        var btn = createTiddlyButton(place, params[0], params[1], onClickCommandButton, "tiddlyLink");
-//        if (params[2])
-//            btn.setAttribute("clientSide", params[2]);
-//        if (params[3])
-//            btn.setAttribute("replyHandler", params[3]);
-//        if (params[4])
-//            btn.setAttribute("serverUrl", params[4]);
-//        if (tiddler)
-//            btn.setAttribute("tiddler", tiddler.title);
-//    }
-//}
-
-//function newPageRequest(args, target) {
-//    var parts = target.parentNode.childNodes;
-//    var title, subtitle;
-//    for (var i = 0; i < parts.length; i++) {
-//        if (parts[i].tagName == "INPUT")
-//            switch (parts[i].name) {
-//            case "title":
-//                title = parts[i].value;
-//                break;
-//            case "subtitle":
-//                subtitle = parts[i].value;
-//                break;
-//        }
-//    }
-//    args["html_title"] = title + (subtitle ? (" - " + subtitle) : "");
-//
-//    if (allPages.find(args["title"]) != null) {
-//        if (confirm("This page already exists - open it?"))
-//            window.location.href = window.location.folder + args["title"] + window.location.fileType;
-//        return false;
-//    }
-//
-//    args["modifier"] = config.options.txtUserName;
-//
-//    return true;
-//}
-
 config.macros.iFrame = {
     handler: function(place,macroName,params,wikifier,paramString,tiddler) 
     {
@@ -7263,7 +7192,6 @@ config.macros.menu = {
 	onClick: function(ev)
 	{
 		var target = resolveTarget(ev || window.event);
-		//if (target.childNodes.length > 1)	{ while (target.childNodes.length > 1) removeNode(target.childNodes[1]);}
 		var data = target.getAttribute("data");
 		if (!data)
 			return;

@@ -1937,6 +1937,8 @@ class MainPage(webapp.RequestHandler):
 			metaDiv.setAttribute('clientip', self.request.remote_addr)
 			if page == None:
 				metaDiv.setAttribute('access','all' if users.is_current_user_admin() else 'none')
+				metaDiv.setAttribute('sitetitle',"giewiki");
+				metaDiv.setAttribute('subtitle',"You have successfully installed giewiki" if rootpath else "");
 			else:
 				metaDiv.setAttribute('timestamp',str(datetime.datetime.now()))
 				metaDiv.setAttribute('username',username)
