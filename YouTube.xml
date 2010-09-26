@@ -1,4 +1,9 @@
-<?xml version="1.0" ?><document><storeArea><div comments="0" id="0f6eb77d-169b-4a2f-9dbe-aa57afc66409" modified="20100912193241" modifier="test@example.com" tags="" title="Her Majesty (lyrics)" vercnt="7" version="7"><pre>This is the Timing + transcript used in the tiddler HerMajesty
+<?xml version="1.0" ?>
+<document>
+	<storeArea>
+		<div comments="0" id="0f6eb77d-169b-4a2f-9dbe-aa57afc66409" modified="20100912193241" modifier="test@example.com" 
+			tags="" title="Her Majesty (lyrics)" vercnt="7" version="7">
+			<pre>This is the Timing + transcript used in the tiddler HerMajesty
 |2.274|Her Majesty's a pretty nice girl|
 |4.435|But She Doesn't Have a Lot to say|
 |7.003|Her Majesty's a pretty nice girl|
@@ -8,7 +13,11 @@
 |16.49|Her Majesty's a pretty nice girl|
 |18.739|Some day I wanna make her mine,|
 |20.899|Oh yeah|
-|21.339|Some day I wanna make her mine.|</pre></div><div comments="0" id="ab4599f7-11cc-485f-83ff-ac4bad032cfe" modified="20100912161545" modifier="test@example.com" tags="" title="YouTubePlugin documentation" vercnt="14" version="14"><pre>The YouTubePlugin defines the macro ''youtube'', which in its simples form takes just one parameter, the id of a youtube video. Used like this, It will embed the video in the page at the place where it is used. For example, you can simply write {{{ &lt;&lt;youtube vHI9BTpGkp8&gt;&gt; }}} in stead of [[this|Youtube embedding code sample]] in order to achieve this:
+|21.339|Some day I wanna make her mine.|</pre>
+		</div>
+		<div comments="0" id="ab4599f7-11cc-485f-83ff-ac4bad032cfe" modified="20100912161545" modifier="test@example.com" 
+			 tags="" title="YouTubePlugin documentation" vercnt="14" version="14">
+			<pre>The YouTubePlugin defines the macro ''youtube'', which in its simples form takes just one parameter, the id of a youtube video. Used like this, It will embed the video in the page at the place where it is used. For example, you can simply write {{{ &lt;&lt;youtube vHI9BTpGkp8&gt;&gt; }}} in stead of [[this|Youtube embedding code sample]] in order to achieve this:
 
 &lt;&lt;youtube YrLk4vdY28Q&gt;&gt;
 
@@ -35,7 +44,11 @@ Perhaps you would like the player to start playing immediately, just add the key
 type=&quot;application/x-shockwave-flash&quot; allowfullscreen=&quot;true&quot; allowScriptAccess=&quot;always&quot; width=&quot;425&quot; height=&quot;344&quot;&gt;&lt;/embed&gt;
   &lt;/object&gt;
 &lt;/html&gt;
-}}}</pre></div><div comments="0" id="c0244af5-d3ae-4bd2-ac1e-c0b4da1cff76" modified="20100912193137" modifier="test@example.com" tags="systemScript" title="YouTubePlugin" vercnt="33" version="33"><pre>/***
+}}}</pre>
+	</div>
+		<div comments="0" id="c0244af5-d3ae-4bd2-ac1e-c0b4da1cff76" modified="20100912193137" modifier="test@example.com" 
+			 tags="systemConfig" title="YouTubePlugin" vercnt="33" version="33">
+			<pre>/***
 |''Name:''|YouTubePlugin|
 |''Description:''|Facilitates embedding youtube content with optional text sync|
 |''Documentation:''|[[YouTubePlugin documentation]]|
@@ -234,7 +247,9 @@ config.macros.youtube = {
 		}
 	}
 }
-//}}}</pre></div><div comments="0" id="74bfe7a2-16b1-4e6b-8519-956fada5dcbd" modified="20120822083100" modifier="tester" tags="" title="SiteSubtitle" vercnt="1" version="1"><pre>macro</pre></div><div comments="0" id="f7a225a0-0010-4a46-a662-4a43de756496" modified="20120822123945" modifier="tester" reverted="20120822164445" reverted_by="poul.staugaard@example.com" tags="systemConfig" title="SWFObjectPlugin" vercnt="3" version="2"><pre>/***
+//}}}</pre>
+		</div>
+		<div comments="0" id="74bfe7a2-16b1-4e6b-8519-956fada5dcbd" modified="20120822083100" modifier="tester" tags="" title="SiteSubtitle" vercnt="1" version="1"><pre>macro</pre></div><div comments="0" id="f7a225a0-0010-4a46-a662-4a43de756496" modified="20120822123945" modifier="tester" reverted="20120822164445" reverted_by="poul.staugaard@example.com" tags="systemConfig" title="SWFObjectPlugin" vercnt="3" version="2"><pre>/***
 |''Name:''|SWFObjectPlugin|
 |''Description:''|Adobe Flash Embedding|
 |''Version:''|1.0.0|

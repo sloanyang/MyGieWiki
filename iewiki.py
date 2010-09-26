@@ -7,6 +7,7 @@
 import cgi
 import difflib
 import urllib
+import urlparse
 import uuid
 import xml.dom.minidom
 
@@ -23,6 +24,7 @@ from google.appengine.api import urlfetch
 
 from Tiddler import *
 from Plugins import *
+from giewikilib import ImportException
 from giewikilib import *
 
 jsProlog = '\
@@ -811,7 +813,15 @@ class MainPage(webapp.RequestHandler):
 		elif type(v) == datetime.datetime:
 			av.setAttribute('type','datetime')
 			v = v.strftime("%Y%m%d%H%M%S")
-		av.appendChild(xd.createTextNode(unicode(v)))
+		elif type(v) == list:
+			av.setAttribute('type', 'string[]')
+			for an in v:
+				sael = xd.createElement('string')
+				sael.appendChild(xd.createTextNode(unicode(an)))
+				av.appendChild(sael)
+				v = None
+		if v != None:
+			av.appendChild(xd.createTextNode(unicode(v)))
 	if versions:
 		tr.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1))
 	self.response.out.write(xd.toxml())
@@ -1551,6 +1561,40 @@ class MainPage(webapp.RequestHandler):
 	if pn == None:
 		return self.reply({ 'about': user })
 	self.reply( { 'about': pn.user.aboutme, 'tiddler': pn.user.tiddler } )
+
+  def openLibrary(self):
+	ln = self.request.get('library')
+	if ln == 'static':
+		ftwd = open('static-library.txt')
+		self.reply({'text': ftwd.read()})
+		ftwd.close()
+	elif ln == 'local':
+		pages = []
+		for p in Page.all().filter('sub',self.subdomain):
+			if p.path.find('library') >= 0:
+				pages.append(p.path)
+		self.reply({'text': '\n'.join(pages)})
+		logging.debug('lib:' + ln)
+	elif ln.startswith('/'):
+		pgs = []
+		for p in Page.all():
+			if p.path.startswith(ln) and len(p.path) > len(ln):
+				pgs.append(p.path)
+		self.reply({'pages': pgs})
+	elif ln.find(':/') > 0:
+		try:
+			ups = urlparse.urlparse(ln)
+			result = urlfetch.fetch(ln,'method=openLibrary&library=' + ups.path,'POST') #ln[ln.find(':/')+2:],'POST')
+		except urlfetch.Error, ex:
+			raise ImportException("Could not get the file <b>" + url + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
+		if result.status_code != 200:
+			raise ImportException("Fetching the url " + url + " returned status code " + str(result.status_code))
+		else:
+			content = result.content
+			#if cache != None:	
+			#	memcache.add(url,content,cache)
+			self.initXmlResponse()
+			self.response.out.write(content)
 	
   def traceMethod(self,m,method):
 	r = method()

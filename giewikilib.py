@@ -9,7 +9,6 @@ import datetime
 import difflib
 import re
 from google.appengine.api import mail
-from google.appengine.api import users
 
 from Tiddler import *
 
@@ -302,7 +301,7 @@ class XmlDocument(xml.dom.minidom.Document):
 		return self.add(parent,name, attrs={'type':'object[]'})
 
 class ImportException(Exception):
-  def __init__(self,err):
-	self.error = err
-  def __str__(self):
-	return self.error
+    def __init__(self,err):
+        self.error = err
+    def __str__(self):
+	   return self.error

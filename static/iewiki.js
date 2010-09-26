@@ -479,7 +479,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\nrevertTiddler\ndeleteVersions\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\nrevertTiddler\ndeleteVersions\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl\nopenLibrary",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -6717,31 +6717,31 @@ function HttpGet(args, method) {
 }
 
 function HttpRequest(args,debug) {
-    var url = window.location.pathname; // + "?" + args;
+	var url = window.location.pathname;
 
-    var req;
-    try { req = new XMLHttpRequest(); }
-    catch (e) {
-        try { req = new ActiveXObject("Msxml2.XMLHTTP") }
-        catch (e) {
-            try { req = new ActiveXObject("Microsoft.XMLHTTP") }
-            catch (e) { return }
-        }
-    }
+	var req;
+	try { req = new XMLHttpRequest(); }
+	catch (e) {
+		try { req = new ActiveXObject("Msxml2.XMLHTTP") }
+		catch (e) {
+			try { req = new ActiveXObject("Microsoft.XMLHTTP") }
+			catch (e) { return }
+		}
+	}
 
-    req.open("POST", url, false); //"GET", url, false);
-    req.setRequestHeader("Content-Type","application/x-www-form-urlencoded");
+	req.open("POST", url, false);
+	req.setRequestHeader("Content-Type","application/x-www-form-urlencoded");
 
-    req.send(args);
-    if (req.status >= 400)
-        return displayMessage("HttpRequest(" + url + ") failed: " + req.status + "<br>" + req.responseText);
-    if (!(debug === undefined)) {
-        if (typeof(debug) == "function")
-            debug(req);
-        else if (debug)
-            alert(req.responseText);
-    }
-    return req;
+	req.send(args);
+	if (req.status >= 400)
+		return displayMessage("HttpRequest(" + url + ") failed: " + req.status + "<br>" + req.responseText);
+	if (!(debug === undefined)) {
+		if (typeof(debug) == "function")
+			debug(req);
+		else if (debug)
+			alert(req.responseText);
+	}
+	return req;
 }
 
 config.macros.history = {
@@ -7820,7 +7820,7 @@ config.macros.importTiddlers = {
 		var target = resolveTarget(ev || window.event);
 		config.macros.importTiddlers.serve(target.getAttribute('id').substring(3), false, true);
 	},
-	onchange: function (ev) {
+	onchange: function(ev) {
 		var target = resolveTarget(ev || window.event);
 		var idx = Number(target.id.substring(3));
 		var libs = config.macros.importTiddlers.libs;
@@ -7834,7 +7834,7 @@ config.macros.importTiddlers = {
 			aurl = aurl.substring(5);
 		document.getElementById('cmdInclude').href = [window.location.path, '?include=', aurl, '|', cursel.join('|')].join('');
 	},
-	fetch: function (ev) {
+	fetch: function(ev) {
 		var target = resolveTarget(ev || window.event);
 		var td = http.getTiddler({ id: target.getAttribute('title') + "#" + target.firstChild.nodeValue });
 		var tiddler = new Tiddler(td.title, 0, td.text);
@@ -7845,7 +7845,7 @@ config.macros.importTiddlers = {
 		story.displayTiddler(null, tiddler.title);
 		story.focusTiddler(tiddler.title, "text");
 	},
-	serve: function (file, selected, override) {
+	serve: function(file, selected, override) {
 		var ms = function (t) {
 			t.version = t.currentVer = 0;
 			t.hasShadow = true;
@@ -7865,7 +7865,7 @@ config.macros.importTiddlers = {
 		else
 			story.displayTiddler(null, file);
 	},
-	menu: function () {
+	menu: function() {
 		var filelist = http.tiddlersFromUrl({ menu: true });
 		if (filelist.length == 0)
 			return ".";
@@ -7874,7 +7874,7 @@ config.macros.importTiddlers = {
 			mls.push(['<script label="', filelist[i], '">config.macros.importTiddlers.serve(', filelist[i].toJSONString(), ')</script>'].join(''));
 		return mls.join('<br>');
 	},
-	importSelected: function (ev) {
+	importSelected: function(ev) {
 		var target = resolveTarget(ev || window.event);
 		var tidlr = story.findContainingTiddler(target);
 		var inputs = document.getElementsByTagName('input');
@@ -7911,22 +7911,53 @@ config.macros.importTiddlers = {
 
 config.macros.importTiddlerStatus = {
 	handler: function (place, macroName, params, wikifier, paramString) {
-		try { var evv = eval(paramString) } catch(e) { return; }
+		try { var evv = eval(paramString) } catch (e) { return; }
 		if (evv) {
 			var list = evv.split('\n');
 			var n = 0;
 			for (var i = 0; i < list.length; i++)
 				if (list[i].trim() != "") {
 					var data = list[i].trim().split('#', 2);
-					var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve(', data[0].toJSONString(), ',', data[1].toJSONString(),',true)</script><br>'].join('');
-					if (++n == 1)
-						wikify('<br>', place);
+					var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve(', data[0].toJSONString(), ',', data[1].toJSONString(), ',true)</script><br>'].join('');
+					++n;  //if (++n == 1) wikify('<br>', place);
 					wikify(wt, place);
 				}
 			if (n == 0)
-				wikify(' (none)',place);
+				wikify(' (none)', place);
 		}
 	}
+};
+
+function openLibrary(url) {
+	var ld = http.openLibrary({ library: url });
+	debugger;
+	if (ld) {
+		if (ld.text != null)
+			var lines = ld.text.split('\n');
+		else
+			var lines = ld.pages;
+		var output = ['Library: ' + url + ' has'];
+		for (var al = lines.shift(); al; al = lines.shift()) {
+			if (ld.pages) {
+				var ups = url.split('/').slice(0,3).join('/') + al;
+				al = al.split('/').pop();
+			}
+			else
+				var ups = al;
+			output.push('<script label="' + al + '">importFromDialog("' + ups + '");</script>');
+		}
+		if (output.length == 1)
+			output.push('(none)');
+		var delc = document.getElementById('libraryCatalog');
+			removeChildren(delc);
+		wikify(output.join('<br> '), delc);
+	}
+}
+
+function importFromDialog(url) {
+	var deli = document.getElementById('libraryImport');
+	removeChildren(deli);
+	wikify('<<importTiddlers ' + url + '>>',deli);
 }
 
 /***

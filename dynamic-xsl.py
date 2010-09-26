@@ -13,6 +13,7 @@ class MainJs(webapp.RequestHandler):
 	s = path[epos + 1:]
 	d = memcache.get(p)
 	if d != None:
+		self.response.headers.add_header('Content-Type','application/x-javascript')
 		self.response.out.write(d[s])
 	else:
 		self.response.set_status(404)
@@ -20,11 +21,11 @@ class MainJs(webapp.RequestHandler):
 class MainXsl(webapp.RequestHandler):
   def get(self):
 	d = memcache.get(self.request.get('path'))
-	p = os.path.join(os.path.dirname(__file__),'static','iewiki.xsl')
 	ftwd = open('iewiki.xsl')
 	text = ftwd.read()
 	ftwd.close()
 	
+	self.response.headers.add_header('Content-Type','text/xsl');
 	if d != None:
 		incls = []
 		for (k,v) in d.iteritems():
