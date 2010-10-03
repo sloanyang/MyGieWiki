@@ -192,7 +192,7 @@ class MainPage(webapp.RequestHandler):
 			return self.reply({"Success": True, "id": nt.id})
 		t = Tiddler.all().filter('id', tlr.id).filter('current',True).get()
 		if t == None:
-			error = "Tiddler doesnt' exist"
+			error = "Tiddler does not exist"
 		else:
 			tlr.version = t.version + 1
 			tlr.vercnt = t.vercnt + 1 if hasattr(t,'vercnt') and t.vercnt != None else tlr.version
@@ -886,6 +886,7 @@ class MainPage(webapp.RequestHandler):
 		if len(urlParts) == 2:
 			urlPath = urlParts[0]
 			urlPick = urlParts[1]
+			self.warnings = []
 			ts = self.tiddlersFromSources(urlPath)
 			if ts != None:
 				for at in ts:
@@ -896,7 +897,7 @@ class MainPage(webapp.RequestHandler):
 							'text': at.text,
 							'modifier': at.author_ip,
 							'tags': at.tags })
-			self.fail("File or tiddler not found")
+			self.fail('\n'.join(self.warnings))
 		else:
 			self.fail("id should be like path#tiddlerTitle")
 
@@ -1239,9 +1240,10 @@ class MainPage(webapp.RequestHandler):
 	select = self.request.get('select')
 	cache = 60 if cache == "" else int(cache) # default cache age: 60 s
 	try:
+		self.warnings = []
 		tiddlers = self.tiddlersFromSources(url,cache=cache,save=True)
 		if tiddlers == None:
-			return			
+			return self.fail('\n'.join(self.warnings))
 	except xml.parsers.expat.ExpatError, ex:
 		return self.fail("The url " + url + " failed to read as XML: <br>" + str(ex))
 		
@@ -1284,6 +1286,8 @@ class MainPage(webapp.RequestHandler):
   def tiddlersFromSources(self,url,sources=None,cache=None,save=False):
 	try:
 		xd = self.XmlFromSources(url,sources)
+	except IOError, iox:
+		return Tiddler.all().filter('page',url)
 	except Exception, x:
 		self.warnings.append('failed to read ' + str(url) + ":" + str(x))
 		return None
@@ -1329,8 +1333,7 @@ class MainPage(webapp.RequestHandler):
 				urlimport.data = db.Blob(content)
 				urlimport.put()
 			return xd
-			
-		return None				
+		return None
 	else:
 		return xml.dom.minidom.parse(url)
 
@@ -1571,7 +1574,7 @@ class MainPage(webapp.RequestHandler):
 	elif ln == 'local':
 		pages = []
 		for p in Page.all().filter('sub',self.subdomain):
-			if p.path.find('library') >= 0:
+			if p.path.find('library') >= 0 or p.path.find('lib/') >= 0:
 				pages.append(p.path)
 		self.reply({'text': '\n'.join(pages)})
 		logging.debug('lib:' + ln)

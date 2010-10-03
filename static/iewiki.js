@@ -639,9 +639,6 @@ function main() {
 function restart() {
     invokeParamifier(params, "onstart");
     if (story.isEmpty()) {
-//        if (config.owner == null)
-//            story.displayTiddler(null, "PageProperties");
-//        else
             story.displayDefaultTiddlers();
     }
     window.scrollTo(0, 0);
@@ -657,13 +654,20 @@ function loadShadowTiddlers() {
 		return t; 
 	} 
 	for(var t in config.shadowTiddlers) {
-		var st = ms(new Tiddler(t,0,config.shadowTiddlers[t]));
+		var st = ms(new Tiddler(t, 0, config.shadowTiddlers[t]));
 		var et = store.getTiddler(t);
 		if (et) {
-			et.hasShadow = true;
-		    if (!et.ovs)
-				et.ovs = [];
-			et.ovs[0] = st;
+			if (et.hasShadow) { // replace shadow tiddler
+				if (et.ovs) 
+					et.ovs[0].text = st.text;
+				else
+					et.text = st.text;
+			} else {
+				et.hasShadow = true;
+				if (!et.ovs)
+					et.ovs = [];
+				et.ovs[0] = st;
+			}
 		}
 		else
 			store.addTiddler(st);
@@ -2659,16 +2663,16 @@ config.commands.closeOthers.handler = function(event, src, title) {
 };
 
 config.commands.editTiddler.handler = function(event, src, title) {
-    clearMessage();
-    var tiddlerElem = story.getTiddler(title);
-    var fields = tiddlerElem.getAttribute("tiddlyFields");
-    var st = store.getTiddler(title);
-    if (st && st.from) {
+	clearMessage();
+	var tiddlerElem = story.getTiddler(title);
+	var fields = tiddlerElem.getAttribute("tiddlyFields");
+	var st = store.getTiddler(title);
+	if (st && st.from) {
 		if (st.id.startsWith('include'))
 			config.annotations[title] = "Included from " + st.from;
 		else {
 			var a = st.from + '#' + encodeURIComponent(String.encodeTiddlyLink(title));
-			config.annotations[title] = [ "Go to [[", a,'|', a, "]] to edit this tiddler, if so permitted"].join('');
+			config.annotations[title] = ["Go to [[", a, '|', a, ']] or <script label="Copy it here">config.commands.editTiddler.copy("', st.from, '","', title, '");</script> to edit this tiddler'].join('');
 		}
 	}
 	if (!st)
@@ -2682,7 +2686,7 @@ config.commands.editTiddler.handler = function(event, src, title) {
 				editVer = st.version;
 		}
 		if (config.options.txtLockDuration != "") {
-			var reply = http.editTiddler({id: st.id, version: editVer, duration: config.options.txtLockDuration });
+			var reply = http.editTiddler({ id: st.id, version: editVer, duration: config.options.txtLockDuration });
 			st.key = reply.key;
 			if (reply.Success) {
 				st.lock = reply.now;
@@ -2700,10 +2704,19 @@ config.commands.editTiddler.handler = function(event, src, title) {
 	}
 	if (st)
 		config.commands.revertTiddler.tooltip = st.version != st.currentVer ? "revert to this version" : "revert last edit";
-    story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, fields);
-    story.focusTiddler(title, config.options.txtEditorFocus || "text");
-    return false;
+	story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, fields);
+	story.focusTiddler(title, config.options.txtEditorFocus || "text");
+	return false;
 };
+
+config.commands.editTiddler.copy = function(tsource, title) {
+	var t = store.getTiddler(title);
+	t.detach = true;
+	t.readOnly = false;
+	delete config.annotations[title];
+	story.refreshTiddler(title, DEFAULT_EDIT_TEMPLATE, true);
+	t.readOnly = true;
+}
 
 function TryGetTiddler(title)
 {
@@ -3460,28 +3473,37 @@ TiddlyWiki.prototype.addTiddlerFields = function(title, fields) {
 };
 
 TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, modified, tags, fields) {
-    var tiddler = this.fetchTiddler(title);
-    if (tiddler) {
+	var tiddler = this.fetchTiddler(title);
+	if (tiddler) {
 		var et = tiddler;
-        var created = tiddler.created; // Preserve created date
-        var versions = tiddler.versions;
-        var fromVersion = tiddler.fromversion;
-        if (!fromVersion)
+		var created = tiddler.created; // Preserve created date
+		var versions = tiddler.versions;
+		var fromVersion = tiddler.fromversion;
+		if (!fromVersion)
 			fromVersion = tiddler.currentVer;
-    } else {
-        var created = modified;
+	} else {
+		var created = modified;
 		fromVersion = 1;
-        tiddler = new Tiddler(null,1);
-    }
-	var m = { 
-		tiddlerId: tiddler.id, 
-		tiddlerName: newTitle, 
-		text: newBody, 
-		tags: tags, 
-		currentVer: tiddler.currentVer, 
-		modifier: modifier, 
+		tiddler = new Tiddler(null, 1);
+	}
+
+	if (t.detach) {
+		debugger;
+		tiddler.id = '';
+		delete t.detach;
+		delete t.from;
+		delete t.readOnly;
+	}
+	var m = {
+		tiddlerId: tiddler.id,
+		tiddlerName: newTitle,
+		text: newBody,
+		tags: tags,
+		currentVer: tiddler.currentVer,
+		modifier: modifier,
 		fromVer: fromVersion,
-		shadow: tiddler.hasShadow ? 1 : 0 }
+		shadow: tiddler.hasShadow ? 1 : 0
+	}
 	for (fn in fields) {
 		m[fn] = fields[fn];
 	}
@@ -3489,7 +3511,7 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		m.key = tiddler.key;
 	var result = http.saveTiddler(m);
 	if (result.Success == false)
-		throw(false);
+		throw (false);
 	tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
 	if (tiddler.isTagged("systemConfig") && config.options.chkAutoReloadOnSystemConfigSave)
 		window.location.reload();
@@ -3500,12 +3522,12 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 	tiddler.fields['vercnt'] = result.vercnt;
 	if (et)
 		this.deleteTiddler(title);
-    this.addTiddler(tiddler);
-    if (title != newTitle)
-        this.notify(title, true);
-    this.notify(newTitle, true);
-    //this.setDirty(true);
-    return tiddler;
+	this.addTiddler(tiddler);
+	if (title != newTitle)
+		this.notify(title, true);
+	this.notify(newTitle, true);
+	//this.setDirty(true);
+	return tiddler;
 };
 
 TiddlyWiki.prototype.getLoader = function() {
@@ -7003,7 +7025,7 @@ config.macros.iFrame = {
 
 siteMap = [];
 config.macros.siteMap = {
-	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
+	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
 		var url = params.length > 0 ? params[0] : window.location.pathname;
 		var m = http.siteMap({ path: url });
 		SiteMapEntry(place, m, 0, []);
@@ -7754,7 +7776,7 @@ function UrlInclude(what) {
 
 config.shadowTiddlers.ImportTiddlers = "<<importTiddlers>>";
 config.macros.importTiddlers = {
-	handler: function (place, macroName, params, wikifier, paramString) {
+	handler: function(place, macroName, params, wikifier, paramString) {
 		if (params.length == 0)
 			wikify("The importTiddlers macro lets you easily import from ~TiddlyWiki or giewiki documents on the web or on this web site. Usage:<br>    {{{<<importTiddlers URL>>}}}<br>substituting URL with the web address or filename of the library you want to use. Edit this tiddler to insert the parameter"
 				+ config.macros.importTiddlers.menu(), place);
@@ -7846,7 +7868,7 @@ config.macros.importTiddlers = {
 		story.focusTiddler(tiddler.title, "text");
 	},
 	serve: function(file, selected, override) {
-		var ms = function (t) {
+		var ms = function(t) {
 			t.version = t.currentVer = 0;
 			t.hasShadow = true;
 			t.modifier = config.views.wikified.shadowModifier;
@@ -7910,7 +7932,7 @@ config.macros.importTiddlers = {
 };
 
 config.macros.importTiddlerStatus = {
-	handler: function (place, macroName, params, wikifier, paramString) {
+	handler: function(place, macroName, params, wikifier, paramString) {
 		try { var evv = eval(paramString) } catch (e) { return; }
 		if (evv) {
 			var list = evv.split('\n');
@@ -7930,7 +7952,6 @@ config.macros.importTiddlerStatus = {
 
 function openLibrary(url) {
 	var ld = http.openLibrary({ library: url });
-	debugger;
 	if (ld) {
 		if (ld.text != null)
 			var lines = ld.text.split('\n');
