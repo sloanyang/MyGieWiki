@@ -239,12 +239,12 @@ def exportTable(xd,xr,c,wnn,enn):
 	
 def mergeDict(td,ts):
 	for t in ts:
-		id = t.id
-		if id in td:
-			if t.version > td[id].version:
-				td[id] = t
+		key = t.title
+		if key in td:
+			if t.version > td[key].version or t.id != td[key].id:
+				td[key] = t
 		else:
-			td[id] = t
+			td[key] = t
 
 def isNameAnOption(name):
 	return name.startswith('txt') or name.startswith('chk')

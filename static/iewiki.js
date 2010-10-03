@@ -2668,12 +2668,8 @@ config.commands.editTiddler.handler = function(event, src, title) {
 	var fields = tiddlerElem.getAttribute("tiddlyFields");
 	var st = store.getTiddler(title);
 	if (st && st.from) {
-		if (st.id.startsWith('include'))
-			config.annotations[title] = "Included from " + st.from;
-		else {
-			var a = st.from + '#' + encodeURIComponent(String.encodeTiddlyLink(title));
-			config.annotations[title] = ["Go to [[", a, '|', a, ']] or <script label="Copy it here">config.commands.editTiddler.copy("', st.from, '","', title, '");</script> to edit this tiddler'].join('');
-		}
+		var ics = (st.from.startsWith('http:') || st.from.startsWith('/')) ? [ '[[', st.from,'|', st.from, ']]'].join('') : '~' + st.from;
+		config.annotations[title] = [ "Included from ", ics, '. <script label="Copy it here">config.commands.editTiddler.copy("', st.from, '","', title, '");</script> to edit this tiddler'].join('');
 	}
 	if (!st)
 		st = TryGetTiddler(title);
@@ -2693,7 +2689,7 @@ config.commands.editTiddler.handler = function(event, src, title) {
 				st.until = reply.until;
 				st.title = reply.title;
 				st.text = reply.text;
-				st.tags = reply.tags.split("|")
+				st.tags = reply.tags.readBracketedList();
 			}
 			else {
 				if (!window.confirm(reply.Message + " - proceed anyway?")) {
@@ -3487,12 +3483,11 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		tiddler = new Tiddler(null, 1);
 	}
 
-	if (t.detach) {
-		debugger;
+	if (tiddler.detach) {
 		tiddler.id = '';
-		delete t.detach;
-		delete t.from;
-		delete t.readOnly;
+		delete tiddler.detach;
+		delete tiddler.from;
+		delete tiddler.readOnly;
 	}
 	var m = {
 		tiddlerId: tiddler.id,
@@ -3513,7 +3508,7 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 	if (result.Success == false)
 		throw (false);
 	tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
-	if (tiddler.isTagged("systemConfig") && config.options.chkAutoReloadOnSystemConfigSave)
+	if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
 		window.location.reload();
 
 	merge(tiddler, result);

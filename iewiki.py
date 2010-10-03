@@ -1634,7 +1634,7 @@ class MainPage(webapp.RequestHandler):
 ############################################################################
   def BuildTiddlerDiv(self,xd,id,t,user):
 	div = xd.createElement('div')
-	div.setAttribute('id', id)
+	div.setAttribute('id', t.id)
 	div.setAttribute('title', t.title)
 	if getattr(t,'locked',False):
 		div.setAttribute('locked','true')
@@ -1848,7 +1848,7 @@ class MainPage(webapp.RequestHandler):
 								if urlPicks == None or urlPicks.count(tdo.title) > 0:
 									if tdo.id == None or tdo.id == '':
 										tdo.id = 'include-' + urlPath + '#' + tdo.title
-									tiddict[tdo.id] = tdo
+									tiddict[tdo.title] = tdo
 	else:
 		readAccess = False
 		if rootpath:
@@ -1892,7 +1892,7 @@ class MainPage(webapp.RequestHandler):
 						self.warnings.append("Internal error: None in TiddlersFromXml")
 					elif tfs == None or tdo.title in tfs:
 						includeNumber = includeNumber - 1
-						tiddict['include' + str(includeNumber)] = tdo
+						tiddict[tdo.title] = tdo
 						if tfs != None:
 							tfs.remove(tdo.title)
 					else:
@@ -1910,7 +1910,7 @@ class MainPage(webapp.RequestHandler):
 		for st in ShadowTiddler.all():
 			if self.request.path.startswith(st.path):
 				try:
-					tiddict[st.tiddler.id] = st.tiddler
+					tiddict[st.tiddler.title] = st.tiddler
 				except Exception, x:
 					self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
 						' has been deleted! <a href="', self.request.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
