@@ -7771,7 +7771,7 @@ function UrlInclude(what) {
 
 config.shadowTiddlers.ImportTiddlers = "<<importTiddlers>>";
 config.macros.importTiddlers = {
-	handler: function(place, macroName, params, wikifier, paramString) {
+	handler: function (place, macroName, params, wikifier, paramString) {
 		if (params.length == 0)
 			wikify("The importTiddlers macro lets you easily import from ~TiddlyWiki or giewiki documents on the web or on this web site. Usage:<br>    {{{<<importTiddlers URL>>}}}<br>substituting URL with the web address or filename of the library you want to use. Edit this tiddler to insert the parameter"
 				+ config.macros.importTiddlers.menu(), place);
@@ -7794,7 +7794,7 @@ config.macros.importTiddlers = {
 				this.aurl = aurl;
 				this.libs = libs;
 				var wd = createTiddlyElement(place, "div");
-				var hta = [ '<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
+				var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
 				var links = [];
 				for (var t = 0; t < libs.length; t++) {
 					var lt = libs[t];
@@ -7815,9 +7815,9 @@ config.macros.importTiddlers = {
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers.", afilter];
 				if (nCurrent < libs.length)
-					resmsg.push( "Currently ", nCurrent > 0 ? nCurrent : "none", " are included.");
+					resmsg.push("Currently ", nCurrent > 0 ? nCurrent : "none", " are included.");
 				if (libs.length > nCurrent + nExcluded)
-					resmsg.push(' <a href="javascript:;" id="sea',aurl,'"> Show all</a>');
+					resmsg.push(' <a href="javascript:;" id="sea', aurl, '"> Show all</a>');
 				wd.innerHTML = resmsg.join('') + hta.join('');
 				if (tiddlers)
 					document.getElementById('sea' + aurl).onclick = config.macros.importTiddlers.showAll;
@@ -7833,11 +7833,11 @@ config.macros.importTiddlers = {
 			}
 		}
 	},
-	showAll: function(ev) {
+	showAll: function (ev) {
 		var target = resolveTarget(ev || window.event);
 		config.macros.importTiddlers.serve(target.getAttribute('id').substring(3), false, true);
 	},
-	onchange: function(ev) {
+	onchange: function (ev) {
 		var target = resolveTarget(ev || window.event);
 		var idx = Number(target.id.substring(3));
 		var libs = config.macros.importTiddlers.libs;
@@ -7851,7 +7851,7 @@ config.macros.importTiddlers = {
 			aurl = aurl.substring(5);
 		document.getElementById('cmdInclude').href = [window.location.path, '?include=', aurl, '|', cursel.join('|')].join('');
 	},
-	fetch: function(ev) {
+	fetch: function (ev) {
 		var target = resolveTarget(ev || window.event);
 		var td = http.getTiddler({ id: target.getAttribute('title') + "#" + target.firstChild.nodeValue });
 		var tiddler = new Tiddler(td.title, 0, td.text);
@@ -7862,8 +7862,8 @@ config.macros.importTiddlers = {
 		story.displayTiddler(null, tiddler.title);
 		story.focusTiddler(tiddler.title, "text");
 	},
-	serve: function(file, selected, override) {
-		var ms = function(t) {
+	serve: function (file, selected, override, where) {
+		var ms = function (t) {
 			t.version = t.currentVer = 0;
 			t.hasShadow = true;
 			t.modifier = config.views.wikified.shadowModifier;
@@ -7872,17 +7872,22 @@ config.macros.importTiddlers = {
 			return t;
 		};
 		if ((!store.fetchTiddler(file)) || override) {
-			var bas = [	'<<importTiddlers "', file,'" ', 
+			var bas = ['<<importTiddlers "', file, '" ',
 						selected ? 'tiddlers' : '',
-						' ', selected ? selected.toJSONString() : "", '>>'];
-			store.addTiddler(ms(new Tiddler(file, 0, bas.join(''))));
+						' ', selected ? selected.toJSONString() : "", '>>'].join('');
+			if (where) {
+				dew = document.getElementById(where);
+				if (dew)
+					return wikify(bas, dew);
+			}
+			store.addTiddler(ms(new Tiddler(file, 0, bas)));
 		}
 		if (story.getTiddler(file))
-			story.refreshTiddler(file,null,true);
+			story.refreshTiddler(file, null, true);
 		else
 			story.displayTiddler(null, file);
 	},
-	menu: function() {
+	menu: function () {
 		var filelist = http.tiddlersFromUrl({ menu: true });
 		if (filelist.length == 0)
 			return ".";
@@ -7891,7 +7896,7 @@ config.macros.importTiddlers = {
 			mls.push(['<script label="', filelist[i], '">config.macros.importTiddlers.serve(', filelist[i].toJSONString(), ')</script>'].join(''));
 		return mls.join('<br>');
 	},
-	importSelected: function(ev) {
+	importSelected: function (ev) {
 		var target = resolveTarget(ev || window.event);
 		var tidlr = story.findContainingTiddler(target);
 		var inputs = document.getElementsByTagName('input');
@@ -7927,15 +7932,16 @@ config.macros.importTiddlers = {
 };
 
 config.macros.importTiddlerStatus = {
-	handler: function(place, macroName, params, wikifier, paramString) {
-		try { var evv = eval(paramString) } catch (e) { return; }
+	handler: function (place, macroName, params, wikifier, paramString) {
+		try { var evv = eval(params[0]) } catch (e) { return; }
 		if (evv) {
 			var list = evv.split('\n');
 			var n = 0;
+			var where = params[1] || '';
 			for (var i = 0; i < list.length; i++)
 				if (list[i].trim() != "") {
 					var data = list[i].trim().split('#', 2);
-					var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve(', data[0].toJSONString(), ',', data[1].toJSONString(), ',true)</script><br>'].join('');
+					var wt = ['<script label="', data[0], '">config.macros.importTiddlers.serve(', data[0].toJSONString(), ',', data[1].toJSONString(), ',true,', where.toJSONString(), ')</script><br>'].join('');
 					++n;  //if (++n == 1) wikify('<br>', place);
 					wikify(wt, place);
 				}
