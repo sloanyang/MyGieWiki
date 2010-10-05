@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!-- Copyright (c) UnaMesa Association 2004-2009; see /static/iewiki.js -->
-<!-- giewiki ver.: 1.4 -->
+<!-- giewiki ver.: 1.5.1 -->
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:output method='html' version='1.0' encoding='UTF-8' indent='yes'/>
@@ -555,7 +555,7 @@ See also the AdvancedOptions
 |&gt;|&gt;|Access permissions|
 |Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes &gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
 |Includes:|&gt;|&lt;html&gt;Libraries:&lt;/html&gt; &lt;script label=&quot;static&quot; title=&quot;Statically installed files&quot;&gt;openLibrary('static');&lt;/script&gt; &lt;script label=&quot;local&quot; title=&quot;Local pages that contain 'library' in their path&quot;&gt;openLibrary('local');&lt;/script&gt; &lt;script label=&quot;giewiki&quot; title=&quot;http://plugins.giewiki.appspot.com&quot;&gt;openLibrary('http://giewiki.appspot.com/lib/plugins/');&lt;/script&gt;|
-|&gt;|&gt;|&lt;&lt;importTiddlerStatus forms.PageProperties.systeminclude&gt;&gt;|
+|&gt;|&gt;|&lt;&lt;importTiddlerStatus forms.PageProperties.systeminclude libraryImport&gt;&gt;|
 |&gt;|&gt;|&lt;html&gt;  &lt;span id='libraryCatalog' /&gt;  &lt;/html&gt;|
 |&gt;|&gt;|&lt;html&gt;  &lt;span id='libraryImport' /&gt;  &lt;/html&gt;|
 |Read-only view options|Access to prior versions&lt;br&gt;&lt;&lt;input checkbox viewprior true&gt;&gt;|Show view button&lt;br&gt;&lt;&lt;input checkbox viewbutton true&gt;&gt;|

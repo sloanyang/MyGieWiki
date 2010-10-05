@@ -2,7 +2,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.5.0
+# ver.:	1.5.1
 
 import cgi
 import difflib
@@ -28,7 +28,7 @@ from giewikilib import ImportException
 from giewikilib import *
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 5, revision: 0, date: new Date("July 28, 2010"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 5, revision: 1, date: new Date("Oct 5, 2010"), extensions: {} };\n\
 var config = {\n\
 	animDuration: 400,\n\
 	cascadeFast: 20,\n\

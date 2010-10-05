@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!-- Copyright (c) UnaMesa Association 2004-2009; see /static/iewiki.js -->
-<!-- giewiki ver.: 1.4 -->
+<!-- giewiki ver.: 1.5.1 -->
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:output method='html' version='1.0' encoding='UTF-8' indent='yes'/>

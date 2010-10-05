@@ -1,4 +1,4 @@
-/* this:	iewiki.py			version: 1.5
+/* this:	iewiki.py			version: 1.5.1
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
 
