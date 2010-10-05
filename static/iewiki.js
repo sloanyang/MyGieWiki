@@ -4316,7 +4316,7 @@ Story.prototype.hasChanges = function(title) {
         this.gatherSaveFields(e, fields);
         var tiddler = store.fetchTiddler(title);
         if (!tiddler)
-            return false;
+            return true;
         for (var n in fields) {
             if (store.getValue(title, n) != fields[n])
                 return true;
