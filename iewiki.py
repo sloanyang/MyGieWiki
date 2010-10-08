@@ -1589,9 +1589,9 @@ class MainPage(webapp.RequestHandler):
 			ups = urlparse.urlparse(ln)
 			result = urlfetch.fetch(ln,'method=openLibrary&library=' + ups.path,'POST') #ln[ln.find(':/')+2:],'POST')
 		except urlfetch.Error, ex:
-			raise ImportException("Could not get the file <b>" + url + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
+			raise ImportException("Could not get the file <b>" + ln + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
 		if result.status_code != 200:
-			raise ImportException("Fetching the url " + url + " returned status code " + str(result.status_code))
+			raise ImportException("Fetching the url " + ln + " returned status code " + str(result.status_code))
 		else:
 			content = result.content
 			#if cache != None:	

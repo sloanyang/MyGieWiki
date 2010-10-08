@@ -6,6 +6,8 @@
 from google.appengine.ext import db
 from google.appengine.api import users
 
+from giewikilib import *
+
 class Tiddler(db.Expando):
   "Unit of text storage"
   title = db.StringProperty()
