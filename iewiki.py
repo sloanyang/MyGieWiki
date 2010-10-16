@@ -2,16 +2,18 @@
 # this:	iewiki.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.5.1
+# ver.:	1.5.2
 
 import cgi
+import datetime
 import difflib
+import logging
+import re
 import urllib
 import urlparse
 import uuid
 import xml.dom.minidom
 
-from datetime import *
 from new import instance, classobj
 from os import path
 
@@ -22,13 +24,13 @@ from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch 
 
-from Tiddler import *
+from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
+from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade, UpgradeTable
 from Plugins import *
-from giewikilib import ImportException
-from giewikilib import *
+
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 5, revision: 1, date: new Date("Oct 5, 2010"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 5, revision: 5, date: new Date("Oct 16, 2010"), extensions: {} };\n\
 var config = {\n\
 	animDuration: 400,\n\
 	cascadeFast: 20,\n\
@@ -37,6 +39,301 @@ var config = {\n\
 	locale: "en",\n\
 	options: {\n\
 		' # the rest is built dynamically
+
+
+class MyError(Exception):
+  def __init__(self, value):
+	self.value = value
+  def __str__(self):
+	return repr(self.value)
+
+def htmlEncode(s):
+	return s.replace('"','&quot;').replace('<','&lt;').replace('>','&gt;').replace('\n','<br>')
+
+def HtmlErrorMessage(msg):
+	return "<html><body>" + htmlEncode(msg) + "</body></html>" 
+
+def Filetype(filename):
+	fp = filename.rsplit('.',1)
+	if len(fp) == 1:
+		return None
+	else:
+		return fp[1].lower()
+
+def MimetypeFromFiletype(ft):
+	if ft == "txt":
+		return "text/plain"
+	if ft == "htm" or ft == "html":
+		return "text/html"
+	if ft == "xml":
+		return "text/xml"
+	if ft == "jpg" or ft == "jpeg":
+		return "image/jpeg"
+	if ft == "gif":
+		return "image/gif"
+	return "application/octet-stream"
+	
+def subDiff(adiff,bdiff,rdiff):
+	if len(adiff) == 1 and len(bdiff) == 1:
+		tdiff = difflib.ndiff(adiff[0][2:].split(' '),bdiff[0][2:].split(' '))
+		for s in tdiff:
+			rdiff.append(s[0] + '.' + s[2:])
+	else:
+		rdiff += adiff + bdiff
+  
+html_escape_table = {
+	"&": "&amp;",
+	'"': "&quot;",
+	"'": "&apos;",
+	">": "&gt;",
+	"<": "&lt;",
+	}
+
+def html_escape(text):
+	return "".join(html_escape_table.get(c,c) for c in text)
+
+def CombinePath(path,fn):
+	if path.rfind('/') != len(path) - 1:
+		path = path + '/'
+	return path + fn
+
+def leafOfPath(path):
+	lp = path.rfind('/')
+	if lp + 1 < len(path):
+		return path[lp + 1:] + '/'
+	return ""
+
+def userWho():
+	u = users.get_current_user()
+	if (u):
+		return u.nickname()
+	else:
+		return ""
+
+def userNameOrAddress(u,a):
+	if u != None:
+		return u.nickname()
+	else:
+		return a
+		
+def NoneIsFalse(v):
+	return False if v == None else v
+
+def NoneIsBlank(v):
+    return "" if v == None else str(v)
+
+def toDict(iter,keyName):
+	d = dict()
+	for e in iter:
+		keyVal = getattr(e,keyName)
+		d[keyVal] = e
+	return d
+	
+def tagInFilter(tags,filter):
+	tags = tags.split()
+	filter = filter.split()
+	for t in tags:
+		for f in filter:
+			if t == f:
+				return True
+	return False
+
+def xmlArrayOfStrings(xd,te,text,name):
+	if isinstance(text,basestring):
+		text = text.split()
+	for a in text:
+		se = xd.createElement(name)
+		te.appendChild(se)
+		se.appendChild(xd.createTextNode(unicode(a)))
+	te.setAttribute('type', 'string[]')
+
+def replyWithStringList(cl,re,se,sl):
+	xd = cl.initXmlResponse()
+	tv = xd.createElement(re)
+	xd.appendChild(tv)
+	xmlArrayOfStrings(xd,tv,sl,se)
+	cl.response.out.write(xd.toxml())
+
+def xmlArrayOfObjects(xd,te,os,name):
+	for a in os:
+		se = xd.createElement(name)
+		te.appendChild(se)
+		for (d,v) in a.iteritems():
+			de = xd.createElement(d)
+			se.appendChild(de)
+			de.appendChild(xd.createTextNode(unicode(v)))
+	te.setAttribute('type', 'object[]')
+
+def replyWithObjectList(cl,re,se,sl):
+	xd = cl.initXmlResponse()
+	tv = xd.createElement(re)
+	xd.appendChild(tv)
+	xmlArrayOfObjects(xd,tv,sl,se)
+	cl.response.out.write(xd.toxml())
+
+def initHist(shadowTitle):
+	versions = '|When|Who|V#|Title|\n'
+	if shadowTitle != None: # self.request.get("shadow") == '1':
+		versions += "|>|Default content|<<diff 0 " + shadowTitle + '>>|<<revision "' + shadowTitle + '" 0>>|\n'
+	return versions;
+  
+def getTiddlerVersions(xd,tid,startFrom):
+	text = ""
+	for tlr in Tiddler.all().filter('id', tid).order('version'):
+		if text == "":
+			text = initHist(tlr.title if startFrom == 0 else None);
+		if tlr.version >= startFrom:
+			modified = tlr.modified
+			if hasattr(tlr,'reverted') and tlr.reverted != None:
+				modified = tlr.reverted;
+			text += '|' + BoldCurrent(tlr) + modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
+				 + '|<<author "' + getAuthor(tlr) + '">>' \
+				 + '|<<diff ' + str(tlr.version) + ' ' + tid + '>>' \
+				 + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
+	eVersions = xd.createElement('versions')
+	eVersions.appendChild(xd.createTextNode(text))
+	return eVersions
+
+def BoldCurrent(tlr):
+	return "''" if tlr.current else ""
+	
+def deleteTiddlerVersion(tid,ver):
+	tlv = Tiddler.Tiddler.all().filter('id', tid).filter('version',ver).get()
+	if tlv != None:
+		tlv.delete()
+		logging.info("Deleted " + str(tid) + " version " + str(ver))
+		return True
+	else:
+		return False
+		
+def getAuthor(t):
+	if hasattr(t,'author_ip') and t.author_ip != None and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',t.author_ip) == None:
+		return t.author_ip # It's not an IP address
+	elif t.author != None:
+		return str(t.author.nickname());
+	elif t.author_ip != None:
+		return str(t.author_ip)
+	else:
+		return "?"
+
+def SendEmailNotification(comment,tls):
+	if comment.receiver == None or users.get_current_user() == None:
+		return False
+	ru = UserProfile.all().filter('user', comment.receiver).get()
+	if ru != None and hasattr(ru,'txtEmail'):
+		rma = ru.txtEmail
+	else:
+		rma = comment.receiver.email()
+	if mail.is_email_valid(rma):
+		mail.send_mail(sender=users.get_current_user().email(),
+				to=rma,
+				subject=tls.title,
+				body=comment.text)
+		return True
+	else:
+		return False
+
+def LogEvent(what,text):
+	logging.info(what + ": " + text)
+
+def exportTable(xd,xr,c,wnn,enn):
+	tr = xd.createElement(wnn)
+	xr.appendChild(tr)
+
+	cursor = None
+	repeat = True
+	while repeat:
+		ts = c.all()
+		if cursor != None:
+			ts.with_cursor(cursor)
+		n = 0
+		for t in ts.fetch(1000):
+			d = dict()
+			t.todict(d)
+			te = xd.createElement(enn)
+			tr.appendChild(te)
+			for (tan,tav) in d.iteritems():
+				if tav == None:
+					continue
+				tae = xd.createElement(tan)
+				te.appendChild(tae)
+				if tav.__class__ != unicode:
+					tae.setAttribute('type',unicode(tav.__class__.__name__))
+				tae.appendChild(xd.createTextNode(unicode(tav)))
+			n = n + 1
+		if n < 1000:
+			repeat = False
+		else:
+			cursor = ts.cursor()
+	
+def mergeDict(td,ts):
+	for t in ts:
+		key = t.title
+		if key in td:
+			if t.version > td[key].version or t.id != td[key].id:
+				td[key] = t
+		else:
+			td[key] = t
+
+def isNameAnOption(name):
+	return name.startswith('txt') or name.startswith('chk')
+
+def jsEncodeStr(s):
+	return '"' + str(s).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
+	
+def getUserPenName(user):
+	up = UserProfile.all().filter('user',user).get()
+	return user.nickname() if up == None else up.txtUserName
+
+def TiddlerFromXml(te,path):
+	id = None
+	try:
+		title = te.getAttribute('title')
+		if title != "":
+			id = te.getAttribute('id')
+			author_ip = te.getAttribute('modifier')
+			tags = te.getAttribute('tags')
+			v = te.getAttribute('version')
+			version = eval(v) if v != None and v != "" else 1
+		else:
+			return None
+	except Exception, x:
+		print(str(x))
+		return None
+		
+	nt = Tiddler(page = path, title = title, id = id, version = version, author_ip = author_ip)
+	nt.current = True
+	nt.tags = te.getAttribute('tags')
+	nt.author = users.get_current_user()
+	for ce in te.childNodes:
+		if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'pre':
+			if ce.firstChild != None and ce.firstChild.nodeValue != None:
+				nt.text = ce.firstChild.nodeValue
+				break
+	if nt.text == None:
+		nt.text = ""
+	return nt
+
+class XmlDocument(xml.dom.minidom.Document):
+	def add(self,parent,name,text=None,attrs=None):
+		e = self.createElement(name);
+		parent.appendChild(e);
+		if attrs != None:
+			for n,v in attrs.iteritems():
+				e.setAttribute(n,str(v))
+		if text != None:
+			e.appendChild(self.createTextNode(unicode(text)))
+		return e;
+	def addArrayOfObjects(self,name,parent=None):
+		if parent == None:
+			parent = self
+		return self.add(parent,name, attrs={'type':'object[]'})
+
+class ImportException(Exception):
+    def __init__(self,err):
+        self.error = err
+    def __str__(self):
+	   return self.error
 
 class MainPage(webapp.RequestHandler):
   "Serves wiki pages and updates"
@@ -1567,18 +1864,7 @@ class MainPage(webapp.RequestHandler):
 
   def openLibrary(self):
 	ln = self.request.get('library')
-	if ln == 'static':
-		ftwd = open('static-library.txt')
-		self.reply({'text': ftwd.read()})
-		ftwd.close()
-	elif ln == 'local':
-		pages = []
-		for p in Page.all().filter('sub',self.subdomain):
-			if p.path.find('library') >= 0 or p.path.find('lib/') >= 0:
-				pages.append(p.path)
-		self.reply({'text': '\n'.join(pages)})
-		logging.debug('lib:' + ln)
-	elif ln.startswith('/'):
+	if ln.startswith('/'):
 		pgs = []
 		for p in Page.all():
 			if p.path.startswith(ln) and len(p.path) > len(ln):
@@ -1598,6 +1884,12 @@ class MainPage(webapp.RequestHandler):
 			#	memcache.add(url,content,cache)
 			self.initXmlResponse()
 			self.response.out.write(content)
+	else:
+		try:
+			lm = __import__(ln)
+			self.reply({'pages': lm.library().Pages(self)})
+		except Exception,x:
+			self.fail("Importing " + ln + ": " + str(x))
 	
   def traceMethod(self,m,method):
 	r = method()
@@ -1634,16 +1926,16 @@ class MainPage(webapp.RequestHandler):
 ############################################################################
   def BuildTiddlerDiv(self,xd,id,t,user):
 	div = xd.createElement('div')
-	div.setAttribute('id', t.id)
-	div.setAttribute('title', t.title)
+	div.setAttribute('id',  str(t.id) if t.id != None else str(t.title))
+	div.setAttribute('title', str(t.title))
 	if getattr(t,'locked',False):
 		div.setAttribute('locked','true')
 	elif t.page != self.request.path:
 		if t.page != None:
-			div.setAttribute('from',t.page)
+			div.setAttribute('from',str(t.page))
 		div.setAttribute('locked','true')
 
-	div.setAttribute('modifier', getAuthor(t))
+	div.setAttribute('modifier', str(getAuthor(t)))
 	div.setAttribute('version', str(t.version))
 	div.setAttribute('vercnt', str(t.vercnt if hasattr(t,'vercnt') and t.vercnt != None else t.version))
 	modified = t.modified
@@ -1653,7 +1945,7 @@ class MainPage(webapp.RequestHandler):
 			div.setAttribute('reverted', modified.strftime('%Y%m%d%H%M%S'))
 			rby = t.reverted_by
 			if rby != None:
-				div.setAttribute('reverted_by', rby.nickname())
+				div.setAttribute('reverted_by', str(rby.nickname()))
 			modified = reverted
 
 	if modified != None:
@@ -1672,7 +1964,7 @@ class MainPage(webapp.RequestHandler):
 			div.setAttribute('messages', str(msgCnt))
 
 	if t.tags != None:
-		div.setAttribute('tags', t.tags);
+		div.setAttribute('tags', str(t.tags));
 		
 	td = t.dynamic_properties()
 	logging.info(str(len(td)) + " dps")

@@ -1,4 +1,4 @@
-/* this:	iewiki.py			version: 1.5.1
+/* this:	iewiki.py			version: 1.5.2
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
 
@@ -7960,7 +7960,8 @@ function openLibrary(url) {
 			var lines = ld.pages;
 		var output = ['Library: ' + url + ' has'];
 		for (var al = lines.shift(); al; al = lines.shift()) {
-			if (ld.pages) {
+			var urlParts = url.split('/');
+			if (urlParts.length > 1) {
 				var ups = url.split('/').slice(0,3).join('/') + al;
 				al = al.split('/').pop();
 			}
