@@ -7814,9 +7814,9 @@ config.macros.importTiddlers = {
 				if (afilter)
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers.", afilter];
-				if (nCurrent < libs.length)
+				if (tiddlers && nCurrent < libs.length)
 					resmsg.push("Currently ", nCurrent > 0 ? nCurrent : "none", " are included.");
-				if (libs.length > nCurrent + nExcluded)
+				if (tiddlers && libs.length > nCurrent + nExcluded)
 					resmsg.push(' <a href="javascript:;" id="sea', aurl, '"> Show all</a>');
 				wd.innerHTML = resmsg.join('') + hta.join('');
 				if (tiddlers)
@@ -7854,10 +7854,17 @@ config.macros.importTiddlers = {
 	fetch: function (ev) {
 		var target = resolveTarget(ev || window.event);
 		var td = http.getTiddler({ id: target.getAttribute('title') + "#" + target.firstChild.nodeValue });
+		if (store.getTiddler(td.title))
+			if (!confirm("This will hide the existing tiddler by the same name"))
+				return;
+			
 		var tiddler = new Tiddler(td.title, 0, td.text);
 		tiddler.tags = td.tags.readBracketedList();
 		tiddler.modifier = td.modifier;
 		tiddler.modified = td.modified;
+		var info = "Retrieved from " + target.getAttribute('title')
+		tiddler.versions = '|' + info + '|'	
+		config.annotations[td.title] = info
 		store.addTiddler(tiddler);
 		story.displayTiddler(null, tiddler.title);
 		story.focusTiddler(tiddler.title, "text");
