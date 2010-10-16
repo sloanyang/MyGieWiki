@@ -405,7 +405,7 @@ class MainPage(webapp.RequestHandler):
 		
 	el = EditLock( id = t.id, user = usr, user_ip = self.request.remote_addr, duration = minutes)
 	ek = el.put()
-	until = el.time + timedelta(0,60*eval(str(el.duration)))
+	until = el.time + datetime.timedelta(0,60*eval(str(el.duration)))
 	return {"Success": True, "now": el.time, "until": until, "key": str(ek), "title": t.title, "text": t.text, "tags": t.tags }
   
   def editTiddler(self):
@@ -431,7 +431,7 @@ class MainPage(webapp.RequestHandler):
 			el = EditLock().all().filter("id",t.id).get() # get existing lock, if any
 			if el == None: # tiddler is not locked
 				return self.reply(self.lock(t,usr))
-			until = el.time + timedelta(0,60*eval(str(el.duration)))
+			until = el.time + datetime.timedelta(0,60*eval(str(el.duration)))
 			if (usr == el.user if usr != None else self.request.remote_addr == el.user_ip):
 				# possibly we should extend the lock duration
 				return self.fail("already locked by you", { "key": str(el.key()) })
@@ -1116,7 +1116,7 @@ class MainPage(webapp.RequestHandler):
 				sael = xd.createElement('string')
 				sael.appendChild(xd.createTextNode(unicode(an)))
 				av.appendChild(sael)
-				v = None
+			v = None
 		if v != None:
 			av.appendChild(xd.createTextNode(unicode(v)))
 	if versions:
@@ -1988,7 +1988,7 @@ class MainPage(webapp.RequestHandler):
 
   def cleanup(self):
 	for el in EditLock.all():
-		until = el.time + timedelta(0,60*eval(str(el.duration)))
+		until = el.time + datetime.timedelta(0,60*eval(str(el.duration)))
 		if until < datetime.datetime.utcnow():
 			el.delete()
 	truncateModel(LogEntry)
