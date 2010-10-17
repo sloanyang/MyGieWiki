@@ -559,7 +559,7 @@ See also the AdvancedOptions
 |&gt;|&gt;|&lt;html&gt;  &lt;span id='libraryCatalog' /&gt;  &lt;/html&gt;|
 |&gt;|&gt;|&lt;html&gt;  &lt;span id='libraryImport' /&gt;  &lt;/html&gt;|
 |Read-only view options|Access to prior versions&lt;br&gt;&lt;&lt;input checkbox viewprior true&gt;&gt;|Show view button&lt;br&gt;&lt;&lt;input checkbox viewbutton true&gt;&gt;|
-|&lt;script label=&quot;Save&quot; title=&quot;Save properties&quot;&gt;OnCommitCloseForm("PageProperties",http.pageProperties(forms.PageProperties));&lt;/script&gt;|&lt;&lt;deletePage&gt;&gt;|&lt;script label=&quot;Close&quot; title=&quot;Close&quot;&gt;story.closeTiddler("PageProperties");&lt;/script&gt;|</pre>
+|&lt;script label=&quot;Save&quot; title=&quot;Save properties&quot;&gt;OnCommitCloseForm("PageProperties",saveIncludeList()&amp;&amp;http.pageProperties(forms.PageProperties));&lt;/script&gt;|&lt;&lt;deletePage&gt;&gt;|&lt;script label=&quot;Close&quot; title=&quot;Close&quot;&gt;story.closeTiddler("PageProperties");&lt;/script&gt;|</pre>
 </div>
 <div title="CreateNewPage" viewTemplate="ViewOnlyTemplate">
     <pre>&lt;script&gt;accessTypes = &quot;all|edit|add|comment|view|none|&quot;

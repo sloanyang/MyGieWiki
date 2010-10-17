@@ -7776,6 +7776,7 @@ config.macros.importTiddlers = {
 			wikify("The importTiddlers macro lets you easily import from ~TiddlyWiki or giewiki documents on the web or on this web site. Usage:<br>    {{{<<importTiddlers URL>>}}}<br>substituting URL with the web address or filename of the library you want to use. Edit this tiddler to insert the parameter"
 				+ config.macros.importTiddlers.menu(), place);
 		else {
+			var custumUse = story.findContainingTiddler(place).getAttribute('id') != 'tiddlerPageProperties';
 			var aurl = params.shift();
 			var filt = params.shift();
 			if (filt == 'all') {
@@ -7793,7 +7794,7 @@ config.macros.importTiddlers = {
 			if (libs) {
 				this.aurl = aurl;
 				this.libs = libs;
-				var wd = createTiddlyElement(place, "div");
+				var wd = createTiddlyElement(place, "div", "wrdiv:" + aurl);
 				var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
 				var links = [];
 				for (var t = 0; t < libs.length; t++) {
@@ -7809,8 +7810,9 @@ config.macros.importTiddlers = {
 					links[t] = 'itl' + ltav;
 					hta.push(line);
 				}
-				hta.push(['</tbody></table><input type="checkbox" id="chkAll">',
-					'Select all or select those above you wish to <a href="javascript:;" id="cmdImport">import (permanently)</a> or <a href="/" id="cmdInclude" target="_blank">include (once, via query string)</a>.'].join(''));
+				if (custumUse)
+					hta.push(['</tbody></table><input type="checkbox" id="chkAll">',
+					          'Select all or select those above you wish to <a href="javascript:;" id="cmdImport">import (permanently)</a> or <a href="/" id="cmdInclude" target="_blank">include (once, via query string)</a>.'].join(''));
 				if (afilter)
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers.", afilter];
@@ -7828,14 +7830,18 @@ config.macros.importTiddlers = {
 					chtel.onchange = config.macros.importTiddlers.onchange;
 					document.getElementById(links[t]).onclick = config.macros.importTiddlers.fetch;
 				}
-				document.getElementById('cmdImport').onclick = config.macros.importTiddlers.importSelected;
+				if (custumUse)
+					document.getElementById('cmdImport').onclick = config.macros.importTiddlers.importSelected;
 
 			}
 		}
 	},
 	showAll: function (ev) {
 		var target = resolveTarget(ev || window.event);
-		config.macros.importTiddlers.serve(target.getAttribute('id').substring(3), false, true);
+		var url = target.id.substring(3);
+		var pel = target.parentElement;
+		removeChildren(pel);
+		config.macros.importTiddlers.serve(url, false, true, pel.id);
 	},
 	onchange: function (ev) {
 		var target = resolveTarget(ev || window.event);
@@ -7903,35 +7909,43 @@ config.macros.importTiddlers = {
 			mls.push(['<script label="', filelist[i], '">config.macros.importTiddlers.serve(', filelist[i].toJSONString(), ')</script>'].join(''));
 		return mls.join('<br>');
 	},
-	importSelected: function (ev) {
-		var target = resolveTarget(ev || window.event);
-		var tidlr = story.findContainingTiddler(target);
-		var inputs = document.getElementsByTagName('input');
-		var selectList = [];
-		var all = [];
-		var aurl = null;
-		for (i in inputs) {
-			e = inputs[i];
-			if (isDescendant(e, tidlr)) {
-				var id = e.getAttribute("id");
-				if (aurl == null && e.name == 'url')
-					aurl = e.id;
-				if (!id || id.length < 3)
-					continue;
-				var isAll = id == 'chkAll';
-				if (id.startsWith('cht')) {
-					var tn = e.nextSibling.firstChild.nodeValue;
-					all.push(tn);
-				}
-				if (e.type == 'checkbox' && e.checked) {
-					if (isAll)
-						selectList = all;
-					else if (tn)
-						selectList.push(tn);
+	importSelected: function (ev,tidlr) {
+		var importByMenu = function(url,tbl) {
+			var inputs = document.getElementsByTagName('input');
+			var selectList = [];
+			var all = [];
+			for (var i in inputs) {
+				var e = inputs[i];
+				if (isDescendant(e,tbl)) {
+					var id = e.getAttribute("id");
+					if (!id || id.length < 3)
+						continue;
+					var isAll = id == 'chkAll';
+					if (id.startsWith('cht')) {
+						var tn = e.nextSibling.firstChild.nodeValue;
+						all.push(tn);
+					}
+					if (e.type == 'checkbox' && e.checked) {
+						if (isAll)
+							selectList = all;
+						else if (tn)
+							selectList.push(tn);
+					}
+					
 				}
 			}
+			var result = http.tiddlersFromUrl({ url: url, select: selectList.length ? selectList.join('||') : 'void' });
+		};
+		if (!tidlr) 
+			tidlr = story.findContainingTiddler(resolveTarget(ev || window.event));
+		var urls = document.getElementsByName('url')
+		for (var i in urls) {
+			var e = urls[i];
+			if (isDescendant(e, tidlr)) {
+				importByMenu(e.getAttribute("id"),e.nextSibling);
+			}
 		}
-		var result = http.tiddlersFromUrl({ url: aurl, select: selectList.length ? selectList.join('||') : 'void' });
+		return true;
 		if (result.Success)
 			if (window.confirm(result.Message))
 				window.location.reload();
@@ -7958,6 +7972,11 @@ config.macros.importTiddlerStatus = {
 	}
 };
 
+function saveIncludeList()
+{
+	return config.macros.importTiddlers.importSelected(null,story.getTiddler('PageProperties'));
+}
+
 function openLibrary(url) {
 	var ld = http.openLibrary({ library: url });
 	if (ld) {
@@ -7965,7 +7984,10 @@ function openLibrary(url) {
 			var lines = ld.text.split('\n');
 		else
 			var lines = ld.pages;
-		var output = ['Library: ' + url + ' has'];
+		var liblistId = 'libList' + url;
+		if (document.getElementById(liblistId))
+			return;
+		var output = [['Library: <html><span id="',liblistId,'">',url,'</span></html> has:'].join('')];
 		for (var al = lines.shift(); al; al = lines.shift()) {
 			var urlParts = url.split('/');
 			if (urlParts.length > 1) {
@@ -7974,20 +7996,25 @@ function openLibrary(url) {
 			}
 			else
 				var ups = al;
-			output.push('<script label="' + al + '">importFromDialog("' + ups + '");</script>');
+			output.push(['<script label="',al,'">importFromDialog("',url,'","',ups,'");</script>'].join(''));
 		}
 		if (output.length == 1)
 			output.push('(none)');
 		var delc = document.getElementById('libraryCatalog');
-			removeChildren(delc);
+		if (delc.firstChild && delc.firstChild.nodeValue)
+			createTiddlyElement(delc,'br');
+		//	removeChildren(delc);
 		wikify(output.join('<br> '), delc);
 	}
 }
 
-function importFromDialog(url) {
+function importFromDialog(url,what) {
+	var liblistId = 'libList' + what;
+	if (document.getElementById(liblistId))
+		return;
 	var deli = document.getElementById('libraryImport');
-	removeChildren(deli);
-	wikify('<<importTiddlers ' + url + '>>',deli);
+	//removeChildren(deli);
+	wikify('<<importTiddlers ' + what + '>>',deli);
 }
 
 /***
