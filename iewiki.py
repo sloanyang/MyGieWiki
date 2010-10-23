@@ -120,7 +120,7 @@ def NoneIsFalse(v):
 	return False if v == None else v
 
 def NoneIsBlank(v):
-    return "" if v == None else str(v)
+    return u"" if v == None else unicode(v)
 
 def toDict(iter,keyName):
 	d = dict()
@@ -178,7 +178,7 @@ def initHist(shadowTitle):
 	return versions;
   
 def getTiddlerVersions(xd,tid,startFrom):
-	text = ""
+	text = u""
 	for tlr in Tiddler.all().filter('id', tid).order('version'):
 		if text == "":
 			text = initHist(tlr.title if startFrom == 0 else None);
@@ -186,10 +186,10 @@ def getTiddlerVersions(xd,tid,startFrom):
 			modified = tlr.modified
 			if hasattr(tlr,'reverted') and tlr.reverted != None:
 				modified = tlr.reverted;
-			text += '|' + BoldCurrent(tlr) + modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
-				 + '|<<author "' + getAuthor(tlr) + '">>' \
-				 + '|<<diff ' + str(tlr.version) + ' ' + tid + '>>' \
-				 + '|<<revision "' + htmlEncode(tlr.title) + '" ' + str(tlr.version) + '>>|\n'
+			text += u'|' + BoldCurrent(tlr) + modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
+				 + u'|<<author "' + getAuthor(tlr) + u'">>' \
+				 + u'|<<diff ' + str(tlr.version) + u' ' + tid + u'>>' \
+				 + u'|<<revision "' + htmlEncode(tlr.title) + u'" ' + str(tlr.version) + u'>>|\n'
 	eVersions = xd.createElement('versions')
 	eVersions.appendChild(xd.createTextNode(text))
 	return eVersions
@@ -210,11 +210,11 @@ def getAuthor(t):
 	if hasattr(t,'author_ip') and t.author_ip != None and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',t.author_ip) == None:
 		return t.author_ip # It's not an IP address
 	elif t.author != None:
-		return str(t.author.nickname());
+		return unicode(t.author.nickname());
 	elif t.author_ip != None:
-		return str(t.author_ip)
+		return unicode(t.author_ip)
 	else:
-		return "?"
+		return u"?"
 
 def SendEmailNotification(comment,tls):
 	if comment.receiver == None or users.get_current_user() == None:
@@ -279,7 +279,7 @@ def isNameAnOption(name):
 	return name.startswith('txt') or name.startswith('chk')
 
 def jsEncodeStr(s):
-	return '"' + str(s).replace('"','\\"').replace('\n','\\n').replace('\r','') + '"'
+	return '"' + unicode(s).replace(u'"',u'\\"').replace(u'\n',u'\\n').replace(u'\r',u'') + u'"'
 	
 def getUserPenName(user):
 	up = UserProfile.all().filter('user',user).get()
@@ -298,7 +298,7 @@ def TiddlerFromXml(te,path):
 		else:
 			return None
 	except Exception, x:
-		print(str(x))
+		print(unicode(x))
 		return None
 		
 	nt = Tiddler(page = path, title = title, id = id, version = version, author_ip = author_ip)
@@ -320,7 +320,7 @@ class XmlDocument(xml.dom.minidom.Document):
 		parent.appendChild(e);
 		if attrs != None:
 			for n,v in attrs.iteritems():
-				e.setAttribute(n,str(v))
+				e.setAttribute(n,unicode(v))
 		if text != None:
 			e.appendChild(self.createTextNode(unicode(text)))
 		return e;
@@ -393,7 +393,7 @@ class MainPage(webapp.RequestHandler):
 	p.title = name
 	p.text = value
 	p.tags = ""
-	p.id = str(uuid.uuid4())
+	p.id = unicode(uuid.uuid4())
 	p.save()
 	return p
 
@@ -405,7 +405,7 @@ class MainPage(webapp.RequestHandler):
 		
 	el = EditLock( id = t.id, user = usr, user_ip = self.request.remote_addr, duration = minutes)
 	ek = el.put()
-	until = el.time + datetime.timedelta(0,60*eval(str(el.duration)))
+	until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
 	return {"Success": True, "now": el.time, "until": until, "key": str(ek), "title": t.title, "text": t.text, "tags": t.tags }
   
   def editTiddler(self):
@@ -431,13 +431,13 @@ class MainPage(webapp.RequestHandler):
 			el = EditLock().all().filter("id",t.id).get() # get existing lock, if any
 			if el == None: # tiddler is not locked
 				return self.reply(self.lock(t,usr))
-			until = el.time + datetime.timedelta(0,60*eval(str(el.duration)))
+			until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
 			if (usr == el.user if usr != None else self.request.remote_addr == el.user_ip):
 				# possibly we should extend the lock duration
-				return self.fail("already locked by you", { "key": str(el.key()) })
+				return self.fail("already locked by you", { "key": unicode(el.key()) })
 			elif datetime.datetime.utcnow() < until:
 				error = "already locked by " + userNameOrAddress(el.user, el.user_ip) + \
-						" until " + str(until) + "( another " + str(until -  datetime.datetime.utcnow()) + ")"
+						" until " + unicode(until) + "( another " + unicode(until -  datetime.datetime.utcnow()) + ")"
 			else:
 				el.delete()
 				reply = self.lock(t,usr)
@@ -448,7 +448,7 @@ class MainPage(webapp.RequestHandler):
   def unlock(self,key):
 	if key == '' or key == None:
 		return True
-	lock = EditLock.get(key)
+	lock = EditLock.get(db.Key(key))
 	if lock != None:
 		lock.delete()
 		return True
@@ -505,7 +505,7 @@ class MainPage(webapp.RequestHandler):
 					sv = self.request.get('currentVer')
 					v = eval(sv)
 					if v != t.version:
-						error = "Edit conflict: '" +  t.title + "' version " + sv + " is not the current version (" + str(t.version) + " is)"
+						error = "Edit conflict: '" +  t.title + "' version " + sv + " is not the current version (" + unicode(t.version) + " is)"
 			
 	if error != None:
 		return self.fail(error)
@@ -520,7 +520,7 @@ class MainPage(webapp.RequestHandler):
 
 	tlr.comments = 0
 	if (tlr.id == ""):
-		tlr.id = str(uuid.uuid4())
+		tlr.id = unicode(uuid.uuid4())
 	if users.get_current_user():
 		tlr.author = users.get_current_user()
 	tlr.author_ip = self.AuthorIP() # ToDo: Get user's sig in stead
@@ -597,19 +597,19 @@ class MainPage(webapp.RequestHandler):
 	we.setAttribute('type','datetime')
 	we.appendChild(xd.createTextNode(tlr.modified.strftime("%Y%m%d%H%M%S")))
 	ide = xd.createElement('id')
-	ide.appendChild(xd.createTextNode(str(tlr.id)))
+	ide.appendChild(xd.createTextNode(unicode(tlr.id)))
 	vne = xd.createElement('currentVer')
-	vne.appendChild(xd.createTextNode(str(tlr.version)))
+	vne.appendChild(xd.createTextNode(unicode(tlr.version)))
 	aue = xd.createElement('modifier')
 	aue.appendChild(xd.createTextNode(getAuthor(tlr)))
 	vce = xd.createElement('vercnt')
-	vce.appendChild(xd.createTextNode(str(tlr.vercnt)))
+	vce.appendChild(xd.createTextNode(unicode(tlr.vercnt)))
 	esr.appendChild(we)
 	esr.appendChild(ide)
 	esr.appendChild(vne)
 	esr.appendChild(aue)
 	esr.appendChild(vce)
-	esr.appendChild(getTiddlerVersions(xd,str(tlr.id),eval(self.request.get('fromVer'))))
+	esr.appendChild(getTiddlerVersions(xd,unicode(tlr.id),eval(self.request.get('fromVer'))))
 	self.response.out.write(xd.toxml())
 	
   def tiddlerHistory(self):
@@ -640,7 +640,7 @@ class MainPage(webapp.RequestHandler):
 
 		te = xd.createElement('version')
 		tv.appendChild(te)
-		te.appendChild(xd.createTextNode(str(tlr.version)))
+		te.appendChild(xd.createTextNode(unicode(tlr.version)))
 		te.setAttribute('type','int')
 
 		te = xd.createElement('modified')
@@ -661,7 +661,7 @@ class MainPage(webapp.RequestHandler):
 	if found != 1:
 		err = xd.createElement('error')
 		tv.appendChild(err)
-		err.appendChild(xd.createTextNode(self.request.get('tiddlerId') + ': ' + self.request.get("version") + ' found ' + str(found)))
+		err.appendChild(xd.createTextNode(self.request.get('tiddlerId') + ': ' + self.request.get("version") + ' found ' + unicode(found)))
 	if hist:
 		tv.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1))
 	self.response.out.write(xd.toxml())
@@ -671,12 +671,12 @@ class MainPage(webapp.RequestHandler):
 	try:
 		v1t = self.request.get('shadowText') if vn1 == 0 else Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn1).get().text
 	except Exception,x:
-		raise Exception("Cannot get version " + str(vn1) + " of " + self.request.get('tid'))
+		raise Exception("Cannot get version " + unicode(vn1) + " of " + self.request.get('tid'))
 	vn2 = int(self.request.get('vn2'))
 	try:
 		v2t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn2).get().text
 	except Exception,x:
-		raise Exception("Cannot get version " + str(vn2) + " of " + self.request.get('tid'))
+		raise Exception("Cannot get version " + unicode(vn2) + " of " + self.request.get('tid'))
 	ndiffg = difflib.ndiff(v1t.replace('\r\n','\n').splitlines(),v2t.replace('\r\n','\n').splitlines())
 	ndiff = []
 	for v in ndiffg:
@@ -748,7 +748,7 @@ class MainPage(webapp.RequestHandler):
 	elif tpcv == None:
 		return self.fail("Current not found")
 	else:
-		logging.info("revert " + tid + " v. " + str(tpcv) + " to " + str(tplv))
+		logging.info("revert " + tid + " v. " + unicode(tpcv) + " to " + unicode(tplv))
 		tpl = self.revertFromVersion(tid,tpcv,tplv,version,tpn)
 		k = self.request.get('key',None)
 		if k != None:
@@ -907,7 +907,7 @@ class MainPage(webapp.RequestHandler):
 		self.reply({'text': ftwm.read()})
 		ftwm.close()
 	except Exception,x:
-		self.fail(str(x))
+		self.fail(unicode(x))
 	
   def pageProperties(self):
 	user = users.get_current_user()
@@ -1363,26 +1363,26 @@ class MainPage(webapp.RequestHandler):
 
 	self.response.out.write("<ul>");
 	for te in storeArea.childNodes:
-		# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else str(te.nodeType)) + "&gt;");
+		# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else unicode(te.nodeType)) + "&gt;");
 		if te.nodeType == xml.dom.Node.ELEMENT_NODE:
 			nt = TiddlerFromXml(te,self.request.path)
 			if nt == None:
 				return
 			nt.public = page.anonAccess > page.NoAccess
-			#self.response.out.write("<br>Upload tiddler: " + nt.title + " | " + nt.id + " | version " + str(nt.version) + nt.text + "<br>")
+			#self.response.out.write("<br>Upload tiddler: " + nt.title + " | " + nt.id + " | version " + unicode(nt.version) + nt.text + "<br>")
 			
 			et = Tiddler.all().filter('id',nt.id).filter("current",True).get() if nt.id != "" else None
 			if et == None:
 				et = Tiddler.all().filter('page',self.request.path).filter('title',nt.title).filter("current",True).get()
 				
-			# self.response.out.write("Not found " if et == None else ("Found v# " + str(et.version)))
+			# self.response.out.write("Not found " if et == None else ("Found v# " + unicode(et.version)))
 			if et == None:
 				self.status = ' - added';
-				nt.id = str(uuid.uuid4())
+				nt.id = unicode(uuid.uuid4())
 				nt.comments = 0
 			elif et.version > nt.version:
-				self.response.out.write("<li>" + nt.title + " - version " + str(nt.version) + \
-										" <b>not</b> uploaded; it is already at version " + str(et.version) + "</li>")
+				self.response.out.write("<li>" + nt.title + " - version " + unicode(nt.version) + \
+										" <b>not</b> uploaded; it is already at version " + unicode(et.version) + "</li>")
 				continue
 			elif self.tiddlerChanged(et,nt):
 				nt.id = et.id
@@ -1402,7 +1402,7 @@ class MainPage(webapp.RequestHandler):
 	try:
 		dom = xml.dom.minidom.parseString(filedata)
 	except Exception,x:
-		self.response.out.write("Oops: " + str(x))
+		self.response.out.write("Oops: " + unicode(x))
 		return
 	doce = dom.documentElement
 	if doce.tagName == "html":
@@ -1452,7 +1452,7 @@ class MainPage(webapp.RequestHandler):
 								if mce.firstChild != None:
 									self.response.out.write(field + '(' + dtype + ') ')
 									v = mce.firstChild.nodeValue
-									# self.response.out.write(field + str(mce.firstChild.nodeValue))
+									# self.response.out.write(field + unicode(mce.firstChild.nodeValue))
 									if dtype == 'datetime':
 										if len(v) == 19:
 											v = datetime.datetime.strptime(v,'%Y-%m-%d %H:%M:%S')
@@ -1474,7 +1474,7 @@ class MainPage(webapp.RequestHandler):
 							mi.put()
 				
 	except Exception,x:
-		self.response.out.write("Oops: " + str(x))
+		self.response.out.write("Oops: " + unicode(x))
 		return
 
   def uploadFile(self):
@@ -1542,7 +1542,7 @@ class MainPage(webapp.RequestHandler):
 		if tiddlers == None:
 			return self.fail('\n'.join(self.warnings))
 	except xml.parsers.expat.ExpatError, ex:
-		return self.fail("The url " + url + " failed to read as XML: <br>" + str(ex))
+		return self.fail("The url " + url + " failed to read as XML: <br>" + unicode(ex))
 		
 	fromUrl = list()
 	page = self.CurrentPage()
@@ -1586,7 +1586,7 @@ class MainPage(webapp.RequestHandler):
 	except IOError, iox:
 		return Tiddler.all().filter('page',url)
 	except Exception, x:
-		self.warnings.append('failed to read ' + str(url) + ":" + str(x))
+		self.warnings.append('failed to read ' + unicode(url) + ":" + unicode(x))
 		return None
 	if xd.__class__ == xml.dom.minidom.Document:
 		pe = xd.documentElement
@@ -1595,7 +1595,7 @@ class MainPage(webapp.RequestHandler):
 			if len(es) == 1:
 				pe = es[0]
 			else:
-				raise ImportException(pe.nodeName + " contains " + str(len(es)) + " body elements.")
+				raise ImportException(pe.nodeName + " contains " + unicode(len(es)) + " body elements.")
 		return self.TiddlersFromXml(pe,url)
 	return None
 	
@@ -1614,9 +1614,9 @@ class MainPage(webapp.RequestHandler):
 				try:
 					result = urlfetch.fetch(url)
 				except urlfetch.Error, ex:
-					raise ImportException("Could not get the file <b>" + url + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
+					raise ImportException("Could not get the file <b>" + url + "</b>:<br/>Exception " + unicode(ex.__class__.__doc__))
 				if result.status_code != 200:
-					raise ImportException("Fetching the url " + url + " returned status code " + str(result.status_code))
+					raise ImportException("Fetching the url " + url + " returned status code " + unicode(result.status_code))
 				else:
 					content = result.content
 					if cache != None:
@@ -1673,7 +1673,7 @@ class MainPage(webapp.RequestHandler):
 			result = sa
 	else:
 		result = "Access denied"
-	tv.appendChild(xd.createTextNode(str(result)))
+	tv.appendChild(xd.createTextNode(unicode(result)))
 	self.response.out.write(xd.toxml())
 
   def saveSiteInfo(self):
@@ -1694,7 +1694,7 @@ class MainPage(webapp.RequestHandler):
 			result = sa
 	else:
 		result = "Access denied"
-	tv.appendChild(xd.createTextNode(str(result)))
+	tv.appendChild(xd.createTextNode(unicode(result)))
 	self.response.out.write(xd.toxml())
 
   def publishSub(self):
@@ -1732,7 +1732,7 @@ class MainPage(webapp.RequestHandler):
 			results.append(t.title)
 		else:
 			t.delete()
-	self.reply({'Success': True, 'Message': str(len(results)) + " tiddlers published:<br>" + '<br>'.join(results) })
+	self.reply({'Success': True, 'Message': unicode(len(results)) + " tiddlers published:<br>" + '<br>'.join(results) })
 	
   def expando(self,method):
 	xd = self.initXmlResponse()
@@ -1759,7 +1759,7 @@ class MainPage(webapp.RequestHandler):
 		self.reply({'text': ftwm.read()})
 		ftwm.close()
 	except Exception,x:
-		self.fail(str(x))
+		self.fail(unicode(x))
 
   def userProfile(self):
 	"Store or retrieve current user's profile data"
@@ -1784,7 +1784,7 @@ class MainPage(webapp.RequestHandler):
 										  if users.is_current_user_admin() else \
 										  "This penname belongs to someone else")
 				except Exception,x:
-					logging.error("PenName(" + av + ") ->user mapping failed: " + str(x))
+					logging.error("PenName(" + av + ") ->user mapping failed: " + unicode(x))
 					pn.delete()
 					pn = None
 			elif pn == None:
@@ -1806,7 +1806,7 @@ class MainPage(webapp.RequestHandler):
 			try:
 				av = int(av)
 			except Exception, x:
-				return self.fail(str(x))
+				return self.fail(unicode(x))
 		setattr(u,an,av)
 	if an != None:
 		u.put()
@@ -1875,9 +1875,9 @@ class MainPage(webapp.RequestHandler):
 			ups = urlparse.urlparse(ln)
 			result = urlfetch.fetch(ln,'method=openLibrary&library=' + ups.path,'POST') #ln[ln.find(':/')+2:],'POST')
 		except urlfetch.Error, ex:
-			raise ImportException("Could not get the file <b>" + ln + "</b>:<br/>Exception " + str(ex.__class__.__doc__))
+			raise ImportException("Could not get the file <b>" + ln + "</b>:<br/>Exception " + unicode(ex.__class__.__doc__))
 		if result.status_code != 200:
-			raise ImportException("Fetching the url " + ln + " returned status code " + str(result.status_code))
+			raise ImportException("Fetching the url " + ln + " returned status code " + unicode(result.status_code))
 		else:
 			content = result.content
 			#if cache != None:	
@@ -1889,7 +1889,7 @@ class MainPage(webapp.RequestHandler):
 			lm = __import__(ln)
 			self.reply({'pages': lm.library().Pages(self)})
 		except Exception,x:
-			self.fail("Importing " + ln + ": " + str(x))
+			self.fail("Importing " + ln + ": " + unicode(x))
 	
   def traceMethod(self,m,method):
 	r = method()
@@ -1908,7 +1908,7 @@ class MainPage(webapp.RequestHandler):
 		except AttributeError, a:
 			return self.fail("Invalid method: " + m)
 		except MyError, x:
-			return self.fail(str(x.value))
+			return self.fail(unicode(x.value))
 		return self.traceMethod(m,method) # run method
 	else:
 		try: # Any class that has a 'public(self,page)' method handle method named by class
@@ -1921,23 +1921,23 @@ class MainPage(webapp.RequestHandler):
 		except NameError:
 			return self.expando(m)
 		except Exception, x:
-			return self.fail("Ups!\n" + str(dir(x)))
+			return self.fail("Ups!\n" + unicode(dir(x)))
 
 ############################################################################
   def BuildTiddlerDiv(self,xd,id,t,user):
 	div = xd.createElement('div')
-	div.setAttribute('id',  str(t.id) if t.id != None else str(t.title))
-	div.setAttribute('title', str(t.title))
+	div.setAttribute('id',  unicode(t.id) if t.id != None else unicode(t.title))
+	div.setAttribute('title', unicode(t.title))
 	if getattr(t,'locked',False):
 		div.setAttribute('locked','true')
 	elif t.page != self.request.path:
 		if t.page != None:
-			div.setAttribute('from',str(t.page))
+			div.setAttribute('from',unicode(t.page))
 		div.setAttribute('locked','true')
 
-	div.setAttribute('modifier', str(getAuthor(t)))
-	div.setAttribute('version', str(t.version))
-	div.setAttribute('vercnt', str(t.vercnt if hasattr(t,'vercnt') and t.vercnt != None else t.version))
+	div.setAttribute('modifier', unicode(getAuthor(t)))
+	div.setAttribute('version', unicode(t.version))
+	div.setAttribute('vercnt', unicode(t.vercnt if hasattr(t,'vercnt') and t.vercnt != None else t.version))
 	modified = t.modified
 	if hasattr(t,'reverted'): # reverted/modified is switched for recentChanges to show reverted:
 		reverted = t.reverted
@@ -1945,14 +1945,14 @@ class MainPage(webapp.RequestHandler):
 			div.setAttribute('reverted', modified.strftime('%Y%m%d%H%M%S'))
 			rby = t.reverted_by
 			if rby != None:
-				div.setAttribute('reverted_by', str(rby.nickname()))
+				div.setAttribute('reverted_by', unicode(rby.nickname()))
 			modified = reverted
 
 	if modified != None:
 		div.setAttribute('modified', modified.strftime('%Y%m%d%H%M%S'))
 
 	if t.comments != None:
-		div.setAttribute('comments', str(t.comments))
+		div.setAttribute('comments', unicode(t.comments))
 
 	if t.notes != None and user != None:
 		if t.notes.find(user.nickname()) >= 0:
@@ -1961,13 +1961,13 @@ class MainPage(webapp.RequestHandler):
 	if t.messages != None and user != None:
 		msgCnt = t.messages.count("|" + user.nickname())
 		if msgCnt > 0:
-			div.setAttribute('messages', str(msgCnt))
+			div.setAttribute('messages', unicode(msgCnt))
 
 	if t.tags != None:
-		div.setAttribute('tags', str(t.tags));
+		div.setAttribute('tags', unicode(t.tags));
 		
 	td = t.dynamic_properties()
-	logging.info(str(len(td)) + " dps")
+	logging.info(unicode(len(td)) + " dps")
 	for m in td:
 		logging.info("DP " + m)
 		try:
@@ -1977,9 +1977,9 @@ class MainPage(webapp.RequestHandler):
 			elif type(tavm) == unicode:
 				div.setAttribute(m,tavm)
 			else: # if type(tavm) != instancemethod:
-				pass # logging.info("Attr " + m + " is a " + str(type(tavm)) + ": " + str(tavm))
+				pass # logging.info("Attr " + m + " is a " + unicode(type(tavm)) + ": " + unicode(tavm))
 		except Exception, x:
-			logging.warn("X: " + str(x))
+			logging.warn("X: " + unicode(x))
 
 	pre = xd.createElement('pre')
 	pre.appendChild(xd.createTextNode(t.text))
@@ -1988,7 +1988,7 @@ class MainPage(webapp.RequestHandler):
 
   def cleanup(self):
 	for el in EditLock.all():
-		until = el.time + datetime.timedelta(0,60*eval(str(el.duration)))
+		until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
 		if until < datetime.datetime.utcnow():
 			el.delete()
 	truncateModel(LogEntry)
@@ -2009,7 +2009,7 @@ class MainPage(webapp.RequestHandler):
 	self.initXmlResponse()
 	xd = xml.dom.minidom.Document()
 	xr = xd.createElement("giewiki")
-	xr.setAttribute('timestamp',str(datetime.datetime.now()))
+	xr.setAttribute('timestamp',unicode(datetime.datetime.now()))
 	xd.appendChild(xr)
 	exportTable(xd,xr,Tiddler,'tiddlers','tiddler')
 	exportTable(xd,xr,ShadowTiddler,'shadowtiddlers','shadowtiddler')
@@ -2195,7 +2195,7 @@ class MainPage(webapp.RequestHandler):
 					elif len(tdx) > 0:
 						self.warnings.append("Found but excluded:<br>" + ' '.join(tdx))
 		except Exception, x:
-			self.response.out.write("<html>Error including " + tn + ":<br>" + str(x))
+			self.response.out.write("<html>Error including " + tn + ":<br>" + unicode(x))
 			return
 	
 	if readAccess:
@@ -2235,13 +2235,13 @@ class MainPage(webapp.RequestHandler):
 	httpMethodTiddler = None
 	for id, t in tiddict.iteritems():
 		if t == None:
-			print("Bad data in tiddict: " + str(id))
+			print("Bad data in tiddict: " + unicode(id))
 			return
 		if t.title == 'HttpMethods':
 			httpMethodTiddler = tiddict.pop(id)
 			break
 		
-	self.Trace("Tiddict: " + str(len(tiddict)))
+	self.Trace("Tiddict: " + unicode(len(tiddict)))
 	for id, t in tiddict.iteritems():
 		self.Trace(id + ':' + t.title)
 	pages = []
@@ -2279,7 +2279,7 @@ class MainPage(webapp.RequestHandler):
 				metaDiv.setAttribute('sitetitle',"giewiki");
 				metaDiv.setAttribute('subtitle',"You have successfully installed giewiki" if rootpath else "");
 			else:
-				metaDiv.setAttribute('timestamp',str(datetime.datetime.now()))
+				metaDiv.setAttribute('timestamp',unicode(datetime.datetime.now()))
 				metaDiv.setAttribute('username',username)
 				metaDiv.setAttribute('owner', page.owner.nickname())
 				metaDiv.setAttribute('access', AccessToPage(page,self.subdomain,self.user))
@@ -2354,7 +2354,7 @@ class MainPage(webapp.RequestHandler):
 						if t.tags == "test":
 							t.text = text + t.text
 					except Exception, x:
-						t.text = str(x)
+						t.text = unicode(x)
 
 			if t.tags != None and "shadowTiddler" in t.tags.split():
 				if t.page != self.request.path: # remove tag if not the source page
@@ -2388,16 +2388,16 @@ class MainPage(webapp.RequestHandler):
 				if twdres.status_code == 200:
 					twdtext = twdres.content
 				else:
-					text = HtmlErrorMessage("Failed to retrieve " + twd + ":\nHTTP Error " + str(twdres.status_code))
+					text = HtmlErrorMessage("Failed to retrieve " + twd + ":\nHTTP Error " + unicode(twdres.status_code))
 			except Exception, x:
-				text = HtmlErrorMessage("Cannot retrive " + str(twd) + ":\n" + str(x))
+				text = HtmlErrorMessage("Cannot retrive " + unicode(twd) + ":\n" + unicode(x))
 		else:
 			try:
 				ftwd = open(twd)
 				twdtext = ftwd.read()
 				ftwd.close()
 			except Exception, x:
-				text = HtmlErrorMessage("Cannot read " + twd + ":\n" + str(x))
+				text = HtmlErrorMessage("Cannot read " + twd + ":\n" + unicode(x))
 		if twdtext != None:
 			xmldecl = '<?xml version="1.0" ?>' # strip off this
 			if text.startswith(xmldecl):

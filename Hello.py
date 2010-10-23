@@ -1,5 +1,5 @@
 from google.appengine.ext import db
-from Tiddler import Tiddler
+from giewikidb import Tiddler
 
 class Hello(Tiddler):
   name = db.StringProperty()
