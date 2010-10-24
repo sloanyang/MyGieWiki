@@ -8,6 +8,7 @@ import cgi
 import datetime
 import difflib
 import logging
+import os
 import re
 import urllib
 import urlparse
@@ -26,8 +27,17 @@ from google.appengine.api import urlfetch
 
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade, UpgradeTable
-from Plugins import *
 
+
+class library():
+	static = ['YouTube.xml']	
+	def local(self,main):
+		pages = []
+		for p in Page.all().filter('sub',main.subdomain):
+			lp = p.path.lower()
+			if lp.find('library') >= 0 or lp.find('lib/') >= 0:
+				pages.append(p.path)
+		return pages
 
 jsProlog = '\
 var giewikiVersion = { title: "giewiki", major: 1, minor: 5, revision: 5, date: new Date("Oct 16, 2010"), extensions: {} };\n\
@@ -1555,6 +1565,9 @@ class MainPage(webapp.RequestHandler):
 				else:
 					fromUrl = al.split('#')[1].split('||')
 	if select != "":
+		error = page.UpdateViolation()
+		if error != None:
+			return self.fail(error)
 		if select != 'void':
 			newPick = url + "#" + select
 		else:
@@ -1582,7 +1595,7 @@ class MainPage(webapp.RequestHandler):
 
   def tiddlersFromSources(self,url,sources=None,cache=None,save=False):
 	try:
-		xd = self.XmlFromSources(url,sources)
+		xd = self.XmlFromSources(url,sources,cache,save)
 	except IOError, iox:
 		return Tiddler.all().filter('page',url)
 	except Exception, x:
@@ -1886,8 +1899,12 @@ class MainPage(webapp.RequestHandler):
 			self.response.out.write(content)
 	else:
 		try:
-			lm = __import__(ln)
-			self.reply({'pages': lm.library().Pages(self)})
+			lib = library()
+			lm = getattr(lib,ln)
+			if type(lm) == list:
+				self.reply({'pages': lm})
+			else:
+				self.reply({'pages': lm(self)})
 		except Exception,x:
 			self.fail("Importing " + ln + ": " + unicode(x))
 	
