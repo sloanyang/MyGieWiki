@@ -364,6 +364,7 @@ table.listView th, table.listView td, table.listView tr {padding:0px 3px 0px 3px
 .replyTD { padding-left:1.25em }
 .buttonftr {position:relative; top:0em; right:0em; }
 .linkbutton { font-weight: bold }
+.siteMapTags { color: #ff0000 }
 
 .diffout { font-size:1.0em; font-family: courier; }
 .diffminus { background-color: #d0ffdd; }
@@ -551,14 +552,14 @@ See also the AdvancedOptions
 	&lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Page properties&lt;/div&gt;&lt;/html&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 95&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 95&gt;&gt;|
-|Owner&lt;br&gt;&lt;&lt;input text owner 36&gt;&gt;|Group(s) &lt;&lt;defineGroup&gt;&gt;&lt;br&gt;&lt;&lt;input text groups 36&gt;&gt;|Locked&lt;br&gt;&lt;&lt;input checkbox locked false&gt;&gt;|
+|Owner&lt;br&gt;&lt;&lt;input text owner 35&gt;&gt;|Group(s) &lt;&lt;defineGroup&gt;&gt;&lt;br&gt;&lt;&lt;input text groups 30&gt;&gt;|Locked&lt;br&gt;&lt;&lt;input checkbox locked false&gt;&gt;|
 |&gt;|&gt;|Access permissions|
 |Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes &gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
-|Includes:|&gt;|&lt;html&gt;Libraries:&lt;/html&gt; &lt;script label=&quot;static&quot; title=&quot;Statically installed files&quot;&gt;openLibrary('static');&lt;/script&gt; &lt;script label=&quot;local&quot; title=&quot;Local pages that contain 'library' in their path&quot;&gt;openLibrary('local');&lt;/script&gt; &lt;script label=&quot;giewiki&quot; title=&quot;http://plugins.giewiki.appspot.com&quot;&gt;openLibrary('http://giewiki.appspot.com/lib/plugins/');&lt;/script&gt;|
+|Includes:|&lt;html&gt;Libraries: &lt;/html&gt; &lt;script label=&quot;static&quot; title=&quot;Statically installed files&quot;&gt;openLibrary('static');&lt;/script&gt; &lt;script label=&quot;local&quot; title=&quot;Local pages that contain 'library' in their path&quot;&gt;openLibrary('local');&lt;/script&gt; &lt;script label=&quot;giewiki&quot; title=&quot;http://plugins.giewiki.appspot.com&quot;&gt;openLibrary('http://giewiki.appspot.com/lib/plugins/');&lt;/script&gt; &lt;script label=&quot;other..&quot;&gt;alert(33);&lt;/script&gt;|Use &lt;script label=&quot;template..&quot;&gt;alert(42)&lt;/script&gt;|
 |&gt;|&gt;|&lt;&lt;importTiddlerStatus forms.PageProperties.systeminclude libraryImport&gt;&gt;|
 |&gt;|&gt;|&lt;html&gt;  &lt;span id='libraryCatalog' /&gt;  &lt;/html&gt;|
 |&gt;|&gt;|&lt;html&gt;  &lt;span id='libraryImport' /&gt;  &lt;/html&gt;|
-|Read-only view options|Access to prior versions&lt;br&gt;&lt;&lt;input checkbox viewprior true&gt;&gt;|Show view button&lt;br&gt;&lt;&lt;input checkbox viewbutton true&gt;&gt;|
+|&gt;|Tags&lt;br&gt;&lt;&lt;input text tags 74&gt;&gt;&lt;br&gt;-type tags separated by spaces or apply special tags: &lt;script label=&quot;library&quot;&gt;addPageTag('library')&lt;/script&gt; - &lt;script label=&quot;template&quot;&gt;addPageTag('template')&lt;/script&gt;|Read-only options&lt;br&gt;&lt;&lt;input checkbox viewprior true&gt;&gt;Prior versions&lt;br&gt;&lt;&lt;input checkbox viewbutton true&gt;&gt;&quot;view&quot; button|
 |&lt;script label=&quot;Save&quot; title=&quot;Save properties&quot;&gt;OnCommitCloseForm("PageProperties",saveIncludeList()&amp;&amp;http.pageProperties(forms.PageProperties));&lt;/script&gt;|&lt;&lt;deletePage&gt;&gt;|&lt;script label=&quot;Close&quot; title=&quot;Close&quot;&gt;story.closeTiddler("PageProperties");&lt;/script&gt;|</pre>
 </div>
 <div title="CreateNewPage" viewTemplate="ViewOnlyTemplate">

@@ -26,7 +26,7 @@ from google.appengine.api import memcache
 from google.appengine.api import urlfetch 
 
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
-from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade, UpgradeTable
+from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade
 
 
 class library():
@@ -950,6 +950,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			page.title = self.request.get('title')
 			page.subtitle = self.request.get('subtitle')
+			page.tags = self.request.get('tags')
 			page.locked = self.request.get('locked') == 'true'
 			page.anonAccess = Page.access[self.request.get('anonymous')]
 			page.authAccess = Page.access[self.request.get('authenticated')]
@@ -963,6 +964,7 @@ class MainPage(webapp.RequestHandler):
 		self.reply({ 
 			'title': page.title,
 			'subtitle': page.subtitle,
+			'tags': page.tags,
 			'owner': page.owner,
 			'locked': page.locked,
 			'anonymous': Page.access[page.anonAccess],
@@ -992,12 +994,14 @@ class MainPage(webapp.RequestHandler):
 	xd = XmlDocument()
 	xroot = xd.add(xd,'SiteMap', attrs={'type':'object[]'})
 	for p in pal:
-		xpage = xd.createElement("page")
+		xpage = xd.createElement('page')
 		xroot.appendChild(xpage)
-		xd.add(xpage,"path",p.path);
-		xd.add(xpage,"title",p.title);
+		xd.add(xpage,'path',p.path)
+		xd.add(xpage,'title',p.title)
+		if p.tags != None:
+			xd.add(xpage,'tags',p.tags)
 	self.sendXmlResponse(xd)
-	
+
   def createPage(self):
 	user = users.get_current_user()
 	path = self.request.path

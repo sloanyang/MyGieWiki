@@ -6998,6 +6998,14 @@ config.macros.input = {
     }
 }
 
+function addPageTag(tag)
+{
+	var tl = forms.PageProperties.tags.readBracketedList();
+	if (tl.indexOf(tag) < 0)
+		tl.push(tag)
+	setFormFieldValue(forms.PageProperties,'tags',tl.join(' '))	
+}
+
 config.macros.localDiv = {
 	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
 		createTiddlyElement(place,params[1] || "div",formName(place) + params[0]);
@@ -7041,7 +7049,7 @@ function SiteMapEntry(place,m,level,dir)
 		else
 			var img = "/static/plusDoc36.png";
 		if (lc == level) {
-			AddIconPlusLink(place,img,m[i].title,path);
+			AddIconPlusLink(place,img,m[i].title,path,m[i].tags);
 			dir[lc] = { l: level + 1, ca: [], d: dir };
 			siteMap[path] = dir[lc];
 		}
@@ -7052,7 +7060,7 @@ function SiteMapEntry(place,m,level,dir)
 	}
 }
 
-function AddIconPlusLink(place,img,title,url)
+function AddIconPlusLink(place,img,title,url,tags)
 {
 	var li = createTiddlyElement(place,"div");
 	li.style.marginLeft = "1.7em";
@@ -7078,6 +7086,8 @@ function AddIconPlusLink(place,img,title,url)
 		ats.title = url;
 	}
 	createTiddlyElement(li,url?"a":"i",null,null,title, ats);
+	if (tags)
+		createTiddlyElement(li,'span',null,'siteMapTags',[' [',tags,']'].join(''));
 	return li;
 }
 

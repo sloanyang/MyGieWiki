@@ -91,6 +91,7 @@ class Page(db.Model):
   ownername = db.StringProperty()
   title = db.StringProperty()
   subtitle = db.StringProperty()
+  tags = db.StringProperty()
   locked = db.BooleanProperty()
   anonAccess = db.IntegerProperty()
   authAccess = db.IntegerProperty()
@@ -108,6 +109,7 @@ class Page(db.Model):
 	d['owner'] = s.owner
 	d['title'] = s.title
 	d['subtitle'] = s.subtitle
+	d['tags'] = s.tags
 	d['locked'] = s.locked
 	d['anonAccess'] = s.anonAccess
 	d['authAccess'] = s.authAccess
