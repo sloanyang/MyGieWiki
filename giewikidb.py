@@ -1,7 +1,7 @@
-# this:	tiddler.py
+# this:	giewikidb.py
 # by:	Poul Staugaard
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.4
+# ver.:	1.6
 
 from google.appengine.ext import db
 from google.appengine.api import users
@@ -75,6 +75,12 @@ class EditLock(db.Model):
   time = db.DateTimeProperty(auto_now_add=True)
   duration = db.IntegerProperty()
 
+class PageTemplate(db.Model):
+  page = db.StringProperty()
+  text = db.TextProperty()
+  title = db.StringProperty()
+  updated = db.DateTimeProperty(auto_now_add=True)
+
 class Page(db.Model):
   NoAccess = 0
   ViewAccess = 2
@@ -103,6 +109,7 @@ class Page(db.Model):
   gwversion = db.StringProperty()
   viewbutton = db.BooleanProperty(True)
   viewprior = db.BooleanProperty(True)
+  template = db.ReferenceProperty(PageTemplate)
   def todict(s,d):
 	d['path'] = s.path
 	d['sub'] = s.sub
@@ -121,6 +128,8 @@ class Page(db.Model):
 	d['gwversion'] = s.gwversion
 	d['viewbutton'] = s.viewbutton
 	d['viewprior'] = s.viewprior
+	if s.template != None:
+		d['template'] = s.template.page.path
 
   def Update(self,tiddler):
 	if tiddler.title == "SiteTitle":
@@ -251,6 +260,9 @@ def HasGroupAccess(grps,user):
 def ReadAccessToPage( page, sub = None, user = None):
 	if user == None:
 		user = users.get_current_user()
+	if page == None:
+		return False
+
 	if page.__class__ in (unicode, str):
 		page = Page.all().filter('path',page).filter('sub',sub).get()
 	if page == None: # Un-cataloged page - restricted access

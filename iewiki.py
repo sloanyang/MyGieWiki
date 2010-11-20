@@ -25,19 +25,8 @@ from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch 
 
-from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
+from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade
-
-
-class library():
-	static = ['YouTube.xml']	
-	def local(self,main):
-		pages = []
-		for p in Page.all().filter('sub',main.subdomain):
-			lp = p.path.lower()
-			if lp.find('library') >= 0 or lp.find('lib/') >= 0:
-				pages.append(p.path)
-		return pages
 
 jsProlog = '\
 var giewikiVersion = { title: "giewiki", major: 1, minor: 5, revision: 5, date: new Date("Oct 16, 2010"), extensions: {} };\n\
@@ -50,6 +39,14 @@ var config = {\n\
 	options: {\n\
 		' # the rest is built dynamically
 
+class library():
+	static = ['YouTube.xml']	
+	def local(self,main):
+		pages = []
+		for p in Page.all().filter('sub',main.subdomain):
+			if 'library' in p.tags.split():
+				pages.append(p.path)
+		return pages
 
 class MyError(Exception):
   def __init__(self, value):
@@ -948,8 +945,12 @@ class MainPage(webapp.RequestHandler):
 		if user != page.owner and users.is_current_user_admin() == False:
 			self.fail("You cannot change the properties of this pages")
 		else:
+			saveTemplate = False
+			
 			page.title = self.request.get('title')
 			page.subtitle = self.request.get('subtitle')
+			if 'template' in self.request.get('tags').split() and (page.tags == None or (not 'template' in page.tags.split())):
+				saveTemplate = True
 			page.tags = self.request.get('tags')
 			page.locked = self.request.get('locked') == 'true'
 			page.anonAccess = Page.access[self.request.get('anonymous')]
@@ -958,7 +959,17 @@ class MainPage(webapp.RequestHandler):
 			page.groups = self.request.get('groups')
 			page.viewbutton = True if self.request.get('viewbutton') == 'true' else False
 			page.viewprior = self.request.get('viewprior') == 'true'
+			if self.request.get('template') != '':
+				pt = PageTemplate.all().filter('page',self.request.get('template')).get()
+				if pt == None:
+					return self.fail("No such template: " + self.request.get('template'))
+				else:
+					page.template = pt
+			else:
+				page.template = None
 			page.put()
+			if saveTemplate:
+				self.saveTemplate(page)
 			self.reply({'Success': True })
 	else: # Get
 		self.reply({ 
@@ -971,9 +982,31 @@ class MainPage(webapp.RequestHandler):
 			'authenticated': Page.access[page.authAccess],
 			'group': Page.access[page.groupAccess],
 			'groups': page.groups,
+			'template': None if page.template == None else { 'page': page.template.page, 'title': page.template.title },
 			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
 			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
+
+  def saveTemplate(self,page,update=False):
+	pt = PageTemplate.all().filter('page',page.path).get()
+	if pt == None:
+		pt = PageTemplate()
+		pt.page = page.path
+		update = True
+	if update:
+		pt.text = self.getText(page)
+	pt.title = page.title
+	pt.put()
+
+  def updateTemplate(self):
+	self.saveTemplate(self.CurrentPage(),True)
+	self.reply({'Success': True })
+
+  def getTemplates(self):
+	dt = list()
+	for at in PageTemplate.all():
+		dt.append( { 'title': at.title,'path': at.page })
+	self.reply({'Success': True, 'templates': dt})
 
   def getNewAddress(self):
 	path = self.request.path
@@ -1110,14 +1143,10 @@ class MainPage(webapp.RequestHandler):
 	self.reply(aux)
 	return True
 
-  def reply(self, values = { 'Success': True }, de = 'reply', versions = False):
-	self.initXmlResponse()
-	xd = xml.dom.minidom.Document()
-	tr = xd.createElement(de)
-	xd.appendChild(tr)
+  def objectToXml(self,xd,pe,values):
 	for k, v in values.iteritems():
 		av = xd.createElement(k);
-		tr.appendChild(av);
+		pe.appendChild(av);
 		if type(v) == bool:
 			av.setAttribute("type","bool")
 			v = "true" if v else "false"
@@ -1125,14 +1154,36 @@ class MainPage(webapp.RequestHandler):
 			av.setAttribute('type','datetime')
 			v = v.strftime("%Y%m%d%H%M%S")
 		elif type(v) == list:
-			av.setAttribute('type', 'string[]')
-			for an in v:
-				sael = xd.createElement('string')
-				sael.appendChild(xd.createTextNode(unicode(an)))
-				av.appendChild(sael)
+			if len(v) == 0:
+				av.setAttribute('type', '[]')
+				v = None
+			elif type(v[0]) in [ str, unicode ]:
+				av.setAttribute('type', 'string[]')
+				for an in v:
+					sael = xd.createElement('string')
+					sael.appendChild(xd.createTextNode(unicode(an)))
+					av.appendChild(sael)
+				v = None
+			elif type(v[0]) == dict:
+				av.setAttribute('type','object[]')
+				for an in v:
+					dil = xd.createElement('object')
+					av.appendChild(dil)
+					self.objectToXml(xd,dil,an)
+				v = None
+		elif type(v) == dict:
+			av.setAttribute('type', 'object')
+			self.objectToXml(xd,av,v)
 			v = None
 		if v != None:
 			av.appendChild(xd.createTextNode(unicode(v)))
+
+  def reply(self, values = { 'Success': True }, de = 'reply', versions = False):
+	self.initXmlResponse()
+	xd = xml.dom.minidom.Document()
+	tr = xd.createElement(de)
+	xd.appendChild(tr)
+	self.objectToXml(xd,tr,values)
 	if versions:
 		tr.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1))
 	self.response.out.write(xd.toxml())
@@ -1560,7 +1611,7 @@ class MainPage(webapp.RequestHandler):
 		
 	fromUrl = list()
 	page = self.CurrentPage()
-	if page.systemInclude != None:
+	if page != None and page.systemInclude != None:
 		urls = page.systemInclude.split('\n')
 		for al in urls:
 			if al.startswith(url):
@@ -1919,6 +1970,7 @@ class MainPage(webapp.RequestHandler):
 	return r
 
   def post(self):
+	self.user = users.get_current_user()
 	trace = memcache.get(self.request.remote_addr)
 	self.trace = [] if trace != None and trace != "0" else False
 	self.getSubdomain()
@@ -2101,94 +2153,30 @@ class MainPage(webapp.RequestHandler):
 
 	self.response.out.write(',\n\t\t'.join(optlist))
 	self.response.out.write('\n\t}\n};')
-	
-  def get(self): # this is where it all starts
-	self.user = users.get_current_user()
-	if self.user != None:
-		username = self.user.nickname()
-	else:
-		username = ""
-	
-	trace = self.request.get('trace')
-	if trace == '':
-		self.trace = False # disabled by default
-	else:
-		self.traceLevel = trace
-		self.trace = []
-		memcache.add(self.request.remote_addr, self.traceLevel, 300) # 5 minutes
-		self.Trace("TL=" + memcache.get(self.request.remote_addr))
 
-	self.getSubdomain()
-	method = self.request.get("method",None)
-	if method != None:
-		if method == "LoginDone":
-			return self.LoginDone(self.request.get("path"))
-		elif method == "deleteLink":
-			return self.deleteLink(self.request.get('id'))
-
-	if self.request.path == "/_tasks":
-		return self.task(method)
-	elif self.request.path == '/config.js':
-		return self.ConfigJs()
-	elif self.request.path == "/_export.xml" and users.is_current_user_admin():
-		return self.export()
-	else:
-		rootpath = self.request.path == '/'
-
+  def getIncludeFiles(self,rootpath):
 	tiddict = dict()
 	defaultTiddlers = None
-	self.warnings = []
-	includeNumber = 0
 	includefiles = self.request.get('include').split()
-
-	page = self.CurrentPage()
-	if page != None and page.gwversion == None:
-		Upgrade(self)
-		self.warnings.append("DataStore was upgraded")
-	if page != None:
-		readAccess = ReadAccessToPage(page,self.subdomain,self.user)
-		if readAccess and page.systemInclude != None:
-			includeDisabled = self.request.get('disable')
-			if includeDisabled != '*':
-				for sf in page.systemInclude.replace('\r','').split('\n'):
-					urlParts = sf.split('#')
-					urlPath = urlParts[0]
-					if includeDisabled != urlPath:
-						urlPicks = None if len(urlParts) <= 1 else urlParts[1].split('||')
-						tds = self.tiddlersFromSources(urlPath)
-						if tds != None:
-							for tdo in tds:
-								if urlPicks == None or urlPicks.count(tdo.title) > 0:
-									if tdo.id == None or tdo.id == '':
-										tdo.id = 'include-' + urlPath + '#' + tdo.title
-									tiddict[tdo.title] = tdo
-	else:
-		readAccess = False
-		if rootpath:
-			if self.request.get('include') == '':
-				if self.user == None:
-					includefiles.append('help-anonymous.xml')
-					defaultTiddlers = "Welcome" # title from help-anonymous.xml
-				else:
-					includefiles.append('help-authenticated.xml')
-					defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
-			
-		else:
-			# Not an existing page, perhaps an uploaded file ?
-			file = UploadedFile.all().filter("sub",self.subdomain).filter("path =", self.request.path).get()
-			LogEvent("Get file", self.request.path)
-			if file != None:
-				self.response.headers['Content-Type'] = file.mimetype
-				self.response.headers['Cache-Control'] = 'no-cache'
-				self.response.out.write(file.data)
-				return
+	if rootpath:
+		if self.request.get('include') == '':
+			if self.user == None:
+				includefiles.append('help-anonymous.xml')
+				defaultTiddlers = "Welcome" # title from help-anonymous.xml
 			else:
-				self.response.set_status(404)
-				return
+				includefiles.append('help-authenticated.xml')
+				defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
 
 	if self.subdomain != None:
 		includefiles.append('PublishPlugin.xml')
 		
+	if defaultTiddlers != None:
+		td = Tiddler()
+		td.title = "DefaultTiddlers"
+		td.version = 0
+		td.text = defaultTiddlers
+		tiddict["DefaultTiddlers"] = td
+			
 	for tn in includefiles:
 		try:
 			splitpos = tn.find('|')
@@ -2204,7 +2192,6 @@ class MainPage(webapp.RequestHandler):
 					if tdo == None:
 						self.warnings.append("Internal error: None in TiddlersFromXml")
 					elif tfs == None or tdo.title in tfs:
-						includeNumber = includeNumber - 1
 						tiddict[tdo.title] = tdo
 						if tfs != None:
 							tfs.remove(tdo.title)
@@ -2217,8 +2204,34 @@ class MainPage(webapp.RequestHandler):
 						self.warnings.append("Found but excluded:<br>" + ' '.join(tdx))
 		except Exception, x:
 			self.response.out.write("<html>Error including " + tn + ":<br>" + unicode(x))
-			return
-	
+			raise x
+	return tiddict
+
+  def getText(self,page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
+	if page != None:
+		if readAccess and page.template != None:
+			xd = xml.dom.minidom.parseString(page.template.text)
+			tds = self.TiddlersFromXml(xd.documentElement,page.template.page)
+			if tds != None:
+				for tdo in tds:
+					tiddict[tdo.title] = tdo
+
+		if readAccess and page.systemInclude != None:
+			includeDisabled = self.request.get('disable')
+			if includeDisabled != '*':
+				for sf in page.systemInclude.replace('\r','').split('\n'):
+					urlParts = sf.split('#')
+					urlPath = urlParts[0]
+					if includeDisabled != urlPath:
+						urlPicks = None if len(urlParts) <= 1 else urlParts[1].split('||')
+						tds = self.tiddlersFromSources(urlPath)
+						if tds != None:
+							for tdo in tds:
+								if urlPicks == None or urlPicks.count(tdo.title) > 0:
+									if tdo.id == None or tdo.id == '':
+										tdo.id = 'include-' + urlPath + '#' + tdo.title
+									tiddict[tdo.title] = tdo
+
 	if readAccess:
 		for st in ShadowTiddler.all():
 			if self.request.path.startswith(st.path):
@@ -2275,14 +2288,6 @@ class MainPage(webapp.RequestHandler):
 		if p.path.startswith(paw):
 			pages.append(p)
 		
-	twd = self.request.get('twd',None)
-	xsl = self.request.get('xsl',None)
-	if twd == None and xsl == None:	# Unless a TiddlyWiki is required or a style sheet is specified
-		xsl = "/static/iewiki.xsl"	# use the default,
-		metaData = True
-	else:
-		metaData = False
-		
 	xd = self.initXmlResponse()
 
 	elDoc = xd.createElement("document")
@@ -2298,8 +2303,9 @@ class MainPage(webapp.RequestHandler):
 			if page == None:
 				metaDiv.setAttribute('access','all' if users.is_current_user_admin() else 'none')
 				metaDiv.setAttribute('sitetitle',"giewiki");
-				metaDiv.setAttribute('subtitle',"You have successfully installed giewiki" if rootpath else "");
+				metaDiv.setAttribute('subtitle',message);
 			else:
+				username = self.user.nickname() if self.user != None else ""
 				metaDiv.setAttribute('timestamp',unicode(datetime.datetime.now()))
 				metaDiv.setAttribute('username',username)
 				metaDiv.setAttribute('owner', page.owner.nickname())
@@ -2336,13 +2342,6 @@ class MainPage(webapp.RequestHandler):
 				xpage.setAttribute('href', p.path);
 				xpage.appendChild(xd.createTextNode(p.subtitle))
 
-		if defaultTiddlers != None:
-			td = Tiddler()
-			td.title = "DefaultTiddlers"
-			td.version = 0
-			td.text = defaultTiddlers
-			tiddict["DefaultTiddlers"] = td
-			
 	else: # TiddlyWiki output
 		self.response.headers['Content-Type'] = 'text/html'
 		elStArea = xd.createElement("div")
@@ -2428,6 +2427,70 @@ class MainPage(webapp.RequestHandler):
 			if len(mysa) > len(cssa) + 6:
 				text = text.replace(cssa,mysa[:-6])
 			text = twdtext.replace('<div id="storeArea">\n</div>',elStArea.toxml()) # insert text into body
+	return text
+
+  def get(self): # this is where it all starts
+	self.user = users.get_current_user()
+	
+	trace = self.request.get('trace')
+	if trace == '':
+		self.trace = False # disabled by default
+	else:
+		self.traceLevel = trace
+		self.trace = []
+		memcache.add(self.request.remote_addr, self.traceLevel, 300) # 5 minutes
+		self.Trace("TL=" + memcache.get(self.request.remote_addr))
+
+	self.getSubdomain()
+	method = self.request.get("method",None)
+	if method != None:
+		if method == "LoginDone":
+			return self.LoginDone(self.request.get("path"))
+		elif method == "deleteLink":
+			return self.deleteLink(self.request.get('id'))
+
+	if self.request.path == "/_tasks":
+		return self.task(method)
+	elif self.request.path == '/config.js':
+		return self.ConfigJs()
+	elif self.request.path == "/_export.xml" and users.is_current_user_admin():
+		return self.export()
+	else:
+		rootpath = self.request.path == '/'
+
+	twd = self.request.get('twd',None)
+	xsl = self.request.get('xsl',None)
+	if twd == None and xsl == None:	# Unless a TiddlyWiki is required or a style sheet is specified
+		xsl = "/static/iewiki.xsl"	# use the default,
+		metaData = True
+		message = "You have successfully installed giewiki" if rootpath else ""
+	else:
+		metaData = False
+		message = None
+
+	self.warnings = []
+
+	page = self.CurrentPage()
+	readAccess = ReadAccessToPage(page,self.subdomain,self.user)
+
+	if page != None and page.gwversion == None:
+		Upgrade(self)
+		self.warnings.append("DataStore was upgraded")
+	if page == None and not rootpath:
+		# Not an existing page, perhaps an uploaded file ?
+		file = UploadedFile.all().filter("sub",self.subdomain).filter("path =", self.request.path).get()
+		LogEvent("Get file", self.request.path)
+		if file != None:
+			self.response.headers['Content-Type'] = file.mimetype
+			self.response.headers['Cache-Control'] = 'no-cache'
+			self.response.out.write(file.data)
+			return
+		else:
+			self.response.set_status(404)
+			return
+
+	tiddict = self.getIncludeFiles(rootpath)
+	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
 		
 	# last, but no least
 	self.response.out.write(text)

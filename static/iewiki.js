@@ -479,7 +479,7 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\nrevertTiddler\ndeleteVersions\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl\nopenLibrary",
+    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\nrevertTiddler\ndeleteVersions\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl\nopenLibrary\nupdateTemplate\ngetTemplates",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -6656,45 +6656,52 @@ function ConfirmIfMessage(status)
 function JsoFromXml(rce) {
 	if (rce == null)
 		return null;
-    var v =  rce.childNodes.length ? rce.firstChild.nodeValue : "";
-    var type = rce.attributes.getNamedItem("type");
-    if (type != null && type.value != null)
-      switch (type.value) {
-        case "int":
-            v = parseInt(v);
-            break;
-        case "bool":
-            v = window.eval(v);
-            break;
-        case "datetime":
-            try {
-                v = Date.convertFromYYYYMMDDHHMM(v);
-            }
-            catch (e) {
-                alert(e);
-            }
-            break;
-		case "string[]":
+	var v =  rce.childNodes.length ? rce.firstChild.nodeValue : '';
+	var type = rce.attributes.getNamedItem('type');
+	if (type != null && type.value != null)
+		switch (type.value) {
+		case 'int':
+			v = parseInt(v);
+			break;
+		case 'bool':
+			v = window.eval(v);
+			break;
+		case 'datetime':
+			try {
+				v = Date.convertFromYYYYMMDDHHMM(v);
+			}
+			catch (e) {
+				alert("bad datetime: " + v);
+			}
+			break;
+		case '[]':
+			v = [];
+			break;
+		case 'string[]':
 			v = [];
 			for (var ae = 0; ae < rce.childNodes.length; ae++) {
 				var ace = rce.childNodes[ae];
 				v[ae] = ace.firstChild ? ace.firstChild.nodeValue : ace;
 			}
 			break;
-        case "object[]":
-            v = [];
-            for (var ae = 0; ae < rce.childNodes.length; ae++)
-                v[ae] = JsoFromXml(rce.childNodes[ae]);
-            break;
-      }
-    else if (rce.childNodes.length && rce.firstChild.nodeType == 1)
-    {
-        v = {};
-        for (var i = 0; i < rce.childNodes.length; i++) {
+		case 'object':
+			v = {};
+			for (var ae = 0; ae < rce.childNodes.length; ae++)
+				v[rce.childNodes[ae].nodeName] = JsoFromXml(rce.childNodes[ae]);
+			break;
+		case 'object[]':
+			v = [];
+			for (var ae = 0; ae < rce.childNodes.length; ae++)
+				v[ae] = JsoFromXml(rce.childNodes[ae]);
+			break;
+		}
+	else if (rce.childNodes.length && rce.firstChild.nodeType == 1) {
+		v = {};
+		for (var i = 0; i < rce.childNodes.length; i++) {
 			var ace = rce.childNodes[i];
-            v[ace.nodeName] = JsoFromXml(ace);
-        }
-    }
+			v[ace.nodeName] = JsoFromXml(ace);
+		}
+	}
 
 	return v;
 }
@@ -6900,110 +6907,189 @@ function setFormFieldValue(f,name,value,vList) {
 }
 
 config.macros.input = {
-    handler: function(place, macroName, params, wikifier, paramString, tiddler) {
+	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
 		if (params.length < 2 || !this[params[0]])
 			return createTiddlyLink(place, "GuideToInputMacro", true);
-		var type = params.shift();
-		var name = params.shift();
-        var f = GetForm(place);
-		if (params.length == 1 && f && f[name])
-             params[1] = f[name]; // get default value from form
+		var fft = params.shift();
+		var ffn = params.shift();
+		var initer = config.macros.input[fft];
+		var f = GetForm(place);
+		if (params.length == 1 && f && f[ffn])
+			params[1] = f[ffn]; // get default value from form
 		f.controls = f.controls || [];
-		f.controls[name]  = this[type](place, name, params, wikifier, paramString, tiddler);
-    },
+		f.controls[ffn] = initer(place, ffn, params, wikifier, paramString, tiddler);
+	},
 	// <<input text name width text>>
-	text: function(place, name, params, wikifier, paramString, tiddler) {
-        var c = createTiddlyElement(place,"input",name,null,null, {href: "javascript:;"});
+	text: function (place, name, params, wikifier, paramString, tiddler) {
+		var c = createTiddlyElement(place, "input", name, null, null, { href: "javascript:;" });
 		if (params.length > 0)
 			c.size = params[0];
-        c.value = params.length > 1 ? params[1] : "";
-        c.onchange = this.fieldChanged;
-        return c;
+		c.value = params.length > 1 ? params[1] : "";
+		c.onchange = config.macros.input.fieldChanged;
+		return c;
 	},
 	// <<input textarea name rows*cols text>>
-	textarea: function(place, name, params, wikifier, paramString, tiddler) {
-	    var attribs = { href: "javascript:;" };
-        var md = params[0].split('*');
-        attribs.rows = md[0];
-        if (md.length > 1)
-            attribs.cols = md[1];
-        var c = createTiddlyElement(place,"textarea",name,null,null, attribs);
-        c.value = params.length > 1 ? params[1] : "";
-        c.onchange = this.fieldChanged;
-        return c;
+	textarea: function (place, name, params, wikifier, paramString, tiddler) {
+		var attribs = { href: "javascript:;" };
+		var md = params[0].split('*');
+		attribs.rows = md[0];
+		if (md.length > 1)
+			attribs.cols = md[1];
+		var c = createTiddlyElement(place, "textarea", name, null, null, attribs);
+		c.value = params.length > 1 ? params[1] : "";
+		c.onchange = config.macros.input.fieldChanged;
+		return c;
 	},
 	// <<input checkbox name [checked]>>
-	checkbox: function(place, name, params, wikifier, paramString, tiddler) {
-        var c = createTiddlyElement(place,"input",name,null,null, {href: "javascript:;", type: "checkbox"});
-        c.checked = params.length > 1 ? params[1] : "";
-        c.onchange = this.fieldChanged;
-        return c;
+	checkbox: function (place, name, params, wikifier, paramString, tiddler) {
+		var c = createTiddlyElement(place, "input", name, null, null, { href: "javascript:;", type: "checkbox" });
+		c.checked = params.length > 1 ? params[1] : "";
+		c.onchange = config.macros.input.fieldChanged;
+		return c;
 	},
-	select: function(place, name, params, wikifier, paramString, tiddler) {
-	    var valus = this.parameter(params[0]);
-        var value = params.length > 1 && params[1] ? params[1] : valus.split('|')[0];
-        var osdo = params.length > 2 ? params[2]: "";
-        var cbl = createTiddlyElement(place, "a", name, null, value, {href: "javascript:;", values: valus, onselect: osdo });
-        cbl.onclick = this.dropSelect;
-        return cbl;
- 	},
-    dropSelect: function(ev) {
-        var e = ev || window.event;
-        var me = resolveTarget(e);
-        var values = me.getAttribute("values").split("|");
-        var popup = Popup.create(this);
-        for (var i = 1; i < values.length; i++)
-            createTiddlyButton(createTiddlyElement(popup,"li"),values[i],null,config.macros.input.selectChanged);
-        popup.setAttribute("owner",me.getAttribute("id"));
-        Popup.show();
-        e.cancelBubble = true;
-        if (e.stopPropagation) e.stopPropagation();
-        return false;
-    },
-    selectChanged: function(ev) {
-        var e = ev || window.event;
-        var me = resolveTarget(e);
-        var owner =  me.parentNode.parentNode.getAttribute("owner");
-        var val = me.childNodes[0].nodeValue;
-        var eOwner = document.getElementById(owner);
-        eOwner.firstChild.nodeValue = val;
-        updateForm(owner,eOwner,val);
-        var action = eOwner.getAttribute("onselect");
-        if (action)
+	macro: function (place, name, params, wikifier, paramString, tiddler) {
+		if (params.length > 1 && params[1].handler)
+			params[1].handler(place, params[1]);
+	},
+	select: function (place, name, params, wikifier, paramString, tiddler) {
+		var valus = config.macros.input.parameter(params[0]);
+		var value = params.length > 1 && params[1] ? params[1] : valus.split('|')[0];
+		var osdo = params.length > 2 ? params[2] : "";
+		var cbl = createTiddlyElement(place, "a", name, null, value, { href: "javascript:;", values: valus, onselect: osdo });
+		cbl.onclick = config.macros.input.dropSelect;
+		return cbl;
+	},
+	dropSelect: function (ev) {
+		var e = ev || window.event;
+		var me = resolveTarget(e);
+		var values = me.getAttribute("values").split("|");
+		var popup = Popup.create(this);
+		for (var i = 1; i < values.length; i++)
+			createTiddlyButton(createTiddlyElement(popup, "li"), values[i], null, config.macros.input.selectChanged);
+		popup.setAttribute("owner", me.getAttribute("id"));
+		Popup.show();
+		e.cancelBubble = true;
+		if (e.stopPropagation) e.stopPropagation();
+		return false;
+	},
+	selectChanged: function (ev) {
+		var e = ev || window.event;
+		var me = resolveTarget(e);
+		var owner = me.parentNode.parentNode.getAttribute("owner");
+		var val = me.childNodes[0].nodeValue;
+		var eOwner = document.getElementById(owner);
+		eOwner.firstChild.nodeValue = val;
+		updateForm(owner, eOwner, val);
+		var action = eOwner.getAttribute("onselect");
+		if (action)
 			eval(action);
-        return false;
-    },
-    parameter: function(a) {
-        if (a.indexOf("javascript:") == 0)
-            return eval(a.substr(11));
-        return a;
-    },
-    fieldChanged: function(ev) {
-        try {
-            var e = ev || window.event;
-            var src = resolveTarget(e);
-            var v = src.type == "checkbox" ? src.checked : src.value;
-            var id = src.getAttribute("id");
-            updateForm(id,src,v);
-        } catch (x) {
-            displayMessage(x.message);
-        }
-    },
-    showField: function(name,show) {
+		return false;
+	},
+	parameter: function (a) {
+		if (a.indexOf("javascript:") == 0)
+			return eval(a.substr(11));
+		return a;
+	},
+	fieldChanged: function (ev) {
+		try {
+			var e = ev || window.event;
+			var src = resolveTarget(e);
+			var v = src.type == "checkbox" ? src.checked : src.value;
+			var id = src.getAttribute("id");
+			updateForm(id, src, v);
+		} catch (x) {
+			displayMessage(x.message);
+		}
+	},
+	showField: function (name, show) {
 		var e = document.getElementById(name);
 		if (show === undefined)
 			return e.style.display == 'inline';
 		else
-			e.style.display  = show ? 'inline':'none';
-    }
+			e.style.display = show ? 'inline' : 'none';
+	}
 }
 
-function addPageTag(tag)
-{
-	var tl = forms.PageProperties.tags.readBracketedList();
-	if (tl.indexOf(tag) < 0)
-		tl.push(tag)
-	setFormFieldValue(forms.PageProperties,'tags',tl.join(' '))	
+PageProperties = {
+	init: function () {
+		accessTypes = "all|edit|add|comment|view|none|";
+		if (config.isLoggedIn()) {
+			forms.PageProperties = http.pageProperties();
+			if (typeof forms.PageProperties.template === 'object') {
+				forms.PageProperties.template.handler = function (place, me) {
+					createTiddlyElement(place, 'a', null, 'pageTemplate', me.title, { title: "template: " + me.page });
+					createTiddlyElement(place, 'br');
+				};
+			}
+		}
+		else
+			return "''[As you are not logged in, this dialog is not functional]''&lt;br&gt;";
+	},
+	addTag: function (tag) {
+		var tl = forms.PageProperties.tags.readBracketedList();
+		if (tl.indexOf(tag) < 0)
+			tl.push(tag)
+		else if (tag == 'template') {
+			if (window.confirm("Update template?")) {
+				if (http.updateTemplate().Success)
+					displayMessage("Template updated");
+			}
+			return;
+		}
+		setFormFieldValue(forms.PageProperties, 'tags', tl.join(' '))
+	},
+	save: function () {
+		if (typeof forms.PageProperties.template === 'object')
+			forms.PageProperties.template = forms.PageProperties.template.page;
+		var resp = http.pageProperties(forms.PageProperties);
+		if (resp.Success &&
+			config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties')))
+			window.location.reload();
+	},
+	openLibrary: function (url) {
+		var ld = http.openLibrary({ library: url });
+		if (ld) {
+			if (ld.text != null)
+				var lines = ld.text.split('\n');
+			else
+				var lines = ld.pages;
+			var liblistId = 'libList' + url;
+			if (document.getElementById(liblistId))
+				return;
+			var output = [['Library: <html><span id="', liblistId, '">', url, '</span></html> has:'].join('')];
+			for (var al = lines.shift(); al; al = lines.shift()) {
+				var urlParts = url.split('/');
+				if (urlParts.length > 1) {
+					var ups = url.split('/').slice(0, 3).join('/') + al;
+					al = al.split('/').pop();
+				}
+				else
+					var ups = al;
+				output.push(['<script label="', al, '">importFromDialog("', url, '","', ups, '");</script>'].join(''));
+			}
+			if (output.length == 1)
+				output.push('(none)');
+			var delc = document.getElementById('libraryCatalog');
+			if (delc.firstChild && delc.firstChild.nodeValue)
+				createTiddlyElement(delc, 'br');
+			//	removeChildren(delc);
+			wikify(output.join('<br> '), delc);
+		}
+	},
+	listTemplates: function () {
+		var tl = http.getTemplates();
+		if (tl.Success) {
+			var atl = []
+			for (var i = 0; i < tl.templates.length; i++)
+				atl.push(['<script label="', tl.templates[i].title, '">forms.PageProperties.template = "', tl.templates[i].path, '";</script>'].join(''));
+			if (forms.PageProperties.template)
+				atl.push(['<script label="none">forms.PageProperties.template = "";</script>'].join(''));
+			var delc = document.getElementById('libraryCatalog');
+			if (delc.firstChild)
+				removeChildren(delc)
+			wikify(atl.join('<br> '), delc);
+		}
+	}
 }
 
 config.macros.localDiv = {
@@ -7364,11 +7450,9 @@ function OnCommitCloseForm(fn,reply)
 {
 	if (reply.Success) {
 		story.closeTiddler(fn);
-		if (fn == "PageProperties")
-			window.location.reload();
 		return reply;
 	}
-    return false;
+	return false;
 }
 
 config.macros.defineGroup = {
@@ -7941,7 +8025,6 @@ config.macros.importTiddlers = {
 						else if (tn)
 							selectList.push(tn);
 					}
-					
 				}
 			}
 			var result = http.tiddlersFromUrl({ url: url, select: selectList.length ? selectList.join('||') : 'void' });
@@ -7981,42 +8064,6 @@ config.macros.importTiddlerStatus = {
 		}
 	}
 };
-
-function saveIncludeList()
-{
-	return config.macros.importTiddlers.importSelected(null,story.getTiddler('PageProperties'));
-}
-
-function openLibrary(url) {
-	var ld = http.openLibrary({ library: url });
-	if (ld) {
-		if (ld.text != null)
-			var lines = ld.text.split('\n');
-		else
-			var lines = ld.pages;
-		var liblistId = 'libList' + url;
-		if (document.getElementById(liblistId))
-			return;
-		var output = [['Library: <html><span id="',liblistId,'">',url,'</span></html> has:'].join('')];
-		for (var al = lines.shift(); al; al = lines.shift()) {
-			var urlParts = url.split('/');
-			if (urlParts.length > 1) {
-				var ups = url.split('/').slice(0,3).join('/') + al;
-				al = al.split('/').pop();
-			}
-			else
-				var ups = al;
-			output.push(['<script label="',al,'">importFromDialog("',url,'","',ups,'");</script>'].join(''));
-		}
-		if (output.length == 1)
-			output.push('(none)');
-		var delc = document.getElementById('libraryCatalog');
-		if (delc.firstChild && delc.firstChild.nodeValue)
-			createTiddlyElement(delc,'br');
-		//	removeChildren(delc);
-		wikify(output.join('<br> '), delc);
-	}
-}
 
 function importFromDialog(url,what) {
 	var liblistId = 'libList' + what;
