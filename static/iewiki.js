@@ -53,7 +53,9 @@ config.parsers = {};
 config.annotations = {};
 
 // Custom fields to be automatically added to new tiddlers
-config.defaultCustomFields = { };
+config.defaultCustomFields = {};
+
+config.NoSuchTiddlers = [ "EnableAnimations","CaseSensitiveSearch","RegExpSearch" ];
 
 // Messages
 config.messages = {
@@ -121,6 +123,7 @@ merge(config.options, {
     txtMoreTab: "moreTabAll",
     txtMaxEditRows: "30",
     txtEmail: "",
+    txtExternalLibrary: "",
     txtTheme: "",
     txtEmptyTiddlyWiki: "empty.html", // Template for stand-alone export
     txtLockDuration: "60"},
@@ -142,6 +145,7 @@ config.optionsDesc = {
     txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
     txtMaxEditRows: "Maximum number of rows in edit boxes",
     txtEmail: "Email for receiving messages",
+    txtExternalLibrary: "Source of tiddlers listed via Libraries/other..",
     txtLockDuration: "Lock for edit (if so, duration in minutes)"
 };
 
@@ -637,10 +641,10 @@ function main() {
 
 // Restarting
 function restart() {
-    invokeParamifier(params, "onstart");
-    if (story.isEmpty()) {
-            story.displayDefaultTiddlers();
-    }
+	invokeParamifier(params, "onstart");
+	store.fetchFromServer = true;
+    if (story.isEmpty())
+        story.displayDefaultTiddlers();
     window.scrollTo(0, 0);
 }
 
@@ -2714,19 +2718,22 @@ config.commands.editTiddler.copy = function(tsource, title) {
 	t.readOnly = true;
 }
 
-function TryGetTiddler(title)
-{
+function TryGetTiddler(title) {
+	if (config.NoSuchTiddlers.contains(title))
+		return null;
 	st = http.getTiddler({'title': title});
 	if (st && st.success) {
 		var t = new Tiddler();
-		t.assign(st.title,st.text,st.modifier,
-			Date.convertFromYYYYMMDDHHMM(st.modified),st.tags,
+		t.assign(st.title, st.text, st.modifier,
+			Date.convertFromYYYYMMDDHHMM(st.modified), st.tags,
 			Date.convertFromYYYYMMDDHHMM(st.created),
 			null, parseInt(st.version));
-		t.currentVer = t.version;
+		t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewTemplate;
 		store.addTiddler(t);
 		return t;
 	}
+	else
+		config.NoSuchTiddlers.push(title);
 	return null;
 }
 
@@ -3068,31 +3075,34 @@ Tiddler.prototype.set = function(title, text, modifier, modified, tags, created,
 };
 
 // Change the text and other attributes of a tiddler without triggered a tiddler.changed() call
-Tiddler.prototype.assign = function(title, text, modifier, modified, tags, created, fields, version, id) {
-    this.stashVersion();
-    if (title != undefined)
-        this.title = title;
-    if (text != undefined)
-        this.text = text;
-    if (modifier != undefined)
-        this.modifier = modifier;
-    if (modified != undefined || modified == null)
-        this.modified = modified;
-    if (created != undefined || created == null)
-        this.created = created;
-    if (fields != undefined)
-        this.fields = fields;
-    if (version != undefined)
-        this.currentVer = version;
-    this.version = this.currentVer;
+Tiddler.prototype.assign = function (title, text, modifier, modified, tags, created, fields, version, id) {
+	this.stashVersion();
+	if (title != undefined)
+		this.title = title;
+	if (text != undefined)
+		this.text = text;
+	if (modifier != undefined)
+		this.modifier = modifier;
+	if (modified != undefined || modified == null)
+		this.modified = modified;
+	if (created != undefined || created == null)
+		this.created = created;
+	if (fields != undefined)
+		this.fields = fields;
+	if (version != undefined) {
+		this.currentVer = version;
+		if (version == 0)
+			this.hasShadow = true;
+	}
+	this.version = this.currentVer;
 
-    if (id != undefined)
-        this.id = id;
-    if (tags != undefined)
-        this.tags = (typeof tags == "string") ? tags.readBracketedList() : tags;
-    else if (this.tags == undefined)
-        this.tags = [];
-    return this;
+	if (id != undefined)
+		this.id = id;
+	if (tags != undefined)
+		this.tags = (typeof tags == "string") ? tags.readBracketedList() : tags;
+	else if (this.tags == undefined)
+		this.tags = [];
+	return this;
 };
 
 // Get the tags for a tiddler as a string (space delimited, using [[brackets]] for tags containing spaces)
@@ -3212,7 +3222,8 @@ Tiddler.prototype.display = function(target,fields,toggling) {
 //--
 
 function TiddlyWiki() {
-    var tiddlers = {}; // Hashmap by name of tiddlers
+	var tiddlers = {}; // Hashmap by name of tiddlers
+	this.fetchFromServer = false;
     this.tiddlersUpdated = false;
     this.namedNotifications = []; // Array of {name:,notify:} of notification functions
     this.notificationLevel = 0;
@@ -3221,9 +3232,11 @@ function TiddlyWiki() {
         tiddlers = {};
         this.setDirty(false);
     };
-    this.fetchTiddler = function(title) {
-        var t = tiddlers[title];
-        return t instanceof Tiddler ? t : null;
+    this.fetchTiddler = function (title) {
+    	var t = tiddlers[title];
+    	if (!t && this.fetchFromServer)
+    			t = TryGetTiddler(title);
+    	return t instanceof Tiddler ? t : null;
     };
     this.deleteTiddler = function(title) {
         var t = tiddlers[title];
@@ -3256,7 +3269,7 @@ TiddlyWiki.prototype.tiddlerExists = function(title) {
     return t != undefined;
 };
 
-TiddlyWiki.prototype.isShadowTiddler = function(title) {
+TiddlyWiki.prototype.isShadowTiddler = function (title) {
 	var t = this.fetchTiddler(title);
     return t && t.hasShadow;
 };
@@ -4940,8 +4953,6 @@ function onClickTiddlerLink(ev) {
         if (noToggle)
             toggling = false;
         t = store.getTiddler(title)
-		if (!t)
-			t = TryGetTiddler(title);
         if (t)
             t.display(target,fields,toggling);
         else

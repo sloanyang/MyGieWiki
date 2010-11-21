@@ -70,13 +70,16 @@
     <Content Include="iewiki.py" />
     <Content Include="index.py" />
     <Content Include="Hello.py" />
+    <Content Include="PageProperties.xml" />
     <Content Include="PluginManager.xml" />
     <Content Include="Plugins.py" />
     <Content Include="empty.html" />
     <Content Include="PublishPlugin.xml" />
     <Content Include="static\favicon.ico" />
     <Content Include="static\iewiki.js" />
-    <Content Include="static\iewiki.xsl" />
+    <Content Include="static\iewiki.xsl">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="static\inlinescript.htm" />
     <Content Include="static\inlinescript.js" />
     <Content Include="static\minusDoc36.png" />
@@ -91,6 +94,7 @@
     <Content Include="static\UploadDialog.htm" />
     <Content Include="Tiddler.py" />
     <Content Include="UploadDialog.htm" />
+    <Content Include="PageTemplateHelp.xml" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

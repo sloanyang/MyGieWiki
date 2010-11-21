@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<tiddler tags="help" title="LibraryUsageHelp" viewTemplate="ViewOnlyTemplate" version="0"><pre>You can pick tiddlers to include from any of the following sources (libraries):
+* ''static'': Tiddlers that have been defined in XML files included with your giewiki installation.
+* ''local'': Any page in your site that has been tagged 'library'.
+* ''giewiki'': A shared library located at http://plugins.giewiki.appspot.com
+* ''other'': One or more url's listed in AdvancedOptions.
+The pages from which this page includes tiddlers are listed below the Template / includes line.
+</pre>
+</tiddler>

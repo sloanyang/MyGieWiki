@@ -1,8 +1,8 @@
-# /*************************************
+# /****************************************************
 # this:	iewiki.py
-# by:	Poul Staugaard
+# by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.5.2
+# ver.:	1.6.0
 
 import cgi
 import datetime
@@ -29,7 +29,7 @@ from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 5, revision: 5, date: new Date("Oct 16, 2010"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 6, revision: 0, date: new Date("Nov 21, 2010"), extensions: {} };\n\
 var config = {\n\
 	animDuration: 400,\n\
 	cascadeFast: 20,\n\
@@ -299,6 +299,7 @@ def TiddlerFromXml(te,path):
 		if title != "":
 			id = te.getAttribute('id')
 			author_ip = te.getAttribute('modifier')
+			vt = te.getAttribute('viewTemplate')
 			tags = te.getAttribute('tags')
 			v = te.getAttribute('version')
 			version = eval(v) if v != None and v != "" else 1
@@ -311,7 +312,8 @@ def TiddlerFromXml(te,path):
 	nt = Tiddler(page = path, title = title, id = id, version = version, author_ip = author_ip)
 	nt.current = True
 	nt.tags = te.getAttribute('tags')
-	nt.author = users.get_current_user()
+	if vt != '':
+		setattr(nt,'viewTemplate',vt)
 	for ce in te.childNodes:
 		if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'pre':
 			if ce.firstChild != None and ce.firstChild.nodeValue != None:
@@ -1273,22 +1275,34 @@ class MainPage(webapp.RequestHandler):
 	else:
 		page = self.request.path
 		
-	t = Tiddler.all().filter("page", page).filter("title",title).filter("current", True).get()
+	t = Tiddler.all().filter('page', page).filter('title',title).filter('current', True).get()
 	if t == None:
-		self.reply({"success": False })
-	else:
+		try:
+			xdt = xml.dom.minidom.parse(title+'.xml')
+			de = xdt.documentElement
+			if de.tagName == 'tiddler':
+				t = TiddlerFromXml(de,self.request.path)
+				t.public = True
+			else:
+				self.reply({'success': False })
+		except Exception:
+			self.reply({'success': False })
+	if t != None:
 		if t.public or ReadAccessToPage(t.page,self.subdomain):
-			self.reply({ \
+			rp = { \
 			'success': True, \
 			'id': t.id, \
 			'title': t.title, \
 			'text': t.text, \
 			'tags': t.tags, \
-			'created': t.created.strftime("%Y%m%d%H%M%S"),
+			'created': t.created.strftime('%Y%m%d%H%M%S'),
 			'modifier': userNameOrAddress(t.author,t.author_ip),
-			'modified': t.modified.strftime("%Y%m%d%H%M%S"),
+			'modified': t.modified.strftime('%Y%m%d%H%M%S'),
 			'version': t.version
-			})
+			}
+			if hasattr(t,'viewTemplate'):
+				rp['viewTemplate'] = t.viewTemplate
+			self.reply(rp)
 		else:
 			self.reply({"success": False, "Message": "No access" })
 		
@@ -2154,18 +2168,19 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write(',\n\t\t'.join(optlist))
 	self.response.out.write('\n\t}\n};')
 
-  def getIncludeFiles(self,rootpath):
+  def getIncludeFiles(self,rootpath,page):
 	tiddict = dict()
 	defaultTiddlers = None
 	includefiles = self.request.get('include').split()
 	if rootpath:
-		if self.request.get('include') == '':
+		if page == None:
 			if self.user == None:
 				includefiles.append('help-anonymous.xml')
 				defaultTiddlers = "Welcome" # title from help-anonymous.xml
 			else:
 				includefiles.append('help-authenticated.xml')
 				defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
+				tiddict['PageProperties'] = TiddlerFromXml(xml.dom.minidom.parse('PageProperties.xml').documentElement,self.request.path)
 
 	if self.subdomain != None:
 		includefiles.append('PublishPlugin.xml')
@@ -2489,7 +2504,7 @@ class MainPage(webapp.RequestHandler):
 			self.response.set_status(404)
 			return
 
-	tiddict = self.getIncludeFiles(rootpath)
+	tiddict = self.getIncludeFiles(rootpath,page)
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
 		
 	# last, but no least
