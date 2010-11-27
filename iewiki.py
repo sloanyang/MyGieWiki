@@ -2240,7 +2240,7 @@ class MainPage(webapp.RequestHandler):
   def getText(self,page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
 	if page != None:
 		if readAccess and page.template != None:
-			xd = xml.dom.minidom.parseString(page.template.text)
+			xd = xml.dom.minidom.parseString(page.template.text.encode('utf-8'))
 			tds = self.TiddlersFromXml(xd.documentElement,page.template.page)
 			if tds != None:
 				for tdo in tds:
