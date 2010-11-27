@@ -28,6 +28,7 @@ from google.appengine.api import urlfetch
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade
 
+giewikiVersion = '2.6'
 jsProlog = '\
 var giewikiVersion = { title: "giewiki", major: 1, minor: 6, revision: 0, date: new Date("Nov 21, 2010"), extensions: {} };\n\
 var config = {\n\
@@ -44,7 +45,7 @@ class library():
 	def local(self,main):
 		pages = []
 		for p in Page.all().filter('sub',main.subdomain):
-			if 'library' in p.tags.split():
+			if p.tags != None and 'library' in p.tags.split():
 				pages.append(p.path)
 		return pages
 
@@ -58,7 +59,7 @@ def htmlEncode(s):
 	return s.replace('"','&quot;').replace('<','&lt;').replace('>','&gt;').replace('\n','<br>')
 
 def HtmlErrorMessage(msg):
-	return "<html><body>" + htmlEncode(msg) + "</body></html>" 
+	return '<html><body>' + htmlEncode(msg) + '</body></html>' 
 
 def Filetype(filename):
 	fp = filename.rsplit('.',1)
@@ -925,25 +926,26 @@ class MainPage(webapp.RequestHandler):
 	path = self.request.path
 	page = self.CurrentPage()
 	if page == None:
-		if path == "/" and user != None: # Root page
+		if path == '/' and user != None: # Root page
 			page = Page()
-			page.gwversion = "2.4"
-			page.path = "/"
+			page.gwversion = giewikiVersion
+			page.path = '/'
 			page.sub = self.subdomain
-			page.title = ""
-			page.subtitle = ""
+			page.title = ''
+			page.subtitle = ''
+			page.tags = ''
 			page.locked = False
 			page.anonAccess = 0
 			page.authAccess = 0
 			page.groupAccess = 2
 			page.owner = user
 			page.ownername = getUserPenName(user)
-			page.groups = ""
+			page.groups = ''
 			page.viewbutton = False
 			page.viewprior = False
 		else:
 			return self.fail("Page does not exist")
-	if self.request.get("title") != "": # Put
+	if self.request.get('title') != '': # Put
 		if user != page.owner and users.is_current_user_admin() == False:
 			self.fail("You cannot change the properties of this pages")
 		else:
@@ -990,11 +992,22 @@ class MainPage(webapp.RequestHandler):
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
 
   def saveTemplate(self,page,update=False):
-	pt = PageTemplate.all().filter('page',page.path).get()
-	if pt == None:
-		pt = PageTemplate()
-		pt.page = page.path
+	pt = PageTemplate.all().filter('page',page.path).filter('current',True).get()
+	newVersion = 'version' in page.tags.split()
+	if pt == None or newVersion:
+		ptn = PageTemplate()
+		ptn.page = page.path
+		ptn.version = 1
+		ptn.current = True
 		update = True
+	else:
+		ptn = None
+	if pt != None and ptn != None:
+		pt.current = False
+		pt.put()
+		ptn.version = pt.version + 1
+	if ptn != None:
+		pt = ptn
 	if update:
 		pt.text = self.getText(page)
 	pt.title = page.title
@@ -1006,7 +1019,7 @@ class MainPage(webapp.RequestHandler):
 
   def getTemplates(self):
 	dt = list()
-	for at in PageTemplate.all():
+	for at in PageTemplate.all().filter('current',True):
 		dt.append( { 'title': at.title,'path': at.page })
 	self.reply({'Success': True, 'templates': dt})
 
@@ -1047,9 +1060,10 @@ class MainPage(webapp.RequestHandler):
 		if self.request.get("title") == "":
 			if parent == "/" and user != None:
 				pad = Page()
-				pad.gwversion = "2.4"
+				pad.gwversion = giewikiVersion
 				pad.path = "/"
 				pad.sub = self.subdomain
+				pad.tags = ''
 				pad.owner = user
 				pad.ownername = getUserPenName(user)
 				pad.locked = False
@@ -1075,9 +1089,10 @@ class MainPage(webapp.RequestHandler):
 	page = Page.all().filter('path =',url).get()
 	if page == None:
 		page = Page()
-		page.gwversion = "2.4"
+		page.gwversion = giewikiVersion
 		page.path = url
 		page.sub = self.subdomain
+		page.tags = ''
 		page.owner = user
 		page.ownername = getUserPenName(user)
 		page.title = self.request.get("title")
@@ -1089,9 +1104,9 @@ class MainPage(webapp.RequestHandler):
 		page.viewbutton = pad.viewbutton
 		page.viewprior = pad.viewprior
 		page.put()
-		self.SaveNewTiddler(url,"SiteTitle",page.title)
-		if page.subtitle != "":
-			self.SaveNewTiddler(url,"SiteSubtitle",page.subtitle)
+		#self.SaveNewTiddler(url,"SiteTitle",page.title)
+		#if page.subtitle != "":
+		#	self.SaveNewTiddler(url,"SiteSubtitle",page.subtitle)
 		self.reply( {"Url": url, "Success": True })
 	else:
 		self.fail("Page already exists: " + page.path)
@@ -2488,8 +2503,8 @@ class MainPage(webapp.RequestHandler):
 	page = self.CurrentPage()
 	readAccess = ReadAccessToPage(page,self.subdomain,self.user)
 
-	if page != None and page.gwversion == None:
-		Upgrade(self)
+	if page != None and page.gwversion < giewikiVersion:
+		Upgrade(self,giewikiVersion)
 		self.warnings.append("DataStore was upgraded")
 	if page == None and not rootpath:
 		# Not an existing page, perhaps an uploaded file ?

@@ -7058,12 +7058,7 @@ PageProperties = {
 			window.location.reload();
 	},
 	openLibrary: function (url) {
-		var ld = http.openLibrary({ library: url });
-		if (ld) {
-			if (ld.text != null)
-				var lines = ld.text.split('\n');
-			else
-				var lines = ld.pages;
+		var lister = function (url, lines) {
 			var liblistId = 'libList' + url;
 			if (document.getElementById(liblistId))
 				return;
@@ -7085,6 +7080,17 @@ PageProperties = {
 				createTiddlyElement(delc, 'br');
 			//	removeChildren(delc);
 			wikify(output.join('<br> '), delc);
+		};
+		if (url == 'other')
+			lister(url, config.options.txtExternalLibrary.split(' '));
+		else {
+			var ld = http.openLibrary({ library: url });
+			if (ld) {
+				if (ld.text != null)
+					lister(url, ld.text.split('\n'));
+				else
+					lister(url, ld.pages);
+			}
 		}
 	},
 	listTemplates: function () {
