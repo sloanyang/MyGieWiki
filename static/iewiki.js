@@ -7034,7 +7034,7 @@ PageProperties = {
 			}
 		}
 		else
-			return "''[As you are not logged in, this dialog is not functional]''&lt;br&gt;";
+			return "''[As you are not logged in, this dialog is not functional]''";
 	},
 	addTag: function (tag) {
 		var tl = forms.PageProperties.tags.readBracketedList();
@@ -7057,39 +7057,39 @@ PageProperties = {
 			config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties')))
 			window.location.reload();
 	},
-	openLibrary: function (url) {
-		var lister = function (url, lines) {
-			var liblistId = 'libList' + url;
-			if (document.getElementById(liblistId))
-				return;
-			var output = [['Library: <html><span id="', liblistId, '">', url, '</span></html> has:'].join('')];
-			for (var al = lines.shift(); al; al = lines.shift()) {
-				var urlParts = url.split('/');
-				if (urlParts.length > 1) {
-					var ups = url.split('/').slice(0, 3).join('/') + al;
-					al = al.split('/').pop();
-				}
-				else
-					var ups = al;
-				output.push(['<script label="', al, '">importFromDialog("', url, '","', ups, '");</script>'].join(''));
+	listLibrary: function (url, lines) {
+		var liblistId = 'libList' + url;
+		if (document.getElementById(liblistId))
+			return;
+		var output = [['Library: <html><span id="', liblistId, '">', url, '</span></html> has:'].join('')];
+		for (var al = lines.shift(); al; al = lines.shift()) {
+			var urlParts = url.split('/');
+			if (urlParts.length > 1) {
+				var ups = url.split('/').slice(0, 3).join('/') + al;
+				al = al.split('/').pop();
 			}
-			if (output.length == 1)
-				output.push('(none)');
-			var delc = document.getElementById('libraryCatalog');
-			if (delc.firstChild && delc.firstChild.nodeValue)
-				createTiddlyElement(delc, 'br');
-			//	removeChildren(delc);
-			wikify(output.join('<br> '), delc);
-		};
+			else
+				var ups = al;
+			output.push(['<script label="', al, '">importFromDialog("', url, '","', ups, '");</script>'].join(''));
+		}
+		if (output.length == 1)
+			output.push('(none)');
+		var delc = document.getElementById('libraryCatalog');
+		if (delc.firstChild && delc.firstChild.nodeValue)
+			createTiddlyElement(delc, 'br');
+		//	removeChildren(delc);
+		wikify(output.join('<br> '), delc);
+	},
+	openLibrary: function (url) {
 		if (url == 'other')
-			lister(url, config.options.txtExternalLibrary.split(' '));
+			this.listLibrary(url, config.options.txtExternalLibrary.split(' '));
 		else {
 			var ld = http.openLibrary({ library: url });
 			if (ld) {
 				if (ld.text != null)
-					lister(url, ld.text.split('\n'));
+					this.listLibrary(url, ld.text.split('\n'));
 				else
-					lister(url, ld.pages);
+					this.listLibrary(url, ld.pages);
 			}
 		}
 	},
