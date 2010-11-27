@@ -80,6 +80,8 @@ class PageTemplate(db.Model):
   text = db.TextProperty()
   title = db.StringProperty()
   updated = db.DateTimeProperty(auto_now_add=True)
+  version = db.IntegerProperty()
+  current = db.BooleanProperty()
 
 class Page(db.Model):
   NoAccess = 0
@@ -291,11 +293,19 @@ def AccessToPage( page, sub = None, user = users.get_current_user()):
 		access = page.anonAccess
 	return Page.access[access]
 
-def Upgrade(self):
-	UpgradeTable(Tiddler)
-	UpgradeTable(Page,'gwversion','1.3')
+def upgradePage(p,version):
+	if hasattr(p,'sub') == False:
+		setattr(p,'sub',None)
+	if hasattr(p,'tags') == False:
+		setattr(p,'tags', '')
+		setattr(p,'template',None)
+	setattr(p,'gwversion',version)
+	p.put()
 
-def UpgradeTable(c,at = None, atv = None):
+def Upgrade(self, version):
+	UpgradeTable(Page,upgradePage,version)
+
+def UpgradeTable(c,f,v):
 	cursor = None
 	repeat = True
 	while repeat:
@@ -304,10 +314,7 @@ def UpgradeTable(c,at = None, atv = None):
 			ts.with_cursor(cursor)
 		n = 0
 		for t in ts.fetch(1000):
-			t.sub = None
-			if at != None:
-				setattr(t,at,atv)
-			t.put()
+			f(t,v)
 			n = n + 1
 		if n < 1000:
 			repeat = False
