@@ -964,7 +964,7 @@ class MainPage(webapp.RequestHandler):
 			page.viewbutton = True if self.request.get('viewbutton') == 'true' else False
 			page.viewprior = self.request.get('viewprior') == 'true'
 			if self.request.get('template') != '':
-				pt = PageTemplate.all().filter('page',self.request.get('template')).get()
+				pt = PageTemplate.all().filter('page',self.request.get('template')).filter('current',True).get()
 				if pt == None:
 					return self.fail("No such template: " + self.request.get('template'))
 				else:
@@ -986,14 +986,14 @@ class MainPage(webapp.RequestHandler):
 			'authenticated': Page.access[page.authAccess],
 			'group': Page.access[page.groupAccess],
 			'groups': page.groups,
-			'template': None if page.template == None else { 'page': page.template.page, 'title': page.template.title },
+			'template': {} if page.template == None else { 'page': page.template.page, 'title': page.template.title, 'current': page.template.current },
 			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
 			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
 
-  def saveTemplate(self,page,update=False):
+  def saveTemplate(self,page,update=False,tags=''):
 	pt = PageTemplate.all().filter('page',page.path).filter('current',True).get()
-	newVersion = 'version' in page.tags.split()
+	newVersion = 'version' in page.tags.split() or 'version' in tags.split()
 	if pt == None or newVersion:
 		ptn = PageTemplate()
 		ptn.page = page.path
@@ -1014,7 +1014,7 @@ class MainPage(webapp.RequestHandler):
 	pt.put()
 
   def updateTemplate(self):
-	self.saveTemplate(self.CurrentPage(),True)
+	self.saveTemplate(self.CurrentPage(),True, self.request.get('tags'))
 	self.reply({'Success': True })
 
   def getTemplates(self):
@@ -2240,7 +2240,12 @@ class MainPage(webapp.RequestHandler):
   def getText(self,page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
 	if page != None:
 		if readAccess and page.template != None:
-			xd = xml.dom.minidom.parseString(page.template.text.encode('utf-8'))
+			tl = page.template
+			if not tl.current and self.request.get('upgradeTemplate') == 'try':
+				ptc = PageTemplate.all().filter('page',page.template.page).filter('current',True).get()
+				if ptc != None:
+					tl = ptc
+			xd = xml.dom.minidom.parseString(tl.text.encode('utf-8'))
 			tds = self.TiddlersFromXml(xd.documentElement,page.template.page)
 			if tds != None:
 				for tdo in tds:

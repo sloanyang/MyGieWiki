@@ -6925,7 +6925,7 @@ config.macros.input = {
 		var ffn = params.shift();
 		var initer = config.macros.input[fft];
 		var f = GetForm(place);
-		if (params.length == 1 && f && f[ffn])
+		if (params.length == 1 && f && f[ffn] != null)
 			params[1] = f[ffn]; // get default value from form
 		f.controls = f.controls || [];
 		f.controls[ffn] = initer(place, ffn, params, wikifier, paramString, tiddler);
@@ -7022,19 +7022,33 @@ config.macros.input = {
 }
 
 PageProperties = {
+	selectedTemplate: '',
 	init: function () {
 		accessTypes = "all|edit|add|comment|view|none|";
 		if (config.isLoggedIn()) {
 			forms.PageProperties = http.pageProperties();
-			if (typeof forms.PageProperties.template === 'object') {
-				forms.PageProperties.template.handler = function (place, me) {
-					createTiddlyElement(place, 'a', null, 'pageTemplate', me.title, { title: "template: " + me.page });
-					createTiddlyElement(place, 'br');
-				};
-			}
+
+			forms.PageProperties.template.handler = function (place, me) {
+				PageProperties.selectedTemplate = me.page || "";
+				var atd = {
+					style: 'display: none'
+				}
+				if (me.page)
+					atd.style = 'display: block';
+				var ediv = createTiddlyElement(place, 'div', 'PagePropertiesTemplateDiv', null, null, atd);
+				if (me.page) {
+					createTiddlyElement(ediv, 'a', 'pageTemplate', 'pageTemplate', me.title, { title: "template: " + me.page });
+				}
+				createTiddlyElement(ediv, 'br');
+			};
 		}
 		else
 			return "''[As you are not logged in, this dialog is not functional]''";
+	},
+	activated: function () {
+		if (!forms.PageProperties.template.current)
+			if (window.confirm("Use the current template?"))
+				window.location.search = "upgradeTemplate=try";
 	},
 	addTag: function (tag) {
 		var tl = forms.PageProperties.tags.readBracketedList();
@@ -7042,7 +7056,8 @@ PageProperties = {
 			tl.push(tag)
 		else if (tag == 'template') {
 			if (window.confirm("Update template?")) {
-				if (http.updateTemplate().Success)
+				debugger;
+				if (http.updateTemplate({ 'tags': forms.PageProperties.tags }).Success)
 					displayMessage("Template updated");
 			}
 			return;
@@ -7050,8 +7065,7 @@ PageProperties = {
 		setFormFieldValue(forms.PageProperties, 'tags', tl.join(' '))
 	},
 	save: function () {
-		if (typeof forms.PageProperties.template === 'object')
-			forms.PageProperties.template = forms.PageProperties.template.page;
+		forms.PageProperties.template = PageProperties.selectedTemplate;
 		var resp = http.pageProperties(forms.PageProperties);
 		if (resp.Success &&
 			config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties')))
@@ -7097,14 +7111,38 @@ PageProperties = {
 		var tl = http.getTemplates();
 		if (tl.Success) {
 			var atl = []
-			for (var i = 0; i < tl.templates.length; i++)
-				atl.push(['<script label="', tl.templates[i].title, '">forms.PageProperties.template = "', tl.templates[i].path, '";</script>'].join(''));
-			if (forms.PageProperties.template)
-				atl.push(['<script label="none">forms.PageProperties.template = "";</script>'].join(''));
-			var delc = document.getElementById('libraryCatalog');
-			if (delc.firstChild)
-				removeChildren(delc)
-			wikify(atl.join('<br> '), delc);
+			var delc = document.getElementById('PagePropertiesTemplateDiv');
+			removeChildren(delc);
+			delc.style.display = 'block';
+			var currTemplate = typeof (forms.PageProperties.template) == 'object' ? forms.PageProperties.template.page : "";
+			var handler = function (ev) {
+				var htc = resolveTarget(ev);
+				var others = [];
+				for (var c = delc.firstChild; c != null; c = c.nextSibling)
+					if (c === htc)
+						PageProperties.selectedTemplate = c.id.substring(8);
+					else
+						others.push(c);
+				while (others.length)
+					delc.removeChild(others.pop());
+			}
+			for (var i = 0; i < tl.templates.length; i++) {
+				var path = tl.templates[i].path;
+				var ste = createTiddlyElement(delc, 'a', 'selPgTpl' + path, null, path,
+					{ href: 'javascript:;', style: 'font-weight: ' + (path == currTemplate ? 'bold' : 'normal') });
+				ste.onclick = handler;
+				createTiddlyElement(delc, 'br');
+				//atl.push(['<script label="', tl.templates[i].title, '">forms.PageProperties.template = "', tl.templates[i].path, '";</script>'].join(''));
+			}
+			if (currTemplate) {
+				var ste = createTiddlyElement(delc, 'a', 'selPgTpl', null, "(none)", { href: 'javascript:;' });
+				ste.onclick = handler;
+			}
+			//for (var c = delc.firstChild; c != null; c = c.nextSibling)
+			//	if (c.id && c.id.length >= 8)
+			//		c.style = c.id.substring(8) == forms.PageProperties.template ? 'color: red' : 'color: black';
+			//atl.push(['<script label="none">forms.PageProperties.template = "";</script>'].join(''));
+			//wikify(atl.join('<br> '), delc);
 		}
 	}
 }

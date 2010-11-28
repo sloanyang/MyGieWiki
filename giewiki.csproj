@@ -61,7 +61,6 @@
   </Target>
   -->
   <ItemGroup>
-    <None Include="app.config" />
     <None Include="app.yaml" />
     <None Include="cron.yaml" />
     <None Include="index.yaml" />
