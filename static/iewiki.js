@@ -641,8 +641,8 @@ function main() {
 
 // Restarting
 function restart() {
-	invokeParamifier(params, "onstart");
 	store.fetchFromServer = true;
+	invokeParamifier(params, "onstart");
     if (story.isEmpty())
         story.displayDefaultTiddlers();
     window.scrollTo(0, 0);
@@ -3234,7 +3234,8 @@ function TiddlyWiki() {
     };
     this.fetchTiddler = function (title) {
     	var t = tiddlers[title];
-    	if (!t && this.fetchFromServer)
+    	if (!t)
+			if (this.fetchFromServer)
     			t = TryGetTiddler(title);
     	return t instanceof Tiddler ? t : null;
     };
@@ -7046,9 +7047,14 @@ PageProperties = {
 			return "''[As you are not logged in, this dialog is not functional]''";
 	},
 	activated: function () {
-		if (!forms.PageProperties.template.current)
-			if (window.confirm("Use the current template?"))
+		if (!forms.PageProperties.template.current) {
+			if (window.location.search == "?upgradeTemplate=try") {
+				displayMessage("Save PageProperties to switch this version of the template");
+				forms.PageProperties.upgradeTemplate = true;
+			}
+			else if (window.confirm("Try using the most recent version of the template?"))
 				window.location.search = "upgradeTemplate=try";
+		}
 	},
 	addTag: function (tag) {
 		var tl = forms.PageProperties.tags.readBracketedList();
@@ -7128,21 +7134,15 @@ PageProperties = {
 			}
 			for (var i = 0; i < tl.templates.length; i++) {
 				var path = tl.templates[i].path;
-				var ste = createTiddlyElement(delc, 'a', 'selPgTpl' + path, null, path,
-					{ href: 'javascript:;', style: 'font-weight: ' + (path == currTemplate ? 'bold' : 'normal') });
+				var ste = createTiddlyElement(delc, 'a', 'selPgTpl' + path, null, tl.templates[i].title,
+					{ href: 'javascript:;', style: 'font-weight: ' + (path == currTemplate ? 'bold' : 'normal'), title: "template: " + path });
 				ste.onclick = handler;
 				createTiddlyElement(delc, 'br');
-				//atl.push(['<script label="', tl.templates[i].title, '">forms.PageProperties.template = "', tl.templates[i].path, '";</script>'].join(''));
 			}
 			if (currTemplate) {
 				var ste = createTiddlyElement(delc, 'a', 'selPgTpl', null, "(none)", { href: 'javascript:;' });
 				ste.onclick = handler;
 			}
-			//for (var c = delc.firstChild; c != null; c = c.nextSibling)
-			//	if (c.id && c.id.length >= 8)
-			//		c.style = c.id.substring(8) == forms.PageProperties.template ? 'color: red' : 'color: black';
-			//atl.push(['<script label="none">forms.PageProperties.template = "";</script>'].join(''));
-			//wikify(atl.join('<br> '), delc);
 		}
 	}
 }
