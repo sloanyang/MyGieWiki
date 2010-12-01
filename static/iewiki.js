@@ -7097,7 +7097,6 @@ PageProperties = {
 		var delc = document.getElementById('libraryCatalog');
 		if (delc.firstChild && delc.firstChild.nodeValue)
 			createTiddlyElement(delc, 'br');
-		//	removeChildren(delc);
 		wikify(output.join('<br> '), delc);
 	},
 	openLibrary: function (url) {
@@ -7948,20 +7947,20 @@ config.macros.importTiddlers = {
 				var links = [];
 				for (var t = 0; t < libs.length; t++) {
 					var lt = libs[t];
+
 					if (tiddlers && tiddlers.indexOf(lt.title) == -1 || lt.title == "_MetaData")
 						continue;
-					if (lt.current)
-						{ var checked = 'checked="1"'; nCurrent++; }
-					else
-						{ var checked = ''; nExcluded++; }
+					if (lt.current) { var checked = 'checked="1"'; nCurrent++; }
+					else { var checked = ''; nExcluded++; }
 					var ltav = t;
 					var line = ['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td><input type="checkbox" id="cht', ltav, '" ', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl, '">', lt.title.htmlEncode(), '</a></td><td>', lt.tags, '</td></tr>'].join('');
 					links[t] = 'itl' + ltav;
 					hta.push(line);
 				}
+				if (nCurrent + nExcluded > 1)
+					hta.push(['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td colspan="2"><input type="checkbox" id="chkAll', aurl, '" name=chkAll" value="1" />', "Select all the above", '</td></tr>'].join(''));
 				if (custumUse)
-					hta.push(['</tbody></table><input type="checkbox" id="chkAll">',
-					          'Select all or select those above you wish to <a href="javascript:;" id="cmdImport">import (permanently)</a> or <a href="/" id="cmdInclude" target="_blank">include (once, via query string)</a>.'].join(''));
+					hta.push('</tbody></table><a href="javascript:;" id="cmdImport">import (permanently)</a> or <a href="/" id="cmdInclude" target="_blank">include (once, via query string)</a>.');
 				if (afilter)
 					afilter = " tagged " + afilter;
 				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers.", afilter];
@@ -7970,13 +7969,24 @@ config.macros.importTiddlers = {
 				if (tiddlers && libs.length > nCurrent + nExcluded)
 					resmsg.push(' <a href="javascript:;" id="sea', aurl, '"> Show all</a>');
 				wd.innerHTML = resmsg.join('') + hta.join('');
+				if (nCurrent + nExcluded > 1)
+					document.getElementById('chkAll' + aurl).onchange = function (ev) {
+						var cke = resolveTarget(ev || window.event);
+						var tbe = cke.parentElement.parentElement.parentElement;
+						for (var tre = tbe.firstChild; tre; tre = tre.nextSibling) {
+							var cksn = tre.firstChild.firstChild;
+							cksn.checked = cke.checked;
+							if (cksn != cke)
+								config.macros.importTiddlers.onchange(cksn);
+						}
+					};
 				if (tiddlers)
 					document.getElementById('sea' + aurl).onclick = config.macros.importTiddlers.showAll;
 				for (t in links) {
 					if (isNaN(t)) continue;
 					var chtid = 'cht' + t;
 					var chtel = document.getElementById(chtid);
-					chtel.onchange = config.macros.importTiddlers.onchange;
+					chtel.onchange = function (ev) { config.macros.importTiddlers.onchange(resolveTarget(ev || window.event)); };
 					document.getElementById(links[t]).onclick = config.macros.importTiddlers.fetch;
 				}
 				if (custumUse)
@@ -7992,8 +8002,7 @@ config.macros.importTiddlers = {
 		removeChildren(pel);
 		config.macros.importTiddlers.serve(url, false, true, pel.id);
 	},
-	onchange: function (ev) {
-		var target = resolveTarget(ev || window.event);
+	onchange: function (target) {
 		var idx = Number(target.id.substring(3));
 		var libs = config.macros.importTiddlers.libs;
 		libs[idx].current = target.checked;
@@ -8004,7 +8013,8 @@ config.macros.importTiddlers = {
 		var aurl = config.macros.importTiddlers.aurl;
 		if (aurl.startsWith('http:'))
 			aurl = aurl.substring(5);
-		document.getElementById('cmdInclude').href = [window.location.path, '?include=', aurl, '|', cursel.join('|')].join('');
+		var cmdincl = document.getElementById('cmdInclude');
+		if (cmdincl) cmdincl.href = [window.location.path, '?include=', aurl, '|', cursel.join('|')].join('');
 	},
 	fetch: function (ev) {
 		var target = resolveTarget(ev || window.event);
@@ -8012,13 +8022,13 @@ config.macros.importTiddlers = {
 		if (store.getTiddler(td.title))
 			if (!confirm("This will hide the existing tiddler by the same name"))
 				return;
-			
+
 		var tiddler = new Tiddler(td.title, 0, td.text);
 		tiddler.tags = td.tags.readBracketedList();
 		tiddler.modifier = td.modifier;
 		tiddler.modified = td.modified;
 		var info = "Retrieved from " + target.getAttribute('title')
-		tiddler.versions = '|' + info + '|'	
+		tiddler.versions = '|' + info + '|'
 		config.annotations[td.title] = info
 		store.addTiddler(tiddler);
 		story.displayTiddler(null, tiddler.title);
@@ -8058,39 +8068,32 @@ config.macros.importTiddlers = {
 			mls.push(['<script label="', filelist[i], '">config.macros.importTiddlers.serve(', filelist[i].toJSONString(), ')</script>'].join(''));
 		return mls.join('<br>');
 	},
-	importSelected: function (ev,tidlr) {
-		var importByMenu = function(url,tbl) {
+	importSelected: function (ev, tidlr) {
+		var importByMenu = function (url, tbl) {
 			var inputs = document.getElementsByTagName('input');
 			var selectList = [];
-			var all = [];
 			for (var i in inputs) {
 				var e = inputs[i];
-				if (isDescendant(e,tbl)) {
+				if (isDescendant(e, tbl)) {
 					var id = e.getAttribute("id");
 					if (!id || id.length < 3)
 						continue;
-					var isAll = id == 'chkAll';
 					if (id.startsWith('cht')) {
 						var tn = e.nextSibling.firstChild.nodeValue;
-						all.push(tn);
-					}
-					if (e.type == 'checkbox' && e.checked) {
-						if (isAll)
-							selectList = all;
-						else if (tn)
+						if (e.type == 'checkbox' && e.checked && tn)
 							selectList.push(tn);
 					}
 				}
 			}
 			var result = http.tiddlersFromUrl({ url: url, select: selectList.length ? selectList.join('||') : 'void' });
 		};
-		if (!tidlr) 
+		if (!tidlr)
 			tidlr = story.findContainingTiddler(resolveTarget(ev || window.event));
 		var urls = document.getElementsByName('url')
 		for (var i in urls) {
 			var e = urls[i];
 			if (isDescendant(e, tidlr)) {
-				importByMenu(e.getAttribute("id"),e.nextSibling);
+				importByMenu(e.getAttribute("id"), e.nextSibling);
 			}
 		}
 		return true;
