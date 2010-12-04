@@ -73,8 +73,8 @@ var swfobject=function(){var D=&quot;undefined&quot;,r=&quot;object&quot;,S=&quo
 |''Description:''|Facilitates embedding youtube content with optional subtitles|
 |''Documentation:''|[[YouTubePlugin documentation]]|
 |''Requires:''|[[SWFObjectPlugin]]|
-|''Version:''|1.0.0|
-|''Date:''|Sep 19, 2010|
+|''Version:''|1.1.0|
+|''Date:''|Dec 4, 2010|
 |''Source:''|http://giewiki.appspot.com/plugins/YoutubePlugin|
 |''Author:''|PoulStaugaard (poul (dot) staugaard (at) gmail (dot) com)|
 |''License:''|[[BSD open source license]]|
@@ -178,10 +178,8 @@ config.macros.youtube = {
 							//case 5: // cued
 								return;
 						}
-						//displayMessage(&quot;Stop/&quot; + ps);
 						window.clearInterval(iv);
 						} catch (x) {
-							//displayMessage(x);
 						}
 					},33);
 			}
@@ -194,7 +192,7 @@ config.macros.youtube = {
 		var pen = 'pd'+vid;
 		createTiddlyElement(place,&quot;div&quot;,pen,plwdClass,null);
 		var pUrl = chromeless ? 'http://www.youtube.com/apiplayer?video_id=' + vid + '&amp;version=3&amp;enablejsapi=1&amp;playerapiid=ytplayer' : 'http://www.youtube.com/v/' + vid + '?enablejsapi=1&amp;playerapiid=ytplayer';
-		swfobject.embedSWF( pUrl, pen, w, h, '8', null, null, { allowScriptAccess: &quot;always&quot; }, { id: vid });
+		swfobject.embedSWF( pUrl, pen, w, h, '8', null, null, { allowScriptAccess: 'always' }, { id: vid });
 	},
 	onClick: function(ev) {
 		var t = resolveTarget(ev || window.event);
@@ -202,6 +200,8 @@ config.macros.youtube = {
 		config.macros.youtube.handler(t, 'youtubePlay',args.readMacroParams(), null, args);
 	},
 	setupData: function(aus,tstn,ats,tl,vid) {
+		if (!tl)
+			tl = insertAfter(document.getElementById(vid).nextSibling,document.createElement('span'));
 		aus.textLocation = tl;
 		var tstext = store.getTiddlerText(tstn);
 		if (tstext == null)
@@ -267,19 +267,4 @@ config.macros.youtube = {
 		}
 	}
 }
-//}}}</pre></div></storeArea><shadowArea><div comments="0" from="/" id="6ff76a19-3bed-457e-8bd2-d9ec61bba124" locked="true" modified="20100715074319" modifier="PoulStaugaard" tags="" title="DebugConsole2" vercnt="2" version="2"><pre>&lt;script label=&quot;Python&quot;&gt;
-	var re = document.getElementById(formName() + 'output');
-	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
-	re.appendChild(document.createTextNode(http.evaluate(GetForm(place))));
-	createTiddlyElement(re,'br')
-&lt;/script&gt; &lt;script label=&quot;Javascript&quot;&gt;
-	var re = document.getElementById(formName() + 'output');
-	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
-	var exp = GetForm(place).expression;
-	var text = eval(exp);
-	if (typeof(text) == 'object') if (text.output) text=text.output;
-	re.appendChild(document.createTextNode(text)); createTiddlyElement(re,'br')
-&lt;/script&gt;
-|&gt;|&lt;&lt;localDiv output&gt;&gt;|
-|&gt;|&gt;|Evaluate&lt;br&gt;&lt;&lt;input textarea expression 20*70&gt;&gt;|
-</pre></div></shadowArea></document>
+//}}}</pre></div></storeArea></document>
