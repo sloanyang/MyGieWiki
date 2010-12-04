@@ -3,7 +3,7 @@
 	<pre>Page templates are a way to compile sets of reusable tiddlers (typically plugins or modifications to the default set of special tiddlers) in such a way that they are more easily included in other pages. If they consist of a significant number of tiddlers, you will also see a reduction in the page load time compared with pages that include the same set explicitly from a library page.
 * Templates are //created// from pages by adding the tag template (just click //template//). You will typically create the page specifically to be used for creating a template. The content of the page may consist entirely of [[Library includes|LibraryUsageHelp]].
 * Templates are //applied// by selecting from the list which is presented when you click Use ''template..''
-* Templates are //not// updated automatically when you edit the pages that have the template tag; click //template// again to update the template. You may not always want the updated template to be applied to pages that already use the previous version of the template. If you do //not//, you should add the additional tag //version// - this causes the previous version to be preserved.
+* Templates are //not// updated automatically when you edit the pages that have the template tag; click //template// again to update the template. You may not always want the updated template to be applied to pages that already use the previous template version of the template. If you do //not//, you should add the additional tag //version// - this causes the previous version to be preserved.
 	</pre>
 </tiddler>
 

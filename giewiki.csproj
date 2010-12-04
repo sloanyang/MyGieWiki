@@ -70,7 +70,10 @@
     <Content Include="iewiki.py" />
     <Content Include="index.py" />
     <Content Include="Hello.py" />
-    <Content Include="PageProperties.xml" />
+    <Content Include="LibraryUsageHelp.xml" />
+    <Content Include="PageProperties.xml">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="PluginManager.xml" />
     <Content Include="empty.html" />
     <Content Include="PublishPlugin.xml" />
@@ -93,6 +96,7 @@
     <Content Include="static\UploadDialog.htm" />
     <Content Include="UploadDialog.htm" />
     <Content Include="PageTemplateHelp.xml" />
+    <Content Include="YouTube.xml" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

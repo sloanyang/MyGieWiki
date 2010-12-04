@@ -1,6 +1,7 @@
-/* this:	iewiki.py			version: 1.5.2
+/* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
+   version:	1.6.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -34,9 +35,7 @@ DAMAGE.
 
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {} };
 
-// Modified by Poul Staugaard, (poul [dot] staugaard [at] gmail [dot] com)
-// Portions with spaces for tabs are mostly original, while portions with
-// tabs for tabs are mine. Set tab size to 4 characters for readability.
+// Set tab size to 4 characters for readability.
 
 //--
 //-- Configuration repository constructor removed (constructed server-side as /config.js)
@@ -1944,7 +1943,8 @@ function findOrCreateChildElement(parent, element, id, className, text, attribs,
 
 function insertAfter(referenceNode, newNode)
 {
-    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+	referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+	return newNode;
 }
 
 config.macros.comments.addCommentTabelRow = function(tbe,className,after,when,who,replies,row)
@@ -1987,11 +1987,17 @@ config.macros.comments.listComments = function(where,list,preserve,className,fil
     for (var i = 0; i < list.length; i++) {
         var aco = list[i];
         if (filter(aco)) {
-            var tde = config.macros.comments.addCommentTabelRow(tbe,className,after,aco.created.substr(0,19),aco.author,aco.refs,++rc);
+        	var tde = config.macros.comments.addCommentTabelRow(tbe, className, after, config.macros.comments.formatDateTime(aco.created), aco.author, aco.refs, ++rc);
             wikify(aco.text,tde);
         }
     }
-    //createTiddlyElement(where,"hr");
+}
+
+config.macros.comments.formatDateTime = function(dt) {
+	if (typeof dt == 'string')
+		return dt.substr(0,19);
+	else
+		return dt.formatString("YYYY-0MM-0DD hh:mm:0ss");
 }
 
 config.macros.comments.onShowClick = function(e) {
@@ -2036,16 +2042,16 @@ config.macros.comments.onSaveCommentClick = function(ev) { return config.macros.
 config.macros.comments.onSaveMessageClick = function(ev) { return config.macros.comments.onSaveClick(ev, "M",config.macros.comments.MclassPicker); }
 config.macros.comments.onSaveNoteClick = function(ev) { return config.macros.comments.onSaveClick(ev, "N",config.macros.comments.NclassPicker); }
 
-config.macros.comments.onSaveClick = function(ev,type,cp) {
-    var target = resolveTarget(ev || window.event);
-    var tnv = target.parentNode.parentNode.childNodes[1].value;
-    var tidlr = story.findContainingTiddler(target);
-    var tna = tidlr.getAttribute("tiddler");
-    t = store.getTiddler(tna);
-    var sr = t.addComment(tnv,type);
-    if (sr && sr.Success) {
-        config.macros.comments.onCancelCommentClick(ev);
-	    config.macros.comments.listComments(tidlr, [sr], true, cp, function(c) { return true; });
+config.macros.comments.onSaveClick = function (ev, type, cp) {
+	var target = resolveTarget(ev || window.event);
+	var tnv = target.parentNode.parentNode.childNodes[1].value;
+	var tidlr = story.findContainingTiddler(target);
+	var tna = tidlr.getAttribute("tiddler");
+	var t = store.getTiddler(tna);
+	var sr = t.addComment(tnv, type);
+	if (sr && sr.Success) {
+		config.macros.comments.onCancelCommentClick(ev);
+		config.macros.comments.listComments(tidlr, [sr], true, cp, function (c) { return true; });
 	}
 }
 
@@ -7047,7 +7053,7 @@ PageProperties = {
 			return "''[As you are not logged in, this dialog is not functional]''";
 	},
 	activated: function () {
-		if (!forms.PageProperties.template.current) {
+		if (forms.PageProperties.template.page && !forms.PageProperties.template.current) {
 			if (window.location.search == "?upgradeTemplate=try") {
 				displayMessage("Save PageProperties to switch this version of the template");
 				forms.PageProperties.upgradeTemplate = true;
@@ -7062,7 +7068,6 @@ PageProperties = {
 			tl.push(tag)
 		else if (tag == 'template') {
 			if (window.confirm("Update template?")) {
-				debugger;
 				if (http.updateTemplate({ 'tags': forms.PageProperties.tags }).Success)
 					displayMessage("Template updated");
 			}
@@ -7100,8 +7105,15 @@ PageProperties = {
 		wikify(output.join('<br> '), delc);
 	},
 	openLibrary: function (url) {
-		if (url == 'other')
-			this.listLibrary(url, config.options.txtExternalLibrary.split(' '));
+		if (url == 'other') {
+			var opts = config.options.txtExternalLibrary || PageProperties.externalLibrary;
+			if (!opts)
+				PageProperties.externalLibrary = opts = window.prompt("URL of tiddlers to use");
+			if (!opts)
+				return;
+			var urls = opts.split(' ');
+			this.listLibrary(url, urls);
+		}
 		else {
 			var ld = http.openLibrary({ library: url });
 			if (ld) {
