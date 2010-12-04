@@ -487,7 +487,6 @@ macro|newJournal|"DD MMM YYYY" "journal"
 tiddler|CreateNewPage|new page|Create new page|p
 tiddler|UploadDialog|upload file|Upload a local file|u
 tiddler|PageProperties|page properties|Edit page properties|p
-tiddler|ImportTiddlers|import tiddlers|Import from web or file|i
 tiddler|File list|file list|list of uploaded files|f
 </pre>
 </div>

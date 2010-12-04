@@ -7929,7 +7929,6 @@ function UrlInclude(what) {
 	return path + q + h;
 }
 
-config.shadowTiddlers.ImportTiddlers = "<<importTiddlers>>";
 config.macros.importTiddlers = {
 	handler: function (place, macroName, params, wikifier, paramString) {
 		if (params.length == 0)
@@ -7992,8 +7991,11 @@ config.macros.importTiddlers = {
 								config.macros.importTiddlers.onchange(cksn);
 						}
 					};
-				if (tiddlers)
-					document.getElementById('sea' + aurl).onclick = config.macros.importTiddlers.showAll;
+				if (tiddlers) {
+					var seaUrl = document.getElementById('sea' + aurl);
+					if (seaUrl)
+						seaUrl.onclick = config.macros.importTiddlers.showAll;
+				}
 				for (t in links) {
 					if (isNaN(t)) continue;
 					var chtid = 'cht' + t;
