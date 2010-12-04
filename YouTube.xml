@@ -94,7 +94,7 @@ config.macros.youtube = {
 			t = t.parentNode;
 		var cw = t.offsetWidth;
 		var w = cw;
-		var rh = 81;
+		var rh = 80;
 		if (params.length &gt; 0) { // parameter 2: width,relative-height%
 			var a2 = params[0];
 			if (a2 == 'text-location') {
@@ -111,7 +111,7 @@ config.macros.youtube = {
 						w = na; da = dims.shift();
 						}
 					if (da &amp;&amp; da.right(1) == '%')
-						rh = parseInt(da);
+						rh = da.slice(0,da.length-1);
 				}
 			}
 			if (w &lt; 0) {
