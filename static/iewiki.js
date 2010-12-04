@@ -7053,6 +7053,8 @@ PageProperties = {
 			return "''[As you are not logged in, this dialog is not functional]''";
 	},
 	activated: function () {
+		if (!forms.PageProperties)
+			return;
 		if (forms.PageProperties.template.page && !forms.PageProperties.template.current) {
 			if (window.location.search == "?upgradeTemplate=try") {
 				displayMessage("Save PageProperties to switch this version of the template");

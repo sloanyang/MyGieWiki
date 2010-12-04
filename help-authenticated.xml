@@ -6,7 +6,7 @@
 * ''Owner''&lt;br&gt;Who controls the properties of this page. This would be your PenName, which initially is the same as your login name, but you can change it via the UserProfile.
 * ''Groups''&lt;br&gt;You may define a group (or multiple groups) of people that should have elevated access to the page.
 * ''Access permissions''&lt;br&gt;The level of access that various user classes should have to this page.
-* ''Includes''&lt;br&gt;Shows any resources that you include into this page - not edited directly, but rather via the ImportTiddlers feature.
-* ''Read-only view options''&lt;br&gt;Various aspects of how the page looks to someone who does not have edit access.
+* ''Template / Library includes''&lt;br&gt;Shows any page template or library resources that you include into this page.
+* ''Read-only options''&lt;br&gt;Various aspects of how the page looks to someone who does not have edit access.
 
-The page properties dialog is normally accessed via the edit menu, but on a still blank page it opens automatically (if you are logged in)</pre></div></storeArea><shadowArea/></document>
+	The page properties dialog is normally accessed via the edit menu, but on a still blank page it opens automatically (if you are logged in)</pre></div></storeArea><shadowArea/></document>
