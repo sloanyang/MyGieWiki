@@ -20,8 +20,8 @@ var swfobject=function(){var D=&quot;undefined&quot;,r=&quot;object&quot;,S=&quo
 |''Description:''|Facilitates embedding youtube content with optional subtitles|
 |''Documentation:''|[[YouTubePlugin documentation]]|
 |''Requires:''|[[SWFObjectPlugin]]|
-|''Version:''|1.1.0|
-|''Date:''|Dec 4, 2010|
+|''Version:''|1.1.1|
+|''Date:''|Dec 5, 2010|
 |''Source:''|http://giewiki.appspot.com/plugins/YoutubePlugin|
 |''Author:''|PoulStaugaard (poul (dot) staugaard (at) gmail (dot) com)|
 |''License:''|[[BSD open source license]]|
@@ -147,8 +147,12 @@ config.macros.youtube = {
 		config.macros.youtube.handler(t, 'youtubePlay',args.readMacroParams(), null, args);
 	},
 	setupData: function(aus,tstn,ats,tl,vid) {
-		if (!tl)
-			tl = insertAfter(document.getElementById(vid).nextSibling,document.createElement('span'));
+		if (!tl) {
+			var evid = document.getElementById(vid);
+			if (!evid.nextSibling)
+				insertAfter(evid,document.createElement('br'));
+			tl = insertAfter(evid.nextSibling,document.createElement('span'));
+		}
 		aus.textLocation = tl;
 		var tstext = store.getTiddlerText(tstn);
 		if (tstext == null)
@@ -214,7 +218,7 @@ config.macros.youtube = {
 		}
 	}
 }
-//}}}</pre></div><div id="8a3b103a-7bd2-4a72-8df3-c1fbabdd0722" modified="20101204184339" modifier="test@example.com" tags="" title="YouTubePlugin documentation" ><pre>|''Name:''|YouTubePlugin|
+//}}}</pre></div><div id="8a3b103a-7bd2-4a72-8df3-c1fbabdd0722" modified="20101204184339" modifier="PoulStaugaard" tags="" title="YouTubePlugin documentation" ><pre>|''Name:''|YouTubePlugin|
 |''Description:''|Facilitates embedding youtube content with optional subtitles|
 |''Requires:''|[[SWFObjectPlugin]]|
 |''Version:''|1.0.0|
@@ -269,7 +273,7 @@ If you want more control over where the text/subtitles are presented, you can ad
 |play|Causes the player to start playing as soon as it is ready|
 |chromeless|Causes the player to be presented without the control/status portion that normally appears below|
 
-</pre></div><div id="13711798-6293-402c-8716-665d631d6e35" modified="20101204183940" modifier="test@example.com" tags="" title="StyleSheet" ><pre>.ytmx { font-family: courier; font-size: 1.15em; margin-left:2em; }</pre></div><div id="60e24090-71d2-44a3-b0f1-7c72f44d2e35" modified="20101204181123" modifier="test@example.com" tags="Example" title="Both Sides Now" ><pre>&lt;&lt;youtube tKQSlH-LLTQ -600&gt;&gt;</pre></div><div comments="0" id="ae3a7712-70d5-4876-87ff-093cce5baf34" modified="20101203231719" modifier="test@example.com" reverted="20101204181828" reverted_by="test@example.com" tags="Example MMU" title="Me And My Uncle (ts)"><pre>|9.596|''Me and my uncle''|
+</pre></div><div id="13711798-6293-402c-8716-665d631d6e35" modified="20101204183940" modifier="PoulStaugaard" tags="" title="StyleSheet" ><pre>.ytmx { font-family: courier; font-size: 1.15em; margin-left:2em; }</pre></div><div id="60e24090-71d2-44a3-b0f1-7c72f44d2e35" modified="20101204181123" modifier="PoulStaugaard" tags="Example" title="Both Sides Now" ><pre>&lt;&lt;youtube tKQSlH-LLTQ -600&gt;&gt;</pre></div><div comments="0" id="ae3a7712-70d5-4876-87ff-093cce5baf34" modified="20101203231719" modifier="PoulStaugaard" reverted="20101204181828" reverted_by="PoulStaugaard" tags="Example MMU" title="Me And My Uncle (ts)"><pre>|9.596|''Me and my uncle''|
 |12.516|came riding down|
 |14.002|From Colorado|
 |15.71|West Texas bound|
@@ -320,7 +324,5 @@ If you want more control over where the text/subtitles are presented, you can ad
 |143.25|And I left him lying there|
 |145.55|I left him lying there|
 |150.0|by the side of the road.|
-|153.0| |</pre></div><div comments="0" id="9b2fddd5-715a-46b0-8018-f6997cbcc529" modified="20101204181957" modifier="test@example.com" tags="Example MMU" title="Me and My Uncle" ><pre>&lt;&lt;youtube Zp3lJg07u4w -500 text 'Me And My Uncle (ts)'&gt;&gt;
-
-
-</pre></div><div comments="0" id="5f13a8f5-e657-42c4-9c4d-45443d0a3c3c" modified="20101204174415" modifier="test@example.com" tags="Example" title="Google Earth Engine" ><pre>&lt;&lt;youtube MnCf9Gjz720 400,62.5%&gt;&gt;</pre></div><div comments="0" id="e43ca4ca-4e59-4636-abd7-0b54d340561c" modified="20101204174832" modifier="test@example.com" tags="Example" title="Hallelujah" ><pre>&lt;&lt;youtube P_NpxTWbovE&gt;&gt;</pre></div></storeArea><shadowArea/></document>
+|153.0| |</pre></div><div comments="0" id="9b2fddd5-715a-46b0-8018-f6997cbcc529" modified="20101204181957" modifier="PoulStaugaard" tags="Example MMU" title="Me and My Uncle" ><pre>&lt;&lt;youtube Zp3lJg07u4w -500 text 'Me And My Uncle (ts)'&gt;&gt;
+</pre></div><div comments="0" id="5f13a8f5-e657-42c4-9c4d-45443d0a3c3c" modified="20101204174415" modifier="PoulStaugaard" tags="Example" title="Google Earth Engine" ><pre>&lt;&lt;youtube MnCf9Gjz720 400,62.5%&gt;&gt;</pre></div><div comments="0" id="e43ca4ca-4e59-4636-abd7-0b54d340561c" modified="20101204174832" modifier="PoulStaugaard" tags="Example" title="Hallelujah" ><pre>&lt;&lt;youtube P_NpxTWbovE&gt;&gt;</pre></div><div modified="20101205184020" modifier="test@example.com" tags="" title="DefaultTiddlers"><pre>[[YouTubePlugin documentation]]</pre></div></storeArea><shadowArea/></document>
