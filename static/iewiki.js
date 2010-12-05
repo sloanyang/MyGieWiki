@@ -3239,7 +3239,6 @@ function TiddlyWiki() {
         this.setDirty(false);
     };
     this.hasTiddler = function (at, real) {
-    	debugger;
     	var t = tiddlers[at];
     	return t instanceof Tiddler && (real ? t.id : true);
     };
