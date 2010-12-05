@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.6.0
+   version:	1.6.1
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -3238,6 +3238,11 @@ function TiddlyWiki() {
         tiddlers = {};
         this.setDirty(false);
     };
+    this.hasTiddler = function (at, real) {
+    	debugger;
+    	var t = tiddlers[at];
+    	return t instanceof Tiddler && (real ? t.id : true);
+    };
     this.fetchTiddler = function (title) {
     	var t = tiddlers[title];
     	if (!t)
@@ -4897,7 +4902,7 @@ function getTiddlyLinkInfo(title, currClasses) {
     classes.pushUnique("tiddlyLink");
     var tiddler = store.fetchTiddler(title);
     var subTitle;
-    if (tiddler) {
+    if (tiddler && tiddler.id) {
         subTitle = tiddler.getSubtitle();
         classes.pushUnique("tiddlyLinkExisting");
         classes.remove("tiddlyLinkNonExisting");
@@ -7053,8 +7058,9 @@ PageProperties = {
 			return "''[As you are not logged in, this dialog is not functional]''";
 	},
 	activated: function () {
-		if (!forms.PageProperties)
+		if (!forms.PageProperties || !forms.PageProperties.owner)
 			return;
+		forms.PageProperties.controls['title'].focus();
 		if (forms.PageProperties.template.page && !forms.PageProperties.template.current) {
 			if (window.location.search == "?upgradeTemplate=try") {
 				displayMessage("Save PageProperties to switch this version of the template");
@@ -7078,6 +7084,10 @@ PageProperties = {
 		setFormFieldValue(forms.PageProperties, 'tags', tl.join(' '))
 	},
 	save: function () {
+		if (!forms.PageProperties || !forms.PageProperties.owner)
+			return displayMessage("You are not logged in");
+		if (!forms.PageProperties.title)
+			return displayMessage("You need to set the Title");
 		forms.PageProperties.template = PageProperties.selectedTemplate;
 		var resp = http.pageProperties(forms.PageProperties);
 		if (resp.Success &&
@@ -8021,6 +8031,8 @@ config.macros.importTiddlers = {
 	onchange: function (target) {
 		var idx = Number(target.id.substring(3));
 		var libs = config.macros.importTiddlers.libs;
+		if (target.checked && store.hasTiddler(libs[idx].title,true))
+			displayMessage(libs[idx].title + " will be hidden by existing tiddler");
 		libs[idx].current = target.checked;
 		var cursel = [];
 		for (var t = 0; t < libs.length; t++)
