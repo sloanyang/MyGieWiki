@@ -31,7 +31,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 giewikiVersion = '2.6'
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 6, revision: 0, date: new Date("Dec 4, 2010"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 6, revision: 1, date: new Date("Dec 5, 2010"), extensions: {} };\n\
 var config = {\n\
 	animDuration: 400,\n\
 	cascadeFast: 20,\n\
@@ -207,7 +207,7 @@ def BoldCurrent(tlr):
 	return "''" if tlr.current else ""
 	
 def deleteTiddlerVersion(tid,ver):
-	tlv = Tiddler.Tiddler.all().filter('id', tid).filter('version',ver).get()
+	tlv = Tiddler.all().filter('id', tid).filter('version',ver).get()
 	if tlv != None:
 		tlv.delete()
 		logging.info("Deleted " + str(tid) + " version " + str(ver))
