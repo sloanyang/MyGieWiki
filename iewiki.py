@@ -2,7 +2,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.6.0
+# ver.:	1.6.1
 
 import cgi
 import datetime
