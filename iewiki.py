@@ -2,7 +2,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.6.1
+# ver.:	1.6.2
 
 import cgi
 import datetime
@@ -31,7 +31,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 giewikiVersion = '2.6'
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 6, revision: 1, date: new Date("Dec 5, 2010"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 6, revision: 2, date: new Date("Dec 11, 2010"), extensions: {} };\n\
 var config = {\n\
 	animDuration: 400,\n\
 	cascadeFast: 20,\n\
@@ -206,29 +206,8 @@ def getTiddlerVersions(xd,tid,startFrom):
 def BoldCurrent(tlr):
 	return "''" if tlr.current else ""
 
-#def RemoveServerAttribute(s,a):
-#	sp = s.find(a)
-#	if sp > 0:
-#		vp = s.find(a[-1], sp+len(a))
-#		if vp > sp:
-#			return s.replace(s[sp:vp+1],'')
-#	return s
-
 def FixTWSyntaxAndParse(html):
 	return xml.dom.minidom.parseString(html.replace('<br>','<br/>'))
-#	try:
-#		return xml.dom.minidom.parseString(mt)
-#	except Exception, x:
-#		if 'duplicate attribute' in str(x):
-#			mt = RemoveServerAttribute(mt,"server.type='")
-#			mt = RemoveServerAttribute(mt,"server.host='")
-#			mt = RemoveServerAttribute(mt,"server.id='")
-#			try:
-#				xdoc = xml.dom.minidom.parseString(mt)
-#			except Exception, x2:
-#				raise x2
-#		else:
-#			raise x
 
 def deleteTiddlerVersion(tid,ver):
 	tlv = Tiddler.all().filter('id', tid).filter('version',ver).get()
