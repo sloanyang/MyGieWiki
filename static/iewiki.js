@@ -4478,7 +4478,10 @@ function getMessageDiv() {
     return createTiddlyElement(msgArea, "div");
 }
 
+var displayedMessage;
+
 function displayMessage(text, linkText) {
+	displayedMessage = text;
     var e = getMessageDiv();
     if (!e) {
         alert(text);
@@ -4493,11 +4496,14 @@ function displayMessage(text, linkText) {
     }
 }
 
-function clearMessage() {
-    var msgArea = document.getElementById("messageArea");
+function clearMessage(m) {
+	if (typeof m == 'string' && m != displayedMessage)
+		return;
+	displayedMessage = null;
+    var msgArea = document.getElementById('messageArea');
     if (msgArea) {
         removeChildren(msgArea);
-        msgArea.style.display = "none";
+        msgArea.style.display = 'none';
     }
     return false;
 }
@@ -7095,8 +7101,10 @@ PageProperties = {
 	},
 	listLibrary: function (url, lines) {
 		var liblistId = 'libList' + url;
-		if (document.getElementById(liblistId))
-			return;
+		var ee = document.getElementById(liblistId);
+		if (ee)
+			ee.parentNode.removeChild(ee);
+		
 		var output = [['Library: <html><span id="', liblistId, '">', url, '</span></html> has:'].join('')];
 		for (var al = lines.shift(); al; al = lines.shift()) {
 			var urlParts = url.split('/');
@@ -7117,9 +7125,9 @@ PageProperties = {
 	},
 	openLibrary: function (url) {
 		if (url == 'other') {
-			var opts = config.options.txtExternalLibrary || PageProperties.externalLibrary;
+			var opts = config.options.txtExternalLibrary;
 			if (!opts)
-				PageProperties.externalLibrary = opts = window.prompt("URL of tiddlers to use");
+				PageProperties.externalLibrary = opts = window.prompt("URL of tiddlers to use", PageProperties.externalLibrary);
 			if (!opts)
 				return;
 			var urls = opts.split(' ');
@@ -7956,9 +7964,10 @@ config.macros.importTiddlers = {
 				var afilter = params.join(' ');
 			else if (filt == 'tiddlers' && params.length)
 				var tiddlers = params.length == 1 ? params[0].split('||') : params;
-			displayMessage("Getting <br>" + aurl + "</br>");
+			var workMessage = "Getting <br>" + aurl + "</br>";
+			displayMessage(workMessage);
 			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter || '' });
-			clearMessage();
+			clearMessage(workMessage);
 			var nCurrent = 0;
 			var nExcluded = 0;
 			if (libs) {
@@ -8030,7 +8039,7 @@ config.macros.importTiddlers = {
 	onchange: function (target) {
 		var idx = Number(target.id.substring(3));
 		var libs = config.macros.importTiddlers.libs;
-		if (target.checked && store.hasTiddler(libs[idx].title,true))
+		if (target.checked && store.hasTiddler(libs[idx].title, true))
 			displayMessage(libs[idx].title + " will be hidden by existing tiddler");
 		libs[idx].current = target.checked;
 		var cursel = [];
