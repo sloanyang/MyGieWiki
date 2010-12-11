@@ -205,7 +205,31 @@ def getTiddlerVersions(xd,tid,startFrom):
 
 def BoldCurrent(tlr):
 	return "''" if tlr.current else ""
-	
+
+#def RemoveServerAttribute(s,a):
+#	sp = s.find(a)
+#	if sp > 0:
+#		vp = s.find(a[-1], sp+len(a))
+#		if vp > sp:
+#			return s.replace(s[sp:vp+1],'')
+#	return s
+
+def FixTWSyntaxAndParse(html):
+	return xml.dom.minidom.parseString(html.replace('<br>','<br/>'))
+#	try:
+#		return xml.dom.minidom.parseString(mt)
+#	except Exception, x:
+#		if 'duplicate attribute' in str(x):
+#			mt = RemoveServerAttribute(mt,"server.type='")
+#			mt = RemoveServerAttribute(mt,"server.host='")
+#			mt = RemoveServerAttribute(mt,"server.id='")
+#			try:
+#				xdoc = xml.dom.minidom.parseString(mt)
+#			except Exception, x2:
+#				raise x2
+#		else:
+#			raise x
+
 def deleteTiddlerVersion(tid,ver):
 	tlv = Tiddler.all().filter('id', tid).filter('version',ver).get()
 	if tlv != None:
@@ -294,6 +318,14 @@ def getUserPenName(user):
 	up = UserProfile.all().filter('user',user).get()
 	return user.nickname() if up == None else up.txtUserName
 
+def DateFromYyyyMmDdHhMm(a):
+	if len(a) >= 8:
+		hh = int(a[8:10]) if len(a) >= 10 else 0
+		mm = int(a[10:12]) if len(a) >= 12 else 0 
+		return datetime.datetime(int(a[0:4]),int(a[4:6]),int(a[6:8]),hh,mm)
+	else:
+		return datetime.datetime.now()
+
 def TiddlerFromXml(te,path):
 	id = None
 	try:
@@ -313,9 +345,21 @@ def TiddlerFromXml(te,path):
 		
 	nt = Tiddler(page = path, title = title, id = id, version = version, author_ip = author_ip)
 	nt.current = True
+	if te.hasAttribute('modified'):
+		nt.modified = DateFromYyyyMmDdHhMm(te.getAttribute('modified'))
+	else:
+		nt.modified = DateFromYyyyMmDdHhMm(te.getAttribute('created'))
+	if te.hasAttribute('created'):
+		nt.created = DateFromYyyyMmDdHhMm(te.getAttribute('created'))
+	else:
+		nt.created = nt.modified
 	nt.tags = te.getAttribute('tags')
 	if vt != '':
 		setattr(nt,'viewTemplate',vt)
+	for an in te.attributes.keys(): # the remaining attributes
+		if not hasattr(nt,an):
+			setattr(nt,an,te.getAttribute(an))
+
 	for ce in te.childNodes:
 		if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'pre':
 			if ce.firstChild != None and ce.firstChild.nodeValue != None:
@@ -1696,7 +1740,6 @@ class MainPage(webapp.RequestHandler):
 				raise ImportException(pe.nodeName + " contains " + unicode(len(es)) + " body elements.")
 		return self.TiddlersFromXml(pe,url)
 	return None
-	
 
   def XmlFromSources(self,url,sources=None,cache=None,save=False):
 	if url.startswith('//'):
@@ -1705,7 +1748,7 @@ class MainPage(webapp.RequestHandler):
 		if sources == None or 'local' in sources:
 			importedFile = UrlImport.all().filter('url',url).get()
 			if importedFile != None:
-				return xml.dom.minidom.parseString(importedFile.data)
+				return FixTWSyntaxAndParse(importedFile.data)
 		if sources == None or 'remote' in sources:	
 			content = memcache.get(url)	if cache != None else None
 			if content == None:
@@ -1719,7 +1762,7 @@ class MainPage(webapp.RequestHandler):
 					content = result.content
 					if cache != None:
 						memcache.add(url,content,cache)
-			xd = xml.dom.minidom.parseString(content)
+			xd = FixTWSyntaxAndParse(content)
 			if xd == None:
 				return None
 			if save:
@@ -1741,7 +1784,6 @@ class MainPage(webapp.RequestHandler):
 			# self.Trace('Append ' + t.title + ' from ' + t.page)
 			list.append(t)
 
-	# self.Trace('TiddlersFromXml ' + te.tagName)
 	if te.tagName in ('body','document'):
 		for acn in te.childNodes:
 			if acn.nodeType == xml.dom.Node.ELEMENT_NODE:

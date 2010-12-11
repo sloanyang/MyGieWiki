@@ -98,7 +98,9 @@
     <Content Include="static\UploadDialog.htm" />
     <Content Include="UploadDialog.htm" />
     <Content Include="PageTemplateHelp.xml" />
-    <Content Include="YouTube.xml" />
+    <Content Include="YouTube.xml">
+      <SubType>Designer</SubType>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
