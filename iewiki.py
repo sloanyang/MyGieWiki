@@ -2,9 +2,10 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.6.2
+# ver.:	1.6.3
 
 import cgi
+import codecs
 import datetime
 import difflib
 import logging
@@ -2470,7 +2471,7 @@ class MainPage(webapp.RequestHandler):
 				text = HtmlErrorMessage("Cannot retrive " + unicode(twd) + ":\n" + unicode(x))
 		else:
 			try:
-				ftwd = open(twd)
+				ftwd = codecs.open(twd,'r','utf-8')
 				twdtext = ftwd.read()
 				ftwd.close()
 			except Exception, x:
@@ -2483,7 +2484,12 @@ class MainPage(webapp.RequestHandler):
 			mysa = elShArea.toxml()
 			if len(mysa) > len(cssa) + 6:
 				text = text.replace(cssa,mysa[:-6])
-			text = twdtext.replace('<div id="storeArea">\n</div>',elStArea.toxml()) # insert text into body
+			sasPos = twdtext.find(u'<div id="storeArea">')
+			if sasPos == -1:
+				text = '<div id="storeArea">) not found in ' + twd
+			else:
+				saePos = twdtext.find('</div>',sasPos)
+				text = ''.join([twdtext[0:sasPos],elStArea.toxml(),twdtext[saePos + len('</div>'):]]) # insert text into body
 	return text
 
   def get(self): # this is where it all starts
