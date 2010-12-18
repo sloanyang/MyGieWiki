@@ -13,6 +13,9 @@ handlers:
 
 - url: /index.xml
   script: index.py
+  
+- url: /config.js
+  script: config.py
 
 - url: /dynamic/iewiki-xsl
   script: dynamic-xsl.py

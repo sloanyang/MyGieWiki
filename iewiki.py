@@ -26,27 +26,18 @@ from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.api import mail
+from google.appengine.api import namespace_manager
 
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade
 
 giewikiVersion = '2.6'
-jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 6, revision: 2, date: new Date("Dec 11, 2010"), extensions: {} };\n\
-var config = {\n\
-	animDuration: 400,\n\
-	cascadeFast: 20,\n\
-	cascadeSlow: 60,\n\
-	cascadeDepth: 5,\n\
-	locale: "en",\n\
-	options: {\n\
-		' # the rest is built dynamically
 
 class library():
 	static = ['YouTube.xml']	
 	def local(self,main):
 		pages = []
-		for p in Page.all().filter('sub',main.subdomain):
+		for p in Page.all():
 			if p.tags != None and 'library' in p.tags.split():
 				pages.append(p.path)
 		return pages
@@ -288,12 +279,6 @@ def mergeDict(td,ts):
 		else:
 			td[key] = t
 
-def isNameAnOption(name):
-	return name.startswith('txt') or name.startswith('chk')
-
-def jsEncodeStr(s):
-	return '"' + unicode(s).replace(u'"',u'\\"').replace(u'\n',u'\\n').replace(u'\r',u'') + u'"'
-	
 def getUserPenName(user):
 	up = UserProfile.all().filter('user',user).get()
 	return user.nickname() if up == None else up.txtUserName
@@ -370,16 +355,33 @@ class ImportException(Exception):
     def __str__(self):
 	   return self.error
 
+def IsIPaddress(v):
+	if len(v) < 4:
+		return False
+	lix = len(v) - 1
+	if v[lix].find(':') > 0:
+		v[lix] = v[lix].split(':')[0]
+	for a in range(len(v)-4,len(v)):
+		try:
+			n = int(v[a])
+			if n < 0 or n > 255:
+				return False
+		except Exception:
+			return False
+	return True
+
 class MainPage(webapp.RequestHandler):
   "Serves wiki pages and updates"
   trace = list()
   merge = False
-  subdomain = None
 
   def getSubdomain(self):
 	hostc = self.request.host.split('.')
 	if len(hostc) > 3: # e.g. subdomain.giewiki.appspot.com
-		pos = len(hostc) - 4
+		if IsIPaddress(hostc): # [sd.]n.n.n.n[:port]
+			pos = len(hostc) - 5
+		else:
+			pos = len(hostc) - 4
 	elif len(hostc) > 1 and hostc[len(hostc) - 1].startswith('localhost'): # e.g. sd.localhost:port
 		pos = len(hostc) - 2
 	# elif... support for app.org.tld domains -- TODO
@@ -388,14 +390,16 @@ class MainPage(webapp.RequestHandler):
 		self.subdomain = None
 		return
 
-	self.subdomain = hostc[pos]
-	if self.subdomain == 'latest': # App engine uses this for alternate versions
-		self.subdomain = None
-	else:
+	if pos >= 0 and hostc[pos] != 'latest': # App engine uses this for alternate versions
+		self.subdomain = hostc[pos]
+		self.sdo = SubDomain.all().filter('preurl', self.subdomain).get()
+		namespace_manager.set_namespace(self.subdomain)
 		self.merge = False
 		if pos > 0:
 			if hostc[0] == 'merge':
 				self.merge = True
+	else:
+		self.subdomain = None
 
   def initXmlResponse(self):
 	self.response.headers['Content-Type'] = 'text/xml'
@@ -418,7 +422,6 @@ class MainPage(webapp.RequestHandler):
   def SaveNewTiddler(self,page,name,value):
 	p = Tiddler()
 	p.page = page
-	p.sub = self.subdomain 
 	p.author = users.get_current_user()
 	p.author_ip = self.AuthorIP()
 	p.version = 1
@@ -568,17 +571,11 @@ class MainPage(webapp.RequestHandler):
 			tlr.comments = atl.comments;
 		if atl.current:
 			tlr.vercnt = atl.versionCount() + 1
-			if atl.sub == self.subdomain:
-				atl.current = False
-				tlr.comments = atl.comments
-				tlr.sub = atl.sub
-				atl.put()
-			elif atl.sub == None: # automatically lock public version
-				atl.locked = True
-				atl.put()
+			atl.current = False
+			tlr.comments = atl.comments
+			atl.put()
 				
 	tlr.current = True
-	tlr.sub = self.subdomain
 	if "includes" in tlr.tags.split():
 		tlf = list()
 		tls = tlr.text.split("\n")
@@ -955,7 +952,6 @@ class MainPage(webapp.RequestHandler):
 			page = Page()
 			page.gwversion = giewikiVersion
 			page.path = '/'
-			page.sub = self.subdomain
 			page.title = ''
 			page.subtitle = ''
 			page.tags = ''
@@ -1063,7 +1059,7 @@ class MainPage(webapp.RequestHandler):
 	self.reply({'Success': True, 'Address': npt })
 	
   def siteMap(self):
-	pal = Page.all().filter('sub',self.subdomain).order('path')
+	pal = Page.all().order('path')
 	xd = XmlDocument()
 	xroot = xd.add(xd,'SiteMap', attrs={'type':'object[]'})
 	for p in pal:
@@ -1087,7 +1083,6 @@ class MainPage(webapp.RequestHandler):
 				pad = Page()
 				pad.gwversion = giewikiVersion
 				pad.path = "/"
-				pad.sub = self.subdomain
 				pad.tags = ''
 				pad.owner = user
 				pad.ownername = getUserPenName(user)
@@ -1116,7 +1111,6 @@ class MainPage(webapp.RequestHandler):
 		page = Page()
 		page.gwversion = giewikiVersion
 		page.path = url
-		page.sub = self.subdomain
 		page.tags = ''
 		page.owner = user
 		page.ownername = getUserPenName(user)
@@ -1258,7 +1252,7 @@ class MainPage(webapp.RequestHandler):
 	xd = XmlDocument()
 	tr = xd.add(xd,"reply")
 	pg = self.request.get("page")
-	page = Page.all().filter('sub',self.subdomain).filter('path',pg).get()
+	page = Page.all().filter('path',pg).get()
 	error = None
 	if page != None:
 		who = userWho()
@@ -1271,7 +1265,7 @@ class MainPage(webapp.RequestHandler):
 					error = "You do not have access to this page"
 			
 	if error == None:
-		tiddlers = Tiddler.all().filter('page', pg).filter('sub',self.subdomain).filter('current', True)
+		tiddlers = Tiddler.all().filter('page', pg).filter('current', True)
 		if tiddlers.count() > 0:
 			tr.setAttribute('type', 'string[]')
 			for t in tiddlers:
@@ -1328,7 +1322,7 @@ class MainPage(webapp.RequestHandler):
 		except Exception:
 			self.reply({'success': False })
 	if t != None:
-		if t.public or ReadAccessToPage(t.page,self.subdomain):
+		if t.public or ReadAccessToPage(t.page):
 			rp = { \
 			'success': True, \
 			'id': t.id, \
@@ -1367,7 +1361,7 @@ class MainPage(webapp.RequestHandler):
 	limit = eval(self.request.get('limit'))
 	while True:
 		extra = 0
-		ts = Tiddler.all().filter('sub',self.subdomain).order('-modified').fetch(limit,offset)
+		ts = Tiddler.all().order('-modified').fetch(limit,offset)
 		cnt = 0
 		for t in ts:
 			cnt += 1
@@ -1606,7 +1600,6 @@ class MainPage(webapp.RequestHandler):
 		return self.uploadTiddlyWikiDoc(filename,filedata)
 	else:
 		f = UploadedFile()
-		f.sub = self.subdomain
 		f.owner = users.get_current_user()
 		f.path = CombinePath(self.request.path, filename)
 		f.mimetype = self.request.get("mimetype")
@@ -1620,7 +1613,7 @@ class MainPage(webapp.RequestHandler):
 		u.close()
 	
   def fileList(self):
-	files = UploadedFile.all().filter('sub', self.subdomain)
+	files = UploadedFile.all()
 	owner = self.request.get("owner")
 	if owner != "":
 		files = files.filter("owner =",owner)
@@ -1817,43 +1810,6 @@ class MainPage(webapp.RequestHandler):
 	tv.appendChild(xd.createTextNode(unicode(result)))
 	self.response.out.write(xd.toxml())
 
-  def publishSub(self):
-	rsel = self.request.get('s',None).split(',')
-	sel = []
-	for s in rsel:
-		sel.append(s.replace('%20',' ').replace('%2C',','))
-	srcpages = Page.all().filter('sub',self.subdomain)
-	srctidds = Tiddler.all().filter('sub',self.subdomain)
-	if sel != None:
-		srcpages = srcpages.filter('path',self.request.path)
-		srctidds = srctidds.filter('page',self.request.path)
-		flt = []
-		for t in srctidds:
-			if t.title in sel:
-				flt.append(t)
-		srctidds = flt
-
-	npages = toDict(srcpages.fetch(1000),'path')
-	epages = toDict(Page.all().filter('sub',None).fetch(1000),'path')
-	results = []
-	for path,pg in npages.iteritems():
-		if not pg.path in epages:
-			pg[pg.path].sub = None
-			pg.put()
-	for t in srctidds:
-		if t.current == True:
-			et = Tiddler.all().filter('id',t.id).filter('current',True).filter('sub',None).get()
-			if et != None: # demote
-				t.version = et.version + 1
-				et.current = False
-				et.put()
-			t.sub = None # promote
-			t.put()
-			results.append(t.title)
-		else:
-			t.delete()
-	self.reply({'Success': True, 'Message': unicode(len(results)) + " tiddlers published:<br>" + '<br>'.join(results) })
-	
   def expando(self,method):
 	xd = self.initXmlResponse()
 	result = xd.createElement('Result')
@@ -1948,10 +1904,30 @@ class MainPage(webapp.RequestHandler):
 		self.reply()
 
   def addProject(self):
+	cns = namespace_manager.get_namespace()
+	if cns == "":
+		cns = None
+	namespace_manager.set_namespace(None)
+	rv = self.RootAddProject()
+	namespace_manager.set_namespace(cns) # back to the current namespace
+	return rv
+  
+  def RootAddProject(self):
 	up = UserProfile.all().filter('user', users.get_current_user()).get()
 	if up == None:
 		return self.fail("You have to first save your profile before you can add a project")
+	currp = up.projects.split() if up.projects != None else []
+	if len(currp) >= 10:
+		return self.fail("You cannot create more than 10 projects")
+
 	sd = self.request.get('domain')
+	if sd == '':
+		return self.fail("You must supply a name")
+
+	rem = re.match('([0-9A-Za-z._-]{0,100})',sd)
+	if rem.group() != sd:
+		return self.fail("Invalid name: " + sd[rem.end():rem.end() + 1] + " not allowed!")
+		
 	ev = SubDomain.all().filter('preurl',sd).get()
 	if ev == None:
 		if self.request.get('confirmed',False) == False:
@@ -1964,11 +1940,8 @@ class MainPage(webapp.RequestHandler):
 	elif ev.owneruser != users.get_current_user():
 		if ev.public == False:
 			return self.fail("This project belongs to someone else")
-		if not ReadAccessToPage('/',sd):
-			return self.fail("This project belongs to " + ev.ownerprofile.txtUserName)
 		if not self.request.get('confirmed',False):
 			return self.warn("This project is managed by " + ev.ownerprofile.txtUserName + '\nProceed?')
-	currp = up.projects.split() if up.projects != None else []
 	if not sd in currp:
 		currp.append(sd)
 		up.projects = ' '.join(currp)
@@ -2156,59 +2129,11 @@ class MainPage(webapp.RequestHandler):
 	
   def CurrentPage(self):
 	for page in Page.all().filter("path",self.request.path):
-		if page.sub == self.subdomain: # should eventually be filter
-			return page
+		return page
 	return None
 
-  def AppendConfigOption(self,list,fn,fv):
-	self.configOptions.append(fn)
-	list.append(fn + ': ' + fv)
-  
-  def ConfigJs(self):
-	'Dynamically construct file "/config.js"'
-	self.configOptions = list()
-	isLoggedIn = self.user != None
-	self.response.headers['Content-Type'] = 'application/x-javascript'
-	self.response.headers['Cache-Control'] = 'no-cache'
-	self.response.out.write(jsProlog)
-	if isLoggedIn:
-		upr = UserProfile.all().filter('user',self.user).get() # my profile
-		if upr == None:
-			upr = UserProfile(txtUserName=self.user.nickname()) # my null profile
-		else:
-			upr.txtUserName == self.user.nickname()
-	else:
-		upr = UserProfile(txtUserName='IP \t' + self.request.remote_addr) # anon null profile
-		
-	optlist = [ 'isLoggedIn: ' + ('true' if isLoggedIn else 'false') ]
-	for (fn,ft) in upr._properties.iteritems():
-		fv = getattr(upr,fn)
-		if fv != None:
-			if type(getattr(UserProfile,fn)) == db.BooleanProperty:
-				fv = 'true' if fv else 'false'
-			else:
-				fv = jsEncodeStr(fv)
-			if isNameAnOption(fn):
-				self.AppendConfigOption(optlist,fn, fv)
-	for (fn,ft) in upr._dynamic_properties.iteritems():
-		fv = getattr(upr,fn)
-		if fv != None:
-			if fn.startswith('chk'):
-				fv = 'true' if fv else 'false'
-			else:
-				fv = jsEncodeStr(fv)
-			if isNameAnOption(fn):
-				self.AppendConfigOption(optlist,fn, fv)
-
-	if isLoggedIn and not 'txtUserName' in self.configOptions:
-		self.AppendConfigOption(optlist,'txtUserName',jsEncodeStr(self.user.nickname()))
-
-	self.response.out.write(',\n\t\t'.join(optlist))
-	self.response.out.write('\n\t}\n};')
-
-  def getIncludeFiles(self,rootpath,page):
+  def getIncludeFiles(self,rootpath,page,defaultTiddlers):
 	tiddict = dict()
-	defaultTiddlers = None
 	includefiles = self.request.get('include').split()
 	if rootpath:
 		if page == None:
@@ -2220,9 +2145,6 @@ class MainPage(webapp.RequestHandler):
 				defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
 				tiddict['PageProperties'] = TiddlerFromXml(xml.dom.minidom.parse('PageProperties.xml').documentElement,self.request.path)
 
-	if self.subdomain != None:
-		includefiles.append('PublishPlugin.xml')
-		
 	if defaultTiddlers != None:
 		td = Tiddler()
 		td.title = "DefaultTiddlers"
@@ -2299,11 +2221,11 @@ class MainPage(webapp.RequestHandler):
 					self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
 						' has been deleted! <a href="', self.request.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
 	
-		tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",self.subdomain).filter("current", True)
+		tiddlers = Tiddler.all().filter("page", self.request.path).filter("current", True)
 		mergeDict(tiddict, tiddlers)
 	
 	if self.merge == True:
-		tiddlers = Tiddler.all().filter("page", self.request.path).filter("sub",None).filter("current", True)
+		tiddlers = Tiddler.all().filter("page", self.request.path).filter("current", True)
 		mergeDict(tiddict,tiddlers)
 	
 	if page != None:
@@ -2367,7 +2289,7 @@ class MainPage(webapp.RequestHandler):
 				metaDiv.setAttribute('timestamp',unicode(datetime.datetime.now()))
 				metaDiv.setAttribute('username',username)
 				metaDiv.setAttribute('owner', page.owner.nickname())
-				metaDiv.setAttribute('access', AccessToPage(page,self.subdomain,self.user))
+				metaDiv.setAttribute('access', AccessToPage(page,self.user))
 				metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
 				metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
 				metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
@@ -2514,8 +2436,6 @@ class MainPage(webapp.RequestHandler):
 
 	if self.request.path == "/_tasks":
 		return self.task(method)
-	elif self.request.path == '/config.js':
-		return self.ConfigJs()
 	elif self.request.path == "/_export.xml" and users.is_current_user_admin():
 		return self.export()
 	else:
@@ -2532,16 +2452,29 @@ class MainPage(webapp.RequestHandler):
 		message = None
 
 	self.warnings = []
-
+	defaultTiddlers = None
 	page = self.CurrentPage()
-	readAccess = ReadAccessToPage(page,self.subdomain,self.user)
-
+	readAccess = ReadAccessToPage(page,self.user)
+	if rootpath and self.subdomain != None:
+		if page == None:
+			if self.sdo == None:
+				self.response.set_status(404)
+				return
+			elif self.sdo.owneruser != self.user:
+				if self.user == None:
+					defaultTiddlers = ""
+				else:
+					self.response.set_status(404)
+					return
+			else:
+				message = "Start by defining root page properties"
+				
 	if page != None and page.gwversion < giewikiVersion:
 		Upgrade(self,giewikiVersion)
 		self.warnings.append("DataStore was upgraded")
 	if page == None and not rootpath:
 		# Not an existing page, perhaps an uploaded file ?
-		file = UploadedFile.all().filter("sub",self.subdomain).filter("path =", self.request.path).get()
+		file = UploadedFile.all().filter("path =", self.request.path).get()
 		LogEvent("Get file", self.request.path)
 		if file != None:
 			self.response.headers['Content-Type'] = file.mimetype
@@ -2552,7 +2485,7 @@ class MainPage(webapp.RequestHandler):
 			self.response.set_status(404)
 			return
 
-	tiddict = self.getIncludeFiles(rootpath,page)
+	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers)
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
 		
 	# last, but no least
@@ -2561,7 +2494,7 @@ class MainPage(webapp.RequestHandler):
 		LogEvent("get " + self.request.url,'\n'.join(self.trace))
 		self.trace = False	
 ############################################################################
-
+	
 application = webapp.WSGIApplication( [('/.*', MainPage)], debug=True)
 
 def main():

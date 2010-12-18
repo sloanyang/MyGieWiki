@@ -10,7 +10,6 @@ class Tiddler(db.Expando):
   "Unit of text storage"
   title = db.StringProperty()
   page = db.StringProperty()
-  sub = db.StringProperty()
   author = db.UserProperty()
   author_ip = db.StringProperty()
   version = db.IntegerProperty()
@@ -31,7 +30,6 @@ class Tiddler(db.Expando):
   def todict(s,d):
 	d['title'] = s.title
 	d['page'] = s.page
-	d['sub'] = s.sub
 	d['author'] = s.author
 	d['author_ip'] = s.author_ip
 	d['version'] = s.version
@@ -94,7 +92,6 @@ class Page(db.Model):
              10:"all", 8:"edit", 6:"add", 4:"comment", 2:"view", 0:"none" }
     
   path = db.StringProperty()
-  sub = db.StringProperty()
   owner = db.UserProperty()
   ownername = db.StringProperty()
   title = db.StringProperty()
@@ -114,7 +111,6 @@ class Page(db.Model):
   template = db.ReferenceProperty(PageTemplate)
   def todict(s,d):
 	d['path'] = s.path
-	d['sub'] = s.sub
 	d['owner'] = s.owner
 	d['title'] = s.title
 	d['subtitle'] = s.subtitle
@@ -208,7 +204,6 @@ class UrlImport(db.Model):
 
 class UploadedFile(db.Model):
   owner = db.UserProperty()
-  sub = db.StringProperty()
   path = db.StringProperty()
   mimetype = db.StringProperty()
   data = db.BlobProperty()
@@ -259,14 +254,14 @@ def HasGroupAccess(grps,user):
 				return True
 	return False
 	
-def ReadAccessToPage( page, sub = None, user = None):
+def ReadAccessToPage( page, user = None):
 	if user == None:
 		user = users.get_current_user()
 	if page == None:
 		return False
 
 	if page.__class__ in (unicode, str):
-		page = Page.all().filter('path',page).filter('sub',sub).get()
+		page = Page.all().filter('path',page).get()
 	if page == None: # Un-cataloged page - restricted access
 		return users.is_current_user_admin()
 	if page.anonAccess >= page.ViewAccess: # anyone can see it
@@ -280,9 +275,9 @@ def ReadAccessToPage( page, sub = None, user = None):
 			return True
 	return False
 
-def AccessToPage( page, sub = None, user = users.get_current_user()):
+def AccessToPage( page, user = users.get_current_user()):
 	if page.__class__ == unicode:
-		page = Page.all().filter('path',page).filter('sub',sub).get()
+		page = Page.all().filter('path',page).get()
 	if page == None: # Un-cataloged page - restricted access
 		return 'all' if users.is_current_user_admin() else 'none'
 	if page.owner == user or users.is_current_user_admin():
@@ -294,8 +289,6 @@ def AccessToPage( page, sub = None, user = users.get_current_user()):
 	return Page.access[access]
 
 def upgradePage(p,version):
-	if hasattr(p,'sub') == False:
-		setattr(p,'sub',None)
 	if hasattr(p,'tags') == False:
 		setattr(p,'tags', '')
 		setattr(p,'template',None)
