@@ -1,10 +1,11 @@
 # this:	giewikidb.py
-# by:	Poul Staugaard
+# by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.6
+# ver.:	1.7.0
 
 from google.appengine.ext import db
 from google.appengine.api import users
+from google.appengine.api import namespace_manager
 
 class Tiddler(db.Expando):
   "Unit of text storage"
@@ -92,6 +93,7 @@ class Page(db.Model):
              10:"all", 8:"edit", 6:"add", 4:"comment", 2:"view", 0:"none" }
     
   path = db.StringProperty()
+  sub = db.StringProperty()
   owner = db.UserProperty()
   ownername = db.StringProperty()
   title = db.StringProperty()
@@ -215,6 +217,13 @@ class UserProfile(db.Expando):
   tiddler = db.StringProperty("")
   projects = db.StringProperty("")
   txtUserName = db.StringProperty() # penname, using TW's term
+  def Projects(self,sub):
+	if sub != None:
+		namespace_manager.set_namespace(None)
+		rootUser = UserProfile.all().filter('user',users.get_current_user()).get()
+		if rootUser != None:
+			return rootUser.projects
+	return self.projects # should be blank...
 
 class PenName(db.Model):
   penname = db.StringProperty()
@@ -225,6 +234,7 @@ class SubDomain(db.Model):
   ownerprofile = db.ReferenceProperty(UserProfile)
   owneruser = db.UserProperty()
   public = db.BooleanProperty()
+  version = db.StringProperty()
 
 class LogEntry(db.Model):
 	when = db.DateTimeProperty(auto_now_add=True)
@@ -247,6 +257,13 @@ def truncateAllData():
 	truncateModel(UploadedFile)
 	truncateModel(LogEntry)
 	
+def userWho():
+	u = users.get_current_user()
+	if (u):
+		return u.nickname()
+	else:
+		return ""
+
 def HasGroupAccess(grps,user):
 	if grps != None:
 		for ga in grps.split(","):
@@ -288,20 +305,44 @@ def AccessToPage( page, user = users.get_current_user()):
 		access = page.anonAccess
 	return Page.access[access]
 
+def CopyIntoNamespace(e,ns):
+	namespace_manager.set_namespace(ns)
+	np = e.__class__()
+	for aen,aep in e.__dict__['_entity'].iteritems():
+		av = getattr(e,aen)
+		setattr(np,aen,av)
+	np.put()
+	return np
+
 def upgradePage(p,version):
 	if hasattr(p,'tags') == False:
 		setattr(p,'tags', '')
 		setattr(p,'template',None)
-	setattr(p,'gwversion',version)
-	p.put()
+	if hasattr(p,'sub') and p.sub != None:
+		np = CopyIntoNamespace(p,p.sub)
+		setattr(np,'gwversion',version)
+		np.put()
+		p.delete()
+	else:
+		setattr(p,'gwversion',version)
+		p.put()
 
-def Upgrade(self, version):
-	UpgradeTable(Page,upgradePage,version)
+def upgradeSub(p,version):
+	if hasattr(p,'sub') and p.sub != None:
+		CopyIntoNamespace(p,p.sub)
+		p.delete()
+		
+def Upgrade(mainPage, version):
+	UpgradeTable(Page,upgradePage,version,mainPage)
+	UpgradeTable(Tiddler,upgradeSub,version,mainPage)
+	UpgradeTable(UploadedFile,upgradeSub,version,mainPage)
 
-def UpgradeTable(c,f,v):
+def UpgradeTable(c,f,v,mp):
 	cursor = None
 	repeat = True
 	while repeat:
+		if mp.subdomain != None and (not hasattr(mp.sdo,"version") or mp.sdo.version < '2.7'):
+			namespace_manager.set_namespace(None)
 		ts = c.all()
 		if cursor != None:
 			ts.with_cursor(cursor)

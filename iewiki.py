@@ -1,8 +1,7 @@
-# /****************************************************
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.6.3
+# ver.:	1.7.0
 
 import cgi
 import codecs
@@ -29,9 +28,9 @@ from google.appengine.api import mail
 from google.appengine.api import namespace_manager
 
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
-from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade
+from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade, CopyIntoNamespace
 
-giewikiVersion = '2.6'
+giewikiVersion = '2.7'
 
 class library():
 	static = ['YouTube.xml']	
@@ -1843,6 +1842,12 @@ class MainPage(webapp.RequestHandler):
 	if cu == None:
 		return self.fail('Not logged in')
 	u = UserProfile.all().filter('user', cu).get()
+	if u == None and self.subdomain != None:
+		namespace_manager.set_namespace(None)
+		u = UserProfile.all().filter('user', cu).get()
+		namespace_manager.set_namespace(self.subdomain)
+		if u != None:
+			CopyIntoNamespace(u,self.subdomain)
 	an = None
 	al = self.request.arguments()
 	al.remove('method') # ignore
@@ -1888,13 +1893,22 @@ class MainPage(webapp.RequestHandler):
 		u.put()
 		self.reply()
 	elif u != None: # retrieve data
+		urls = list()
+		host = self.request.host
+		if self.subdomain != None:
+			host = host[len(self.subdomain):]
+		else:
+			host = '.' + host
+		prjs = u.Projects(self.subdomain).split(' ')
+		for p in prjs:
+			urls.append(p + host)
 		self.reply({ \
 			'Success': True, \
 			'txtUserName': NoneIsBlank(u.txtUserName),
 			'txtEmail': u.txtEmail if hasattr(u,'txtEmail') else cu.email(), 
 			'aboutme': NoneIsBlank(u.aboutme),
 			'tiddler': NoneIsBlank(u.tiddler),
-			'projects': NoneIsBlank(u.projects)})
+			'projects': ' '.join(urls)})
 	elif cu != None:
 		self.reply({ \
 			'Success': True, \
@@ -2129,6 +2143,11 @@ class MainPage(webapp.RequestHandler):
 	
   def CurrentPage(self):
 	for page in Page.all().filter("path",self.request.path):
+		return page
+	if self.subdomain != None and (not hasattr(self.sdo,"version") or self.sdo.version < giewikiVersion):
+		namespace_manager.set_namespace(None)
+		page = Page.all().filter('sub',self.subdomain).filter("path",self.request.path).get()
+		namespace_manager.set_namespace(self.subdomain)
 		return page
 	return None
 
@@ -2456,6 +2475,7 @@ class MainPage(webapp.RequestHandler):
 	page = self.CurrentPage()
 	readAccess = ReadAccessToPage(page,self.user)
 	if rootpath and self.subdomain != None:
+		message = "Here is your new project"
 		if page == None:
 			if self.sdo == None:
 				self.response.set_status(404)

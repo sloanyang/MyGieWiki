@@ -66,10 +66,12 @@
     <None Include="index.yaml" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="config.py" />
     <Content Include="giewikidb.py" />
     <Content Include="help-anonymous.xml" />
     <Content Include="help-authenticated.xml" />
     <Content Include="iewiki.py" />
+    <Content Include="iewiki.xsl" />
     <Content Include="index.py" />
     <Content Include="Hello.py" />
     <Content Include="LibraryUsageHelp.xml" />

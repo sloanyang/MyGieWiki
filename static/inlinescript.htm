@@ -7,6 +7,7 @@
 <h1>InlineJavascriptPlugin</h1>
 <h4>Source:	<a href="http://www.TiddlyTools.com/#InlineJavascriptPlugin">http://www.TiddlyTools.com/#InlineJavascriptPlugin</a></h4>
 <h4>Author:	Eric Shulman - ELS Design Studios</h4>
+<h4>Mods:	Poul Staugaard: Replaced the src attribute (which didn't work) with an if attribute </h4>
 
 License: <a href="http://creativecommons.org/licenses/by-sa/2.5/">Creative Commons Attribution-ShareAlike 2.5 License</a>
 <br />		
@@ -24,11 +25,9 @@ By including a label="..." parameter in the initial &lt;script&gt; marker, the p
 script that will only be executed when that specific link is clicked, rather than running the script each time the tiddler 
 is rendered.
 
-<h3> External script source files </h3>
-You can also load javascript from an external source URL, by including a src="..." parameter in the initial &lt;script&gt;
-marker (e.g., &lt;script src="demo.js"&gt;&lt;/script&gt;).  This is particularly useful when incorporating third-party javascript 
-libraries for use in custom extensions and plugins. The 'foreign' javascript code remains isolated in a separate file that 
-can be easily replaced whenever an updated library file becomes available.
+<h3> Conditional insertion </h3>
+You can precede the label parameter with a if="javascript expression" parameter in the initial &lt;script&gt;
+marker (e.g., &lt;script if="a()" label="..."&gt;&lt;/script&gt;).  This is useful defining buttons that depend on a condition.
 
 <h3> Display script source in tiddler output </h3>
 By including the keyword parameter "show", in the initial &lt;script&gt; marker, the plugin will include the script source 

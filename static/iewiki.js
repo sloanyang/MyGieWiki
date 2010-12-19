@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.6.3
+   version:	1.7.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -3667,6 +3667,7 @@ TiddlyWiki.prototype.getMissingLinks = function(sortField) {
     if (!this.tiddlersUpdated)
         this.updateTiddlers();
     var results = [];
+	this.fetchFromServer = false; // disabled for better performance
     this.forEachTiddler(function(title, tiddler) {
         if (tiddler.isTagged("excludeMissing") || tiddler.isTagged("systemConfig") || tiddler.currentVer == 0)
             return;
@@ -3676,6 +3677,7 @@ TiddlyWiki.prototype.getMissingLinks = function(sortField) {
                 results.pushUnique(link);
         }
     });
+	this.fetchFromServer = true;
     results.sort();
     return results;
 };
@@ -7754,7 +7756,7 @@ config.macros.myprojects = {
 		if (projects && projects.length) {
 			var ps = projects.split(' ');
 			for (var p = 0; p < ps.length; p++) {
-				var link = createExternalLink(place,'http://' + [ps[p], window.location.host].join('.'));
+				var link = createExternalLink(place,'http://' + ps[p]);
 				link.innerHTML = ps[p];
 				createTiddlyElement(place,'br');
 			}
@@ -8175,24 +8177,22 @@ Author:	Eric Shulman - ELS Design Studios (http://www.elsdesign.com)
 License:Creative Commons Attribution-ShareAlike 2.5 License (http://creativecommons.org/licenses/by-sa/2.5/)
  ***/
  
-version.extensions.inlineJavascript= {major: 1, minor: 6, revision: 0, date: new Date(2007,2,19)};
+version.extensions.inlineJavascript= {major: 1, minor: 6, revision: 10, date: new Date(2010,12,19)};
 
 config.formatters.push( {
 	name: "inlineJavascript",
 	match: "\\<script",
-	lookahead: "\\<script(?: src=\\\"((?:.|\\n)*?)\\\")?(?: label=\\\"((?:.|\\n)*?)\\\")?(?: title=\\\"((?:.|\\n)*?)\\\")?( show)?\\>((?:.|\\n)*?)\\</script\\>",
+	lookahead: "\\<script(?: if=\\\"((?:.|\\n)*?)\\\")?(?: label=\\\"((?:.|\\n)*?)\\\")?(?: title=\\\"((?:.|\\n)*?)\\\")?( show)?\\>((?:.|\\n)*?)\\</script\\>",
 
 	handler: function(w) {
 		var lookaheadRegExp = new RegExp(this.lookahead,"mg");
 		lookaheadRegExp.lastIndex = w.matchStart;
 		var lookaheadMatch = lookaheadRegExp.exec(w.source)
 		if(lookaheadMatch && lookaheadMatch.index == w.matchStart) {
-			if (lookaheadMatch[1]) { // load a script library
-				// make script tag, set src, add to body to execute, then remove for cleanup
-				var script = document.createElement("script"); script.src = lookaheadMatch[1];
-				document.body.appendChild(script); document.body.removeChild(script);
-			}
-			if (lookaheadMatch[5]) { // there is script code
+			var act = true;
+			if (lookaheadMatch[1] && !eval(lookaheadMatch[1])) // precondition
+				act = false;
+			if (act && lookaheadMatch[5]) { // there is script code
 				if (lookaheadMatch[4]) // show inline script code in tiddler output
 					wikify("{{{\n"+lookaheadMatch[0]+"\n}}}\n",w.output);
 				if (lookaheadMatch[2]) { // create a link to an 'onclick' script

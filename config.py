@@ -1,8 +1,7 @@
-# /****************************************************
 # this:	Config.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.6.4
+# ver.:	1.7.0
 
 import cgi
 import codecs
@@ -17,17 +16,19 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
+from google.appengine.api import namespace_manager
 
 from giewikidb import UserProfile
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 6, revision: 4, date: new Date("Dec 16, 2010"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 7, revision: 0, date: new Date("Dec 19, 2010"), extensions: {} };\n\
 var config = {\n\
 	animDuration: 400,\n\
 	cascadeFast: 20,\n\
 	cascadeSlow: 60,\n\
 	cascadeDepth: 5,\n\
 	locale: "en",\n\
+	project: "<project>",\n\
 	options: {\n\
 		' # the rest is built dynamically
 
@@ -36,20 +37,56 @@ def isNameAnOption(name):
 
 def jsEncodeStr(s):
 	return '"' + unicode(s).replace(u'"',u'\\"').replace(u'\n',u'\\n').replace(u'\r',u'') + u'"'
+
+def IsIPaddress(v):
+	if len(v) < 4:
+		return False
+	lix = len(v) - 1
+	if v[lix].find(':') > 0:
+		v[lix] = v[lix].split(':')[0]
+	for a in range(len(v)-4,len(v)):
+		try:
+			n = int(v[a])
+			if n < 0 or n > 255:
+				return False
+		except Exception:
+			return False
+	return True
 	
 class ConfigJs(webapp.RequestHandler):
+  def getSubdomain(self):
+	hostc = self.request.host.split('.')
+	if len(hostc) > 3: # e.g. subdomain.giewiki.appspot.com
+		if IsIPaddress(hostc): # [sd.]n.n.n.n[:port]
+			pos = len(hostc) - 5
+		else:
+			pos = len(hostc) - 4
+	elif len(hostc) > 1 and hostc[len(hostc) - 1].startswith('localhost'): # e.g. sd.localhost:port
+		pos = len(hostc) - 2
+	# elif... support for app.org.tld domains -- TODO
+	else:
+		return ""
+
+	if pos >= 0 and hostc[pos] != 'latest': # App engine uses this for alternate versions
+		sd = hostc[pos]
+		namespace_manager.set_namespace(sd)
+		return sd
+	else:
+		return ""
+
   def AppendConfigOption(self,list,fn,fv):
 	self.configOptions.append(fn)
 	list.append(fn + ': ' + fv)
-  
+
   def get(self):
 	'Dynamically construct file "/config.js"'
 	user = users.get_current_user()
+	self.getSubdomain()
 	self.configOptions = list()
 	isLoggedIn = user != None
 	self.response.headers['Content-Type'] = 'application/x-javascript'
 	self.response.headers['Cache-Control'] = 'no-cache'
-	self.response.out.write(jsProlog)
+	self.response.out.write(jsProlog.replace("<project>",self.getSubdomain()))
 	if isLoggedIn:
 		upr = UserProfile.all().filter('user',user).get() # my profile
 		if upr == None:
