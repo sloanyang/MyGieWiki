@@ -6943,7 +6943,7 @@ config.macros.input = {
 		var fft = params.shift();
 		var ffn = params.shift();
 		var initer = config.macros.input[fft];
-		var f = GetForm(place);
+		var f = GetForm(tiddler.title);
 		if (params.length == 1 && f && f[ffn] != null)
 			params[1] = f[ffn]; // get default value from form
 		f.controls = f.controls || [];
@@ -7061,10 +7061,16 @@ PageProperties = {
 				createTiddlyElement(ediv, 'br');
 			};
 		}
-		else
-			return "''[As you are not logged in, this dialog is not functional]''";
+		else {
+			forms.PageProperties = {};
+			return "''[As you are not logged in, this dialog is not functional]''";			
+		}
 	},
 	activated: function () {
+		if (!config.isLoggedIn()) {
+			forms.PageProperties.controls['title'].setAttribute("readOnly", "readOnly");
+			forms.PageProperties.controls['subtitle'].setAttribute("readOnly", "readOnly");						
+		}
 		if (!forms.PageProperties || !forms.PageProperties.owner)
 			return;
 		forms.PageProperties.controls['title'].focus();
@@ -7777,18 +7783,15 @@ config.macros.urlFetch = {
 config.macros.downloadAsTiddlyWiki = {
 	handler: function(place, macroName, params)
 	{
-		if (window.location.protocol == "file:") 
+		if (location.protocol == "file:")
 			return;
 		createTiddlyText(place, "Download");
-
-		var link = document.createElement("a");
-		link.href = location.pathname + "?twd=" + config.options.txtEmptyTiddlyWiki; 
+		var link = config.macros.downloadAsTiddlyWiki.createLink( '.html', '?twd=' + config.options.txtEmptyTiddlyWiki, '.htm'); 
 		link.title = "Right-click to download this page as a Tiddlywiki";
 		createTiddlyText(link, " TiddlyWiki");
 		place.appendChild(link);
 
-		var link = document.createElement("a");
-		link.href = location.pathname + "?xsl="; 
+		var link = config.macros.downloadAsTiddlyWiki.createLink( '.xml', '?xsl='); 
 		link.title = "Right-click to download this page as XML";
 		createTiddlyText(link, " XML");
 		place.appendChild(link);
@@ -7800,6 +7803,15 @@ config.macros.downloadAsTiddlyWiki = {
 			createTiddlyText(link, " Backup");
 			place.appendChild(link);
 		}
+	},
+	createLink: function(ft,qs,fta) // append default filetype & query string
+	{
+		var link = document.createElement("a");
+		var path = location.pathname;
+		if (path.right(ft.length) != ft && (!fta || path.right(fta.length) != fta))
+			path = path + ft;
+		link.href = path + qs;
+		return link;
 	}
 }
 

@@ -447,9 +447,9 @@ class MainPage(webapp.RequestHandler):
   
   def editTiddler(self):
 	"http version tiddlerId"
-	page = Page.all().filter("path",self.request.path).get()
+	page = Page.all().filter("path",self.path).get()
 	if page == None:
-		error = "Page does not exist: " + self.request.path
+		error = "Page does not exist: " + self.path
 	else:
 		error = page.UpdateViolation()
 	if error == None:
@@ -508,7 +508,7 @@ class MainPage(webapp.RequestHandler):
   def saveTiddler(self):
 	"http tiddlerName text tags version tiddlerId versions"
 	tlr = Tiddler()
-	tlr.page = self.request.path
+	tlr.page = self.path
 	tlr.id = self.request.get('tiddlerId')
 	page = Page.all().filter("path",tlr.page).get()
 	if page == None:
@@ -944,7 +944,7 @@ class MainPage(webapp.RequestHandler):
 	user = users.get_current_user()
 	if user == None:
 		return self.fail("You are not logged in");
-	path = self.request.path
+	path = self.path
 	page = self.CurrentPage()
 	if page == None:
 		if path == '/' and user != None: # Root page
@@ -1044,7 +1044,7 @@ class MainPage(webapp.RequestHandler):
 	self.reply({'Success': True, 'templates': dt})
 
   def getNewAddress(self):
-	path = self.request.path
+	path = self.path
 	lsp = path.rfind('/')
 	parent = path[0:1+lsp]
 	title = self.request.get('title')
@@ -1072,7 +1072,7 @@ class MainPage(webapp.RequestHandler):
 
   def createPage(self):
 	user = users.get_current_user()
-	path = self.request.path
+	path = self.path
 	lsp = path.rfind("/")
 	parent = path[0:1+lsp]
 	pad = Page.all().filter("path =",parent).get()
@@ -1143,7 +1143,7 @@ class MainPage(webapp.RequestHandler):
 	self.response.out.write(xd.toxml())
 
   def deletePage(self):
-	path = self.request.path
+	path = self.path
 	prex = Page.all().filter("path =",path)
 	tls = Tiddler.all().filter("page=",path)
 	for result in tls:
@@ -1306,7 +1306,7 @@ class MainPage(webapp.RequestHandler):
 		title = url[1]
 		page = url[0]
 	else:
-		page = self.request.path
+		page = self.path
 		
 	t = Tiddler.all().filter('page', page).filter('title',title).filter('current', True).get()
 	if t == None:
@@ -1314,7 +1314,7 @@ class MainPage(webapp.RequestHandler):
 			xdt = xml.dom.minidom.parse(title+'.xml')
 			de = xdt.documentElement
 			if de.tagName == 'tiddler':
-				t = TiddlerFromXml(de,self.request.path)
+				t = TiddlerFromXml(de,self.path)
 				t.public = True
 			else:
 				self.reply({'success': False })
@@ -1464,7 +1464,7 @@ class MainPage(webapp.RequestHandler):
 	return False  
   
   def uploadTiddlersFrom(self,storeArea):
-	page = Page.all().filter("path",self.request.path).get()
+	page = Page.all().filter("path",self.path).get()
 	if page == None:
 		error = "Page " + nt.page + " doesn't exist (page properties are not undefined)!"
 	else:
@@ -1477,7 +1477,7 @@ class MainPage(webapp.RequestHandler):
 	for te in storeArea.childNodes:
 		# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else unicode(te.nodeType)) + "&gt;");
 		if te.nodeType == xml.dom.Node.ELEMENT_NODE:
-			nt = TiddlerFromXml(te,self.request.path)
+			nt = TiddlerFromXml(te,self.path)
 			if nt == None:
 				return
 			nt.public = page.anonAccess > page.NoAccess
@@ -1485,7 +1485,7 @@ class MainPage(webapp.RequestHandler):
 			
 			et = Tiddler.all().filter('id',nt.id).filter("current",True).get() if nt.id != "" else None
 			if et == None:
-				et = Tiddler.all().filter('page',self.request.path).filter('title',nt.title).filter("current",True).get()
+				et = Tiddler.all().filter('page',self.path).filter('title',nt.title).filter("current",True).get()
 				
 			# self.response.out.write("Not found " if et == None else ("Found v# " + unicode(et.version)))
 			if et == None:
@@ -1506,7 +1506,7 @@ class MainPage(webapp.RequestHandler):
 				self.response.out.write("<li>" + nt.title + " - no changes</li>")
 				continue
 			nt.put()
-			self.response.out.write('<li><a href="' + self.request.path + "#" + urllib.quote(nt.title) + '">' + nt.title + "<a> " + self.status + "</li>");
+			self.response.out.write('<li><a href="' + self.path + "#" + urllib.quote(nt.title) + '">' + nt.title + "<a> " + self.status + "</li>");
 			page.Update(nt)
 	self.response.out.write("</ul>");
 
@@ -1600,14 +1600,14 @@ class MainPage(webapp.RequestHandler):
 	else:
 		f = UploadedFile()
 		f.owner = users.get_current_user()
-		f.path = CombinePath(self.request.path, filename)
+		f.path = CombinePath(self.path, filename)
 		f.mimetype = self.request.get("mimetype")
 		if f.mimetype == None or f.mimetype == "":
 			f.mimetype = MimetypeFromFiletype(filetype)
 		f.data = db.Blob(filedata)
 		f.put()
 		u = open('UploadDialog.htm')
-		ut = u.read().replace("UFL",leafOfPath(self.request.path) + self.request.get("filename")).replace("UFT",f.mimetype).replace("ULR","Uploaded:")
+		ut = u.read().replace("UFL",leafOfPath(self.path) + self.request.get("filename")).replace("UFT",f.mimetype).replace("ULR","Uploaded:")
 		self.response.out.write(ut)
 		u.close()
 	
@@ -2010,6 +2010,7 @@ class MainPage(webapp.RequestHandler):
 
   def post(self):
 	self.user = users.get_current_user()
+	self.path = self.request.path
 	trace = memcache.get(self.request.remote_addr)
 	self.trace = [] if trace != None and trace != "0" else False
 	self.getSubdomain()
@@ -2042,7 +2043,7 @@ class MainPage(webapp.RequestHandler):
 	div.setAttribute('title', unicode(t.title))
 	if getattr(t,'locked',False):
 		div.setAttribute('locked','true')
-	elif t.page != self.request.path:
+	elif t.page != self.path:
 		if t.page != None:
 			div.setAttribute('from',unicode(t.page))
 		div.setAttribute('locked','true')
@@ -2142,11 +2143,11 @@ class MainPage(webapp.RequestHandler):
 	self.trace.append(msg)
 	
   def CurrentPage(self):
-	for page in Page.all().filter("path",self.request.path):
+	for page in Page.all().filter("path",self.path):
 		return page
 	if self.subdomain != None and (not hasattr(self.sdo,"version") or self.sdo.version < giewikiVersion):
 		namespace_manager.set_namespace(None)
-		page = Page.all().filter('sub',self.subdomain).filter("path",self.request.path).get()
+		page = Page.all().filter('sub',self.subdomain).filter("path",self.path).get()
 		namespace_manager.set_namespace(self.subdomain)
 		return page
 	return None
@@ -2162,7 +2163,7 @@ class MainPage(webapp.RequestHandler):
 			else:
 				includefiles.append('help-authenticated.xml')
 				defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
-				tiddict['PageProperties'] = TiddlerFromXml(xml.dom.minidom.parse('PageProperties.xml').documentElement,self.request.path)
+				tiddict['PageProperties'] = TiddlerFromXml(xml.dom.minidom.parse('PageProperties.xml').documentElement,self.path)
 
 	if defaultTiddlers != None:
 		td = Tiddler()
@@ -2233,22 +2234,22 @@ class MainPage(webapp.RequestHandler):
 
 	if readAccess:
 		for st in ShadowTiddler.all():
-			if self.request.path.startswith(st.path):
+			if self.path.startswith(st.path):
 				try:
 					tiddict[st.tiddler.title] = st.tiddler
 				except Exception, x:
 					self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
-						' has been deleted! <a href="', self.request.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
+						' has been deleted! <a href="', self.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
 	
-		tiddlers = Tiddler.all().filter("page", self.request.path).filter("current", True)
+		tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
 		mergeDict(tiddict, tiddlers)
 	
 	if self.merge == True:
-		tiddlers = Tiddler.all().filter("page", self.request.path).filter("current", True)
+		tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
 		mergeDict(tiddict,tiddlers)
 	
 	if page != None:
-		includes = Include.all().filter("page", self.request.path)
+		includes = Include.all().filter("page", self.path)
 		for t in includes:
 			tv = t.version
 			tq = Tiddler.all().filter("id = ", t.id)
@@ -2278,11 +2279,11 @@ class MainPage(webapp.RequestHandler):
 	for id, t in tiddict.iteritems():
 		self.Trace(id + ':' + t.title)
 	pages = []
-	papalen = self.request.path.rfind('/')
+	papalen = self.path.rfind('/')
 	if papalen == -1:
 		paw = "";
 	else:
-		paw = self.request.path[0:papalen + 1]
+		paw = self.path[0:papalen + 1]
 	for p in Page.all():
 		if p.path.startswith(paw):
 			pages.append(p)
@@ -2356,7 +2357,7 @@ class MainPage(webapp.RequestHandler):
 		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
 		for id, t in tiddict.iteritems():
 			# pages at /_python/ are executable script...
-			if t.page != None and t.page.startswith("/_python/") and t.page != self.request.path:
+			if t.page != None and t.page.startswith("/_python/") and t.page != self.path:
 				# ...either to be called from a http (XmlHttpRequest) method
 				if t.tags == 'HttpMethod':
 					if httpMethods != None:
@@ -2376,16 +2377,16 @@ class MainPage(webapp.RequestHandler):
 						t.text = unicode(x)
 
 			if t.tags != None and "shadowTiddler" in t.tags.split():
-				if t.page != self.request.path: # remove tag if not the source page
+				if t.page != self.path: # remove tag if not the source page
 					tags = t.tags.split()
 					tags.remove("shadowTiddler")
 					t.tags = ' '.join(tags)
 				elShArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
 			elif t.tags != None and "systemScript" in t.tags.split():
 				if xsl == "/static/iewiki.xsl":
-					xsl = "/dynamic/iewiki-xsl?path=" + self.request.path
+					xsl = "/dynamic/iewiki-xsl?path=" + self.path
 				scripts[t.title] = t.text
-				memcache.add(self.request.path,scripts,5);
+				memcache.add(self.path,scripts,5);
 				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
 			else:
 				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
@@ -2435,6 +2436,7 @@ class MainPage(webapp.RequestHandler):
 
   def get(self): # this is where it all starts
 	self.user = users.get_current_user()
+	self.path = self.request.path
 	
 	trace = self.request.get('trace')
 	if trace == '':
@@ -2453,12 +2455,12 @@ class MainPage(webapp.RequestHandler):
 		elif method == "deleteLink":
 			return self.deleteLink(self.request.get('id'))
 
-	if self.request.path == "/_tasks":
+	if self.path == "/_tasks":
 		return self.task(method)
-	elif self.request.path == "/_export.xml" and users.is_current_user_admin():
+	elif self.path == "/_export.xml" and users.is_current_user_admin():
 		return self.export()
 	else:
-		rootpath = self.request.path == '/'
+		rootpath = self.path == '/'
 
 	twd = self.request.get('twd',None)
 	xsl = self.request.get('xsl',None)
@@ -2473,6 +2475,13 @@ class MainPage(webapp.RequestHandler):
 	self.warnings = []
 	defaultTiddlers = None
 	page = self.CurrentPage()
+	if page == None:
+		if twd != None and self.path.endswith('.html'):
+			self.path = self.path[0:-5]
+			page = self.CurrentPage()
+		elif xsl != None and self.path.endswith('.xml'):
+			self.path = self.path[0:-4]
+			page = self.CurrentPage()
 	readAccess = ReadAccessToPage(page,self.user)
 	if rootpath and self.subdomain != None:
 		message = "Here is your new project"
@@ -2494,8 +2503,8 @@ class MainPage(webapp.RequestHandler):
 		self.warnings.append("DataStore was upgraded")
 	if page == None and not rootpath:
 		# Not an existing page, perhaps an uploaded file ?
-		file = UploadedFile.all().filter("path =", self.request.path).get()
-		LogEvent("Get file", self.request.path)
+		file = UploadedFile.all().filter("path =", self.path).get()
+		LogEvent("Get file", self.path)
 		if file != None:
 			self.response.headers['Content-Type'] = file.mimetype
 			self.response.headers['Cache-Control'] = 'no-cache'
