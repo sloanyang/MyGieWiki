@@ -505,20 +505,56 @@ class MainPage(webapp.RequestHandler):
 	else:
 		self.fail('no such tiddler')
 
-  def saveTiddler(self):
+  def authenticateAndSaveTiddlersFromCache(self):
+	if users.get_current_user() == None:
+		return False
+	mckey = 'saveTiddler ' + str(self.request.remote_addr)
+	posts = memcache.get(mckey)
+	if posts != None:
+		for tlr in posts:
+			self.saveTiddler(tlr)
+		memcache.delete(mckey)
+		return False
+	else:
+		self.redirect(self.request.path + '?no_posts')
+		return True
+
+  def saveTiddler(self, tlr=None):
 	"http tiddlerName text tags version tiddlerId versions"
-	tlr = Tiddler()
-	tlr.page = self.path
-	tlr.id = self.request.get('tiddlerId')
+	self.response.headers.add_header('Access-Control-Allow-Origin','*')
+	if tlr == None:
+		reply = True # called directly
+		tlr = Tiddler()
+		tlr.page = self.path
+		tlr.title = self.request.get("tiddlerName") # why not 'title'?
+		for ra in self.request.arguments():
+			if not ra in ('method','tiddlerId','tiddlerName','fields','created','modifier','modified','fromVer','shadow','vercnt','key','reverted','reverted_by'):
+				setattr(tlr,ra,self.request.get(ra))
+
+		tlr.id = self.request.get('tiddlerId')
+	else:
+		reply = False # called from authenticateAndSaveTiddlersFromCache
+
 	page = Page.all().filter("path",tlr.page).get()
 	if page == None:
 		error = "Page does not exist: " + tlr.page
 	else:
 		error = page.UpdateViolation()
+		if error != None and users.get_current_user() == None and self.request.get('modified',None) != None:
+			mckey = 'saveTiddler ' + str(self.request.remote_addr)
+			rqlist = memcache.get(mckey)
+			if rqlist == None:
+				rqlist = []
+			rqlist.append(tlr)
+			memcache.set(mckey, rqlist, 300)
+			#logging.info("MC Post: " + mckey)
+			error = 'Please <a href="' + self.request.url + '?method=authenticate" target="_blank">authenticate your post</a>'
 
 	if tlr.id == '':
 		tlr.version = 1
 		tlr.vercnt = 1
+	elif tlr.id in ['SiteTitle','SiteSubtitle']: # not versioned
+		tlr.version = -1
 	else:
 		if tlr.id.startswith('include-'):
 			# break the link and create a new tiddler
@@ -539,7 +575,7 @@ class MainPage(webapp.RequestHandler):
 				if el != None:
 					error = t.title + " locked by " + userNameOrAddress(el.user,el.user_ip)
 				else:
-					sv = self.request.get('currentVer')
+					sv = getattr(tlr, 'currentVer')
 					v = eval(sv)
 					if v != t.version:
 						error = "Edit conflict: '" +  t.title + "' version " + sv + " is not the current version (" + unicode(t.version) + " is)"
@@ -547,14 +583,6 @@ class MainPage(webapp.RequestHandler):
 	if error != None:
 		return self.fail(error)
 		
-	tlr.public = page.anonAccess > page.NoAccess
-	tlr.title = self.request.get("tiddlerName")
-	tlr.text = self.request.get("text")
-	tlr.tags = self.request.get("tags")
-	for ra in self.request.arguments():
-		if not ra in ('method','tiddlerId','tiddlerName','text','tags','currentVer','modifier','fromVer','shadow','vercnt','key','reverted','reverted_by'):
-			setattr(tlr,ra,self.request.get(ra))
-
 	tlr.comments = 0
 	if (tlr.id == ""):
 		tlr.id = unicode(uuid.uuid4())
@@ -604,7 +632,9 @@ class MainPage(webapp.RequestHandler):
 
 		tlr.text = '\n'.join(tlf)
 	
-	tlr.put()
+	if tlr.version != -1:
+		tlr.public = page.anonAccess > page.NoAccess
+		tlr.put()
 	if page != None:
 		page.Update(tlr)
 
@@ -620,28 +650,31 @@ class MainPage(webapp.RequestHandler):
 	if isShared and st == None:
 		s = ShadowTiddler(tiddler = tlr, path = tlr.page, id = tlr.id)
 		s.put()
-	
-	xd = self.initXmlResponse()
-	esr = xd.add(xd,'SaveResp')
-	xd.appendChild(esr)
-	we = xd.createElement('when')
-	we.setAttribute('type','datetime')
-	we.appendChild(xd.createTextNode(tlr.modified.strftime("%Y%m%d%H%M%S")))
-	ide = xd.createElement('id')
-	ide.appendChild(xd.createTextNode(unicode(tlr.id)))
-	vne = xd.createElement('currentVer')
-	vne.appendChild(xd.createTextNode(unicode(tlr.version)))
-	aue = xd.createElement('modifier')
-	aue.appendChild(xd.createTextNode(getAuthor(tlr)))
-	vce = xd.createElement('vercnt')
-	vce.appendChild(xd.createTextNode(unicode(tlr.vercnt)))
-	esr.appendChild(we)
-	esr.appendChild(ide)
-	esr.appendChild(vne)
-	esr.appendChild(aue)
-	esr.appendChild(vce)
-	esr.appendChild(getTiddlerVersions(xd,unicode(tlr.id),eval(self.request.get('fromVer'))))
-	self.response.out.write(xd.toxml())
+	if reply:
+		xd = self.initXmlResponse()
+		esr = xd.add(xd,'SaveResp')
+		xd.appendChild(esr)
+		
+		we = xd.createElement('when')
+		we.setAttribute('type','datetime')
+		we.appendChild(xd.createTextNode(tlr.modified.strftime("%Y%m%d%H%M%S")))
+		ide = xd.createElement('id')
+		ide.appendChild(xd.createTextNode(unicode(tlr.id)))
+		vne = xd.createElement('currentVer')
+		vne.appendChild(xd.createTextNode(unicode(tlr.version)))
+		aue = xd.createElement('modifier')
+		aue.appendChild(xd.createTextNode(getAuthor(tlr)))
+		vce = xd.createElement('vercnt')
+		vce.appendChild(xd.createTextNode(unicode(tlr.vercnt)))
+		esr.appendChild(we)
+		esr.appendChild(ide)
+		esr.appendChild(vne)
+		esr.appendChild(aue)
+		esr.appendChild(vce)
+		fromVer = self.request.get('fromVer', None)
+		if fromVer != None:
+			esr.appendChild(getTiddlerVersions(xd,unicode(tlr.id),eval(fromVer)))
+		self.response.out.write(xd.toxml())
 	
   def tiddlerHistory(self):
 	"http tiddlerId"
@@ -2152,9 +2185,20 @@ class MainPage(webapp.RequestHandler):
 		return page
 	return None
 
-  def getIncludeFiles(self,rootpath,page,defaultTiddlers):
+  def addTiddler(self,tiddict,title,text):
+	td = Tiddler()
+	td.title = title
+	td.version = 0
+	td.text = text
+	tiddict[title] = td
+
+  def getIncludeFiles(self,rootpath,page,defaultTiddlers,twd):
 	tiddict = dict()
 	includefiles = self.request.get('include').split()
+	if twd != None:
+		includefiles.append('GiewikiAdaptor.xml')
+		self.addTiddler(tiddict,"SiteTitle",page.title)
+		self.addTiddler(tiddict,"SiteSubtitle",page.subtitle)
 	if rootpath:
 		if page == None:
 			if self.user == None:
@@ -2344,10 +2388,18 @@ class MainPage(webapp.RequestHandler):
 
 	else: # TiddlyWiki output
 		self.response.headers['Content-Type'] = 'text/html'
-		elStArea = xd.createElement("div")
-		elStArea.setAttribute("id",'storeArea')
-		elShArea = xd.createElement("div")
-		elShArea.setAttribute("id",'shadowArea')
+		elStArea = xd.createElement('div')
+		elStArea.setAttribute('id','storeArea')
+		elShArea = xd.createElement('div')
+		elShArea.setAttribute('id','shadowArea')
+		h = ''.join(['http://',  self.request.host, self.path, '?', self.request.query ])
+		noEditAccess = not AccessToPage(page,self.user) in ['edit','all']
+		for t in tiddict.itervalues():
+			if noEditAccess:
+				t.id = ''
+			setattr(t,'server.type','giewiki')
+			setattr(t,'server.host',h)
+			setattr(t,'server.page.revision',unicode(t.version))
 
 	elDoc.appendChild(elStArea) # the root element
 	elDoc.appendChild(elShArea)
@@ -2448,12 +2500,17 @@ class MainPage(webapp.RequestHandler):
 		self.Trace("TL=" + memcache.get(self.request.remote_addr))
 
 	self.getSubdomain()
-	method = self.request.get("method",None)
+	method = self.request.get('method',None)
 	if method != None:
 		if method == "LoginDone":
 			return self.LoginDone(self.request.get("path"))
+		elif method == 'authenticate':
+			if self.authenticateAndSaveTiddlersFromCache(): # and proceed
+				return # or not
 		elif method == "deleteLink":
 			return self.deleteLink(self.request.get('id'))
+		else:
+			return self.post()
 
 	if self.path == "/_tasks":
 		return self.task(method)
@@ -2514,14 +2571,20 @@ class MainPage(webapp.RequestHandler):
 			self.response.set_status(404)
 			return
 
-	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers)
+	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
 		
 	# last, but no least
+	self.response.headers.add_header('Access-Control-Allow-Origin','*')
 	self.response.out.write(text)
 	if self.trace != False:
 		LogEvent("get " + self.request.url,'\n'.join(self.trace))
-		self.trace = False	
+		self.trace = False
+
+  def options(self):
+	self.response.headers.add_header('Access-Control-Allow-Origin','*')
+	self.response.headers.add_header('Access-Control-Allow-Headers','X-Requested-With')
+
 ############################################################################
 	
 application = webapp.WSGIApplication( [('/.*', MainPage)], debug=True)

@@ -67,6 +67,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="config.py" />
+    <Content Include="GiewikiAdaptor.xml" />
     <Content Include="giewikidb.py" />
     <Content Include="help-anonymous.xml" />
     <Content Include="help-authenticated.xml" />
