@@ -97,7 +97,9 @@ class Page(db.Model):
   owner = db.UserProperty()
   ownername = db.StringProperty()
   title = db.StringProperty()
+  titleModified = db.DateTimeProperty()
   subtitle = db.StringProperty()
+  subtitleModified = db.DateTimeProperty()
   tags = db.StringProperty()
   locked = db.BooleanProperty()
   anonAccess = db.IntegerProperty()
@@ -134,8 +136,10 @@ class Page(db.Model):
   def Update(self,tiddler):
 	if tiddler.title == "SiteTitle":
 		self.title = tiddler.text
+		self.titleModified = tiddler.modified
 	elif tiddler.title == "SiteSubtitle":
 		self.subtitle = tiddler.text
+		self.subtitleModified = tiddler.modified
 	else:
 		return
 	self.put()

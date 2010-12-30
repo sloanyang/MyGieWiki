@@ -1,6 +1,6 @@
-<?xml version="1.0" ?><document><storeArea><div modified="20101227165430" modifier="giewiki" tags="systemConfig excludeSearch excludeLists" title="GiewikiAdaptor" ><pre>//{{{
+<?xml version="1.0" ?><document><storeArea><div modified="20101230165430" modifier="giewiki" tags="systemConfig excludeSearch excludeLists" title="GiewikiAdaptor" ><pre>//{{{
 //--
-//-- Server adaptor for reaching giewiki pages
+//-- Server adaptor for reaching giewiki pages from TiddlyWiki
 //--
 
 function GiewikiAdaptor()
@@ -48,7 +48,7 @@ GiewikiAdaptor.prototype.getTiddlerList = function(context,userParams,callback,f
 	if(this.store) {
 		var ret = context.complete(context,context.userParams);
 	} else {
-		ret = loadRemoteFile(context.host,FileAdaptor.loadTiddlyWikiCallback,context);
+		ret = loadRemoteFile(context.host,GiewikiAdaptor.loadTiddlyWikiCallback,context);
 		if(typeof ret != &quot;string&quot;)
 			ret = true;
 	}
@@ -66,7 +66,7 @@ GiewikiAdaptor.getTiddlerListComplete = function(context,userParams)
 		}
 
 		for(var i=0; i&lt;context.tiddlers.length; i++) {
-			context.tiddlers[i].fields['server.type'] = FileAdaptor.serverType;
+			context.tiddlers[i].fields['server.type'] = GiewikiAdaptor.serverType;
 			context.tiddlers[i].fields['server.host'] = AdaptorBase.minHostName(context.host);
 		}
 
@@ -125,8 +125,12 @@ GiewikiAdaptor.prototype.putTiddler = function(tiddler,context,userParams,callba
 	tiddler.currentVer = tiddler.fields.version;
 	context = this.setContext(context,userParams,callback);
 	var res = HttpGet(tiddler,'saveTiddler',userParams.serverHost.split('?')[0]);
-	if (res &amp;&amp; res.success != false) {
+	if (res &amp;&amp; res.errorcode &gt; 0) {
+		tiddler.currentVer = res.version;
+		if (res.modified)
+			tiddler.fields['server.page.revision'] = res.modified;
 		callback(context,userParams);
+		tiddler.fields['changecount'] = 0;
 		return true;
 	}
 	return false;
@@ -186,15 +190,17 @@ function JsoFromXml(rce) {
 	else if (rce.childNodes.length &amp;&amp; rce.firstChild.nodeType == 1) {
 		v = {};
 		for (var i = 0; i &lt; rce.childNodes.length; i++) {
-	var ace = rce.childNodes[i];
-	v[ace.nodeName] = JsoFromXml(ace);
+			var ace = rce.childNodes[i];
+			v[ace.nodeName] = JsoFromXml(ace);
+		}
 	}
-	}
-
 	return v;
-	}
+}
 
 function displayHTMLMessage(text) {
+	var ma = document.getElementById(&quot;messageArea&quot;);
+	if (ma &amp;&amp; ma.innerHTML.indexOf(text) &gt; 0)
+		return; // do not repeat
 	var e = getMessageDiv();
 	e.innerHTML = text;
 }

@@ -32,6 +32,11 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 giewikiVersion = '2.7'
 
+# status codes, COM style:
+S_OK = 0
+S_FALSE = 1
+E_FAIL = -1
+
 class library():
 	static = ['YouTube.xml']	
 	def local(self,main):
@@ -528,12 +533,13 @@ class MainPage(webapp.RequestHandler):
 		tlr.page = self.path
 		tlr.title = self.request.get("tiddlerName") # why not 'title'?
 		for ra in self.request.arguments():
-			if not ra in ('method','tiddlerId','tiddlerName','fields','created','modifier','modified','fromVer','shadow','vercnt','key','reverted','reverted_by'):
+			if not ra in ('method','tiddlerId','tiddlerName','fields','created','modifier','modified','fromVer','shadow','vercnt','key','reverted','reverted_by','links','linksUpdated'):
 				setattr(tlr,ra,self.request.get(ra))
-
 		tlr.id = self.request.get('tiddlerId')
 	else:
 		reply = False # called from authenticateAndSaveTiddlersFromCache
+
+	detail = { 'errorcode': E_FAIL }
 
 	page = Page.all().filter("path",tlr.page).get()
 	if page == None:
@@ -545,11 +551,11 @@ class MainPage(webapp.RequestHandler):
 			rqlist = memcache.get(mckey)
 			if rqlist == None:
 				rqlist = []
+			error = 'Please <a href="' + self.request.url + '?method=authenticate" target="_blank">authenticate your post</a>'
 			rqlist.append(tlr)
 			memcache.set(mckey, rqlist, 300)
-			#logging.info("MC Post: " + mckey)
-			error = 'Please <a href="' + self.request.url + '?method=authenticate" target="_blank">authenticate your post</a>'
-
+			detail['modified'] = tlr.modified.strftime("%Y%m%d%H%M%S")
+			detail['errorcode'] = S_FALSE
 	if tlr.id == '':
 		tlr.version = 1
 		tlr.vercnt = 1
@@ -581,7 +587,8 @@ class MainPage(webapp.RequestHandler):
 						error = "Edit conflict: '" +  t.title + "' version " + sv + " is not the current version (" + unicode(t.version) + " is)"
 			
 	if error != None:
-		return self.fail(error)
+		detail['version'] = tlr.version
+		return self.fail(error,detail)
 		
 	tlr.comments = 0
 	if (tlr.id == ""):
@@ -2185,9 +2192,13 @@ class MainPage(webapp.RequestHandler):
 		return page
 	return None
 
-  def addTiddler(self,tiddict,title,text):
+  def addTiddler(self,tiddict,title,text,modified,author):
 	td = Tiddler()
 	td.title = title
+	if modified == None:
+		modified = datetime.datetime(2010,1,1,0,0)
+	td.author = author
+	td.modified = modified
 	td.version = 0
 	td.text = text
 	tiddict[title] = td
@@ -2197,8 +2208,8 @@ class MainPage(webapp.RequestHandler):
 	includefiles = self.request.get('include').split()
 	if twd != None:
 		includefiles.append('GiewikiAdaptor.xml')
-		self.addTiddler(tiddict,"SiteTitle",page.title)
-		self.addTiddler(tiddict,"SiteSubtitle",page.subtitle)
+		self.addTiddler(tiddict, "SiteTitle", page.title, page.titleModified, page.owner)
+		self.addTiddler(tiddict, "SiteSubtitle", page.subtitle, page.subtitleModified, page.owner)
 	if rootpath:
 		if page == None:
 			if self.user == None:
@@ -2397,9 +2408,9 @@ class MainPage(webapp.RequestHandler):
 		for t in tiddict.itervalues():
 			if noEditAccess:
 				t.id = ''
-			setattr(t,'server.type','giewiki')
-			setattr(t,'server.host',h)
-			setattr(t,'server.page.revision',unicode(t.version))
+			setattr(t,'server.type',unicode('giewiki'))
+			setattr(t,'server.host',unicode(h))
+			setattr(t,'server.page.revision',unicode(t.modified.strftime("%Y%m%d%H%M%S")))
 
 	elDoc.appendChild(elStArea) # the root element
 	elDoc.appendChild(elShArea)
