@@ -552,11 +552,15 @@ class MainPage(webapp.RequestHandler):
 			if rqlist == None:
 				rqlist = []
 			error = 'Please <a href="' + self.request.url + '?method=authenticate" target="_blank">authenticate your post</a>'
+			if tlr.id == '':
+				tlr.id = unicode(uuid.uuid4())
+				tlr.version = 0
 			rqlist.append(tlr)
 			memcache.set(mckey, rqlist, 300)
 			detail['modified'] = tlr.modified.strftime("%Y%m%d%H%M%S")
 			detail['errorcode'] = S_FALSE
-	if tlr.id == '':
+			detail['id'] = tlr.id
+	if tlr.id == '' or tlr.version == 0:
 		tlr.version = 1
 		tlr.vercnt = 1
 	elif tlr.id in ['SiteTitle','SiteSubtitle']: # not versioned
@@ -580,7 +584,7 @@ class MainPage(webapp.RequestHandler):
 				el = EditLock().all().filter('id',tlr.id).get() # locked by someone else?
 				if el != None:
 					error = t.title + " locked by " + userNameOrAddress(el.user,el.user_ip)
-				else:
+				elif hasattr(tlr,'currentVer'):
 					sv = getattr(tlr, 'currentVer')
 					v = eval(sv)
 					if v != t.version:
@@ -1162,9 +1166,6 @@ class MainPage(webapp.RequestHandler):
 		page.viewbutton = pad.viewbutton
 		page.viewprior = pad.viewprior
 		page.put()
-		#self.SaveNewTiddler(url,"SiteTitle",page.title)
-		#if page.subtitle != "":
-		#	self.SaveNewTiddler(url,"SiteSubtitle",page.subtitle)
 		self.reply( {"Url": url, "Success": True })
 	else:
 		self.fail("Page already exists: " + page.path)
@@ -2257,7 +2258,7 @@ class MainPage(webapp.RequestHandler):
 			raise x
 	return tiddict
 
-  def getText(self,page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
+  def getText(self, page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
 	if page != None:
 		if readAccess and page.template != None:
 			tl = page.template
@@ -2485,6 +2486,9 @@ class MainPage(webapp.RequestHandler):
 			xmldecl = '<?xml version="1.0" ?>' # strip off this
 			if text.startswith(xmldecl):
 				text = text[len(xmldecl):]
+			globalPatch = 'config.defaultCustomFields["server.host"] = "' + self.request.url + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n'
+			psPos = twdtext.rfind('</script>')
+			twdtext = ''.join([ twdtext[0:psPos], globalPatch, twdtext[psPos:] ])
 			cssa = '<div id="shadowArea">';
 			mysa = elShArea.toxml()
 			if len(mysa) > len(cssa) + 6:

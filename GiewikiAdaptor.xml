@@ -127,6 +127,7 @@ GiewikiAdaptor.prototype.putTiddler = function(tiddler,context,userParams,callba
 	var res = HttpGet(tiddler,'saveTiddler',userParams.serverHost.split('?')[0]);
 	if (res &amp;&amp; res.errorcode &gt; 0) {
 		tiddler.currentVer = res.version;
+		tiddler.fields.id = res.id
 		if (res.modified)
 			tiddler.fields['server.page.revision'] = res.modified;
 		callback(context,userParams);
