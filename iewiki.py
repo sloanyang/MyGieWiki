@@ -527,7 +527,10 @@ class MainPage(webapp.RequestHandler):
 		self.redirect(self.request.path + '?no_posts')
 		return True
 
-  def saveTiddler(self, tlr=None):
+  def uploadTiddler(self):
+	return self.saveTiddler(upload=True)
+
+  def saveTiddler(self, tlr=None, upload=False):
 	"http tiddlerName text tags version tiddlerId versions"
 	self.response.headers.add_header('Access-Control-Allow-Origin','*')
 	if tlr == None:
@@ -549,7 +552,7 @@ class MainPage(webapp.RequestHandler):
 		error = "Page does not exist: " + tlr.page
 	else:
 		error = page.UpdateViolation()
-		if error != None and users.get_current_user() == None and self.request.get('modified',None) != None:
+		if upload or (error != None and users.get_current_user() == None and self.request.get('modified',None) != None):
 			mckey = 'saveTiddler ' + str(self.request.remote_addr)
 			rqlist = memcache.get(mckey)
 			if rqlist == None:

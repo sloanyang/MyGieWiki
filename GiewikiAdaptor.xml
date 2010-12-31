@@ -124,7 +124,7 @@ GiewikiAdaptor.prototype.putTiddler = function(tiddler,context,userParams,callba
 	tiddler.tiddlerId = tiddler.fields.id;
 	tiddler.currentVer = tiddler.fields.version;
 	context = this.setContext(context,userParams,callback);
-	var res = HttpGet(tiddler,'saveTiddler',userParams.serverHost.split('?')[0]);
+	var res = HttpGet(tiddler,'uploadTiddler',userParams.serverHost.split('?')[0]);
 	if (res &amp;&amp; res.errorcode &gt; 0) {
 		tiddler.currentVer = res.version;
 		tiddler.fields.id = res.id
