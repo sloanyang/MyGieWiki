@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.7.0
+   version:	1.8.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -3572,9 +3572,11 @@ TiddlyWiki.prototype.loadFromDiv = function(src, idPrefix, noUpdate, fn) {
 
 TiddlyWiki.prototype.updateTiddlers = function() {
     this.tiddlersUpdated = true;
+    this.fetchFromServer = false; // disabled for better performance
     this.forEachTiddler(function(title, tiddler) {
         tiddler.changed();
-    });
+       });
+    this.fetchFromServer = true; // disabled for better performance
 };
 
 // Return an array of tiddlers matching a search regular expression

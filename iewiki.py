@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.7.0
+# ver.:	1.8.0
 
 import cgi
 import codecs
@@ -510,15 +510,18 @@ class MainPage(webapp.RequestHandler):
 	else:
 		self.fail('no such tiddler')
 
-  def authenticateAndSaveTiddlersFromCache(self):
+  def authenticateAndSaveUploadedTiddlers(self):
 	if users.get_current_user() == None:
 		return False
 	mckey = 'saveTiddler ' + str(self.request.remote_addr)
 	posts = memcache.get(mckey)
 	if posts != None:
+		sl = []
 		for tlr in posts:
 			self.saveTiddler(tlr)
+			sl.append(htmlEncode(tlr.title))
 		memcache.delete(mckey)
+		self.warnings.append(str(len(sl)) + " tiddler(s) received:<br>" + '<br>'.join(sl))
 		return False
 	else:
 		self.redirect(self.request.path + '?no_posts')
@@ -537,7 +540,7 @@ class MainPage(webapp.RequestHandler):
 				setattr(tlr,ra,self.request.get(ra))
 		tlr.id = self.request.get('tiddlerId')
 	else:
-		reply = False # called from authenticateAndSaveTiddlersFromCache
+		reply = False # called from authenticateAndSaveUploadedTiddlers
 
 	detail = { 'errorcode': E_FAIL }
 
@@ -2504,6 +2507,7 @@ class MainPage(webapp.RequestHandler):
   def get(self): # this is where it all starts
 	self.user = users.get_current_user()
 	self.path = self.request.path
+	self.warnings = []
 	
 	trace = self.request.get('trace')
 	if trace == '':
@@ -2520,7 +2524,7 @@ class MainPage(webapp.RequestHandler):
 		if method == "LoginDone":
 			return self.LoginDone(self.request.get("path"))
 		elif method == 'authenticate':
-			if self.authenticateAndSaveTiddlersFromCache(): # and proceed
+			if self.authenticateAndSaveUploadedTiddlers(): # and proceed
 				return # or not
 		elif method == "deleteLink":
 			return self.deleteLink(self.request.get('id'))
@@ -2544,7 +2548,6 @@ class MainPage(webapp.RequestHandler):
 		metaData = False
 		message = None
 
-	self.warnings = []
 	defaultTiddlers = None
 	page = self.CurrentPage()
 	if page == None:

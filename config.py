@@ -1,7 +1,7 @@
 # this:	Config.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.7.0
+# ver.:	1.8.0
 
 import cgi
 import codecs
@@ -21,7 +21,7 @@ from google.appengine.api import namespace_manager
 from giewikidb import UserProfile
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 7, revision: 0, date: new Date("Dec 19, 2010"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 8, revision: 0, date: new Date("Dec 31, 2010"), extensions: {} };\n\
 var config = {\n\
 	animDuration: 400,\n\
 	cascadeFast: 20,\n\
