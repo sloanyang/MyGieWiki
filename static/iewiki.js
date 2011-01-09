@@ -226,6 +226,10 @@ config.macros = {
         label: "close all",
         prompt: "Close all displayed tiddlers (except any that are being edited)"
     },
+	permaview: {
+		label: "permaview",
+		prompt: "Link to an URL that retrieves all the currently displayed tiddlers"
+	},
     pageProperties: {
 		label: "page properties",
 		prompt: "Edit page properties"
@@ -482,7 +486,6 @@ config.glyphs = {
 //--
 
 config.shadowTiddlers = {
-    HttpMethods: "createPage\neditTiddler\nunlockTiddler\nlockTiddler\nsaveTiddler\ndeleteTiddler\nrevertTiddler\ndeleteVersions\ntiddlerHistory\ntiddlerVersion\ntiddlerDiff\ngetLoginUrl\npageProperties\nuserProfile\ngetUserInfo\naddProject\ndeletePage\ngetNewAddress\nsubmitComment\ngetComments\ngetNotes\ngetMessages\ngetTiddlers\nfileList\ngetRecentChanges\ngetRecentComments\nsiteMap\ngetGroups\ncreateGroup\ngetGroupMembers\naddGroupMember\nremoveGroupMember\nevaluate\ntiddlersFromUrl\nopenLibrary\nupdateTemplate\ngetTemplates",
     StyleSheet: "",
     TabTimeline: '<<timeline>>',
     TabAll: '<<list all>>',
@@ -551,7 +554,7 @@ config.read = function(t) {
 	this.groupAccess = fields.groupaccess;
 	this.groups = fields.groups;
 	this.viewButton = window.eval(fields.viewbutton);
-	this.viewPrior =  window.eval(fields.viewprior);
+	this.viewPrior = window.eval(fields.viewprior);
 	this.locked = fields.locked;
 	this.pages = this.readPages(t.ace);
 	this.warnings = fields.warnings;
@@ -559,7 +562,7 @@ config.read = function(t) {
 	if (!st || st.hasShadow)
 		config.shadowTiddlers.SiteTitle = fields.sitetitle;
 	st = store.getTiddler('SiteSubtitle');
-	if (!st || st.hasShadow)	
+	if (!st || st.hasShadow)
 		config.shadowTiddlers.SiteSubtitle = fields.subtitle;
 }
 
@@ -599,7 +602,6 @@ function main() {
     params = getParameters();
     if (params)
         params = params.parseParams("open", null, false);
-    http._addMethod("getTiddler");
     authors = [];
     store = new TiddlyWiki();
     invokeParamifier(params, "oninit");
@@ -607,16 +609,14 @@ function main() {
     addEvent(document, "click", Popup.onDocumentClick);
     for (var s = 0; s < config.notifyTiddlers.length; s++)
         store.addNotification(config.notifyTiddlers[s].name, config.notifyTiddlers[s].notify);
-    loadShadowTiddlers();
+    loadShadowTiddlers(false);
     store.loadFromDiv("storeArea", "store", true);
     config.read(store.fetchTiddler("_MetaData"));
 
     invokeParamifier(params, "onload");
 
-    http._init(store.getTiddlerText("HttpMethods").split('\n'));
-
     var pluginProblem = loadPlugins();
-    loadShadowTiddlers();
+    loadShadowTiddlers(true);
     formatter = new Formatter(config.formatters);
     invokeParamifier(params, "onconfig");
     story.switchTheme(config.options.txtTheme);
@@ -647,36 +647,39 @@ function restart() {
     window.scrollTo(0, 0);
 }
 
-function loadShadowTiddlers() {
+function loadShadowTiddlers(again) {
 	var ms = function(t) { 
 		t.version = t.currentVer = 0; 
 		t.hasShadow = true; 
 		t.modifier = config.views.wikified.shadowModifier; 
 		t.created = null; 
-		t.modified = null; 
+		t.modified = null;
+		if (!again)
+			config.shadowTiddlers[t.title] = t.text;
 		return t; 
 	} 
 	for(var t in config.shadowTiddlers) {
-		var st = ms(new Tiddler(t, 0, config.shadowTiddlers[t]));
 		var et = store.getTiddler(t);
 		if (et) {
 			if (et.hasShadow) { // replace shadow tiddler
 				if (et.ovs) 
-					et.ovs[0].text = st.text;
+					et.ovs[0].text = config.shadowTiddlers[t];
 				else
-					et.text = st.text;
+					et.text = config.shadowTiddlers[t];
 			} else {
 				et.hasShadow = true;
 				if (!et.ovs)
 					et.ovs = [];
-				et.ovs[0] = st;
+				et.ovs[0] = ms(new Tiddler(t, 0, config.shadowTiddlers[t]));
 			}
 		}
 		else
-			store.addTiddler(st);
-		delete config.shadowTiddlers[t];
+			store.addTiddler(ms(new Tiddler(t, 0, config.shadowTiddlers[t])));
+		if (again)
+			delete config.shadowTiddlers[t];
 	}
-	store.loadFromDiv("shadowArea", "shadows", true, ms);
+	if (!again)
+		store.loadFromDiv("shadowArea", "shadows", true, ms);
 }
 
 function loadPlugins() {
@@ -805,14 +808,19 @@ function getParameters() {
     return p;
 }
 
-function invokeParamifier(params, handler) {
-    if (!params || params.length == undefined || params.length <= 1)
-        return;
-    for (var t = 1; t < params.length; t++) {
-        var p = config.paramifiers[params[t].name];
-        if (p && p[handler] instanceof Function)
-            p[handler](params[t].value);
-    }
+function invokeParamifier(params,handler) {
+	if(!params || params.length == undefined || params.length <= 1)
+		return;
+	for(var i=1; i<params.length; i++) {
+		var p = config.paramifiers[params[i].name];
+		if(p && p[handler] instanceof Function)
+			p[handler](params[i].value);
+		else {
+			var h = config.optionHandlers[params[i].name.substr(0,3)];
+			if(h && h.set instanceof Function)
+				h.set(params[i].name,params[i].value);
+		}
+	}
 }
 
 config.paramifiers = {};
@@ -1212,8 +1220,8 @@ config.formatters = [
 
 {
     name: "rule",
-    match: "^----+$\\n?",
-    handler: function(w) {
+    match: "^----+$\\n?|<hr ?/?>\\n?",
+    handler: function (w) {
         createTiddlyElement(w.output, "hr");
     }
 },
@@ -1867,6 +1875,17 @@ config.macros.closeAll.onClick = function(e) {
     return false;
 };
 
+config.macros.permaview.handler = function(place)
+{
+	createTiddlyButton(place,this.label,this.prompt,this.onClick);
+};
+
+config.macros.permaview.onClick = function(e)
+{
+	story.permaView();
+	return false;
+};
+
 config.macros.pageProperties.handler = function(place) {
 	if (config.access == 'all' && readOnly) // if !readOnly, it's in the editing menu
 		createTiddlyButton(place, this.label, this.prompt, this.onClick);
@@ -1877,7 +1896,6 @@ config.macros.pageProperties.onClick = function(e) {
 };
 
 config.macros.comments.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
-    createTiddlyElement(place,"hr");
     var ced = createTiddlyElement(place,"div",null,"commentToolbar");
     if (tiddler.comments > 0)
 	    createTiddlyButton(ced, this.listLabel.format([tiddler.comments]), this.listPrompt, this.onListClick);
@@ -4682,6 +4700,31 @@ function refreshAll() {
     refreshStyles("StyleSheetColors");
     refreshStyles(config.refresherData.styleSheet);
     refreshStyles("StyleSheetPrint");
+}
+
+config.optionHandlers = {
+	'txt': {
+		get: function(name) {return config.options[name].toString();},
+		set: function(name,value) {config.options[name] = value;}
+	},
+	'chk': {
+		get: function(name) {return config.options[name] ? "true" : "false";},
+		set: function(name,value) {config.options[name] = value == "true";}
+	}
+};
+
+// Implements the TiddlyWiki function saveOptionCookie(name) but saves the option server-side like other giewiki user options, not as a cookie
+function saveOptionCookie(name)
+{
+	if (safeMode)
+		return;
+	var optType = name.substr(0,3);
+	var handlers = config.optionHandlers;
+	if (handlers[optType] && handlers[optType].get) {
+		args = {};
+		args[name] = handlers[optType].get(name);
+		http.userProfile(args);
+	}
 }
 
 config.macros.option.genericCreate = function(place, type, opt, className, desc) {
@@ -7498,14 +7541,6 @@ function trace(f) {
   }
   displayMessage(sfv);
 }
-
-http = {
-  _methods: [],
-  _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,'" + m + "')"); }
-}
-
-http._init = function(ms) { for (var i=0; i < ms.length; i++) http._addMethod(ms[i]); }
-
 
 function OnCreatePage(reply)
 {

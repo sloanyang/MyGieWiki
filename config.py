@@ -20,8 +20,54 @@ from google.appengine.api import namespace_manager
 
 from giewikidb import UserProfile
 
+HttpMethods = '\
+createPage\n\
+editTiddler\n\
+unlockTiddler\n\
+lockTiddler\n\
+saveTiddler\n\
+deleteTiddler\n\
+revertTiddler\n\
+deleteVersions\n\
+tiddlerHistory\n\
+tiddlerVersion\n\
+tiddlerDiff\n\
+getLoginUrl\n\
+pageProperties\n\
+userProfile\n\
+getUserInfo\n\
+addProject\n\
+deletePage\n\
+getNewAddress\n\
+submitComment\n\
+getComments\n\
+getNotes\n\
+getMessages\n\
+getTiddler\n\
+getTiddlers\n\
+fileList\n\
+getRecentChanges\n\
+getRecentComments\n\
+siteMap\n\
+getGroups\n\
+createGroup\n\
+getGroupMembers\n\
+addGroupMember\n\
+removeGroupMember\n\
+evaluate\n\
+tiddlersFromUrl\n\
+openLibrary\n\
+updateTemplate\n\
+getTemplates'
+
 jsProlog = '\
 var giewikiVersion = { title: "giewiki", major: 1, minor: 8, revision: 0, date: new Date("Dec 31, 2010"), extensions: {} };\n\
+http = {\n\
+  _methods: [],\n\
+  _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
+}\n\
+\n\
+http._init = function(ms) { for (var i=0; i < ms.length; i++) http._addMethod(ms[i]); }\n\
 var config = {\n\
 	animDuration: 400,\n\
 	cascadeFast: 20,\n\
@@ -120,7 +166,9 @@ class ConfigJs(webapp.RequestHandler):
 		self.AppendConfigOption(optlist,'txtUserName',jsEncodeStr(user.nickname()))
 
 	self.response.out.write(',\n\t\t'.join(optlist))
-	self.response.out.write('\n\t}\n};')
+	self.response.out.write('\n\t}\n};\nhttp._init(["')
+	self.response.out.write('","'.join(HttpMethods.split('\n')))
+	self.response.out.write('"]);')
 ############################################################################
 
 application = webapp.WSGIApplication( [('/.*', ConfigJs)], debug=True)

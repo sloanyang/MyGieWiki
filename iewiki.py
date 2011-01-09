@@ -2213,7 +2213,7 @@ class MainPage(webapp.RequestHandler):
   def getIncludeFiles(self,rootpath,page,defaultTiddlers,twd):
 	tiddict = dict()
 	includefiles = self.request.get('include').split()
-	if twd != None:
+	if twd != None and twd != 'twcomp.html':
 		includefiles.append('GiewikiAdaptor.xml')
 		self.addTiddler(tiddict, "SiteTitle", page.title, page.titleModified, page.owner)
 		self.addTiddler(tiddict, "SiteSubtitle", page.subtitle, page.subtitleModified, page.owner)
@@ -2357,53 +2357,6 @@ class MainPage(webapp.RequestHandler):
 	if twd == None: # normal giewiki output
 		elStArea = xd.createElement("storeArea")
 		elShArea = xd.createElement("shadowArea")
-		if metaData:
-			metaDiv = xd.createElement('div')
-			metaDiv.setAttribute('title', "_MetaData")
-			metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
-			metaDiv.setAttribute('clientip', self.request.remote_addr)
-			if page == None:
-				metaDiv.setAttribute('access','all' if users.is_current_user_admin() else 'none')
-				metaDiv.setAttribute('sitetitle',"giewiki");
-				metaDiv.setAttribute('subtitle',message);
-			else:
-				username = self.user.nickname() if self.user != None else ""
-				metaDiv.setAttribute('timestamp',unicode(datetime.datetime.now()))
-				metaDiv.setAttribute('username',username)
-				metaDiv.setAttribute('owner', page.owner.nickname())
-				metaDiv.setAttribute('access', AccessToPage(page,self.user))
-				metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
-				metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
-				metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
-				metaDiv.setAttribute('sitetitle',page.title);
-				metaDiv.setAttribute('subtitle',page.subtitle);
-				if page.groups != None:
-					metaDiv.setAttribute('groups',page.groups);
-					if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
-						metaDiv.setAttribute('groupmember','true')
-				metaDiv.setAttribute('viewbutton', 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false')
-				metaDiv.setAttribute('viewprior', 'true' if hasattr(page,'viewprior') and page.viewprior else 'false')
-				# metaDiv.setAttribute('server', self.gwserverVersion)
-				if page.locked:
-					metaDiv.setAttribute('locked','true')
-				if len(self.warnings) > 0:
-					metaDiv.setAttribute('warnings','<br>'.join(self.warnings))
-			if self.trace != None and self.trace != False and len(self.trace) > 0:
-				metaPre = xd.createElement('pre')
-				metaDiv.appendChild(metaPre)
-				metaPre.appendChild(xd.createTextNode('\n'.join(self.trace)))
-			elStArea.appendChild(metaDiv)
-		
-			pgse = xd.createElement("div")
-			metaDiv.appendChild(pgse);
-			pgse.setAttribute('title',"pages")
-			for p in pages:
-				xpage = xd.createElement("a")
-				pgse.appendChild(xpage)
-				xpage.setAttribute('title',"page")
-				xpage.setAttribute('href', p.path);
-				xpage.appendChild(xd.createTextNode(p.subtitle))
-
 	else: # TiddlyWiki output
 		self.response.headers['Content-Type'] = 'text/html'
 		elStArea = xd.createElement('div')
@@ -2418,6 +2371,52 @@ class MainPage(webapp.RequestHandler):
 			setattr(t,'server.type',unicode('giewiki'))
 			setattr(t,'server.host',unicode(h))
 			setattr(t,'server.page.revision',unicode(t.modified.strftime("%Y%m%d%H%M%S")))
+
+	if metaData:
+		metaDiv = xd.createElement('div')
+		metaDiv.setAttribute('title', "_MetaData")
+		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
+		metaDiv.setAttribute('clientip', self.request.remote_addr)
+		if page == None:
+			metaDiv.setAttribute('access','all' if users.is_current_user_admin() else 'none')
+			metaDiv.setAttribute('sitetitle',"giewiki");
+			metaDiv.setAttribute('subtitle',message);
+		else:
+			username = self.user.nickname() if self.user != None else ""
+			metaDiv.setAttribute('timestamp',unicode(datetime.datetime.now()))
+			metaDiv.setAttribute('username',username)
+			metaDiv.setAttribute('owner', page.owner.nickname())
+			metaDiv.setAttribute('access', AccessToPage(page,self.user))
+			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
+			metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
+			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
+			metaDiv.setAttribute('sitetitle',page.title);
+			metaDiv.setAttribute('subtitle',page.subtitle);
+			if page.groups != None:
+				metaDiv.setAttribute('groups',page.groups);
+				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
+					metaDiv.setAttribute('groupmember','true')
+			metaDiv.setAttribute('viewbutton', 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false')
+			metaDiv.setAttribute('viewprior', 'true' if hasattr(page,'viewprior') and page.viewprior else 'false')
+			# metaDiv.setAttribute('server', self.gwserverVersion)
+			if page.locked:
+				metaDiv.setAttribute('locked','true')
+			if len(self.warnings) > 0:
+				metaDiv.setAttribute('warnings','<br>'.join(self.warnings))
+		if self.trace != None and self.trace != False and len(self.trace) > 0:
+			metaPre = xd.createElement('pre')
+			metaDiv.appendChild(metaPre)
+			metaPre.appendChild(xd.createTextNode('\n'.join(self.trace)))
+		pgse = xd.createElement("div")
+		metaDiv.appendChild(pgse);
+		pgse.setAttribute('title',"pages")
+		for p in pages:
+			xpage = xd.createElement("a")
+			pgse.appendChild(xpage)
+			xpage.setAttribute('title',"page")
+			xpage.setAttribute('href', p.path);
+			xpage.appendChild(xd.createTextNode(p.subtitle))
+		elStArea.appendChild(metaDiv)
 
 	elDoc.appendChild(elStArea) # the root element
 	elDoc.appendChild(elShArea)
@@ -2547,6 +2546,9 @@ class MainPage(webapp.RequestHandler):
 		xsl = "/static/iewiki.xsl"	# use the default,
 		metaData = True
 		message = "You have successfully installed giewiki" if rootpath else ""
+	elif twd == 'twcomp.html':
+		metaData = True
+		message = None
 	else:
 		metaData = False
 		message = None
