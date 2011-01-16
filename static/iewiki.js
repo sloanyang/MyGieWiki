@@ -1718,11 +1718,14 @@ config.macros.list.handler = function(place, macroName, params) {
     var results;
     if (this[type].handler)
         results = this[type].handler(params);
+	var ffs = store.fetchFromServer;
+	store.fetchFromServer = false; // performance forbids
     for (var t = 0; t < results.length; t++) {
         var li = document.createElement("li");
         list.appendChild(li);
         createTiddlyLink(li, typeof results[t] == "string" ? results[t] : results[t].title, true);
     }
+	store.fetchFromServer = ffs;
 };
 
 config.macros.list.all.handler = function(params) {
@@ -3277,11 +3280,14 @@ function TiddlyWiki() {
         tiddlers[tiddler.title] = tiddler;
     };
     this.forEachTiddler = function(callback) {
+		var ffs = this.fetchFromServer;
+		this.fetchFromServer = false; // performance forbids iterative fetching
         for (var t in tiddlers) {
             var tiddler = tiddlers[t];
             if (tiddler instanceof Tiddler)
                 callback.call(this, t, tiddler);
         }
+		this.fetchFromServer = ffs;
     };
 }
 
@@ -3590,11 +3596,9 @@ TiddlyWiki.prototype.loadFromDiv = function(src, idPrefix, noUpdate, fn) {
 
 TiddlyWiki.prototype.updateTiddlers = function() {
     this.tiddlersUpdated = true;
-    this.fetchFromServer = false; // disabled for better performance
     this.forEachTiddler(function(title, tiddler) {
         tiddler.changed();
        });
-    this.fetchFromServer = true; // disabled for better performance
 };
 
 // Return an array of tiddlers matching a search regular expression
@@ -3687,7 +3691,6 @@ TiddlyWiki.prototype.getMissingLinks = function(sortField) {
     if (!this.tiddlersUpdated)
         this.updateTiddlers();
     var results = [];
-	this.fetchFromServer = false; // disabled for better performance
     this.forEachTiddler(function(title, tiddler) {
         if (tiddler.isTagged("excludeMissing") || tiddler.isTagged("systemConfig") || tiddler.currentVer == 0)
             return;
@@ -3697,7 +3700,6 @@ TiddlyWiki.prototype.getMissingLinks = function(sortField) {
                 results.pushUnique(link);
         }
     });
-	this.fetchFromServer = true;
     results.sort();
     return results;
 };
