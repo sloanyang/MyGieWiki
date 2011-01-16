@@ -2582,18 +2582,24 @@ class MainPage(webapp.RequestHandler):
 		Upgrade(self,giewikiVersion)
 		self.warnings.append("DataStore was upgraded")
 	if page == None and not rootpath:
-		# Not an existing page, perhaps an uploaded file ?
-		file = UploadedFile.all().filter("path =", self.path).get()
-		LogEvent("Get file", self.path)
-		if file != None:
-			self.response.headers['Content-Type'] = file.mimetype
-			self.response.headers['Cache-Control'] = 'no-cache'
-			self.response.out.write(file.data)
-			return
+		if self.path == '/UploadDialog.htm':
+			ftwd = open('UploadDialog.htm')
+			text = ftwd.read()
+			ftwd.close()
+			self.response.headers['Content-Type'] = 'text/html'
 		else:
-			self.response.set_status(404)
-			return
-
+			# Not an existing page, perhaps an uploaded file ?
+			file = UploadedFile.all().filter("path =", urllib.unquote(self.path)).get()
+			LogEvent("Get file", self.path)
+			if file == None:
+				self.response.set_status(404)
+				return
+			else:
+				text = file.data
+				self.response.headers['Content-Type'] = file.mimetype
+		self.response.headers['Cache-Control'] = 'no-cache'
+		self.response.out.write(text)
+		return
 	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
 		

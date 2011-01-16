@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <!--
-	File: 	http://iewiki.net/UploadDialog.htm
-	Version	2007-06-23 18:00 
+	File: 	UploadDialog.htm
+	Version	2011-01-16 18:00
 -->
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 	<head>
@@ -25,17 +25,18 @@ function init()
 	{
 		var ftype = upldftype.firstChild.nodeValue;
 		var fname = upldfndiv.firstChild.nodeValue;
-		var fnsp = fname.lastIndexOf(".");
-		var fnxt = fnsp > 0 ? fname.substr(0,fnsp) : fname;
-		var	text = ftype == "image/jpeg" ? "<<image '" + fname + "' < 50%>>" : "[[" + fname + "|" + fname + "]]";
-		var action = 'InsertTiddlerText("'.concat( fnxt, '","', text, '","',window.location.search.substr(1), '")');
-		pw.setTimeout(action,1);
+		if (ftype != ('U'+'FT') && fname != ('U'+'FL')) { // cloaked to avoid substitution in uploadFile(self)
+			var fnsp = fname.lastIndexOf(".");
+			var fnxt = fnsp > 0 ? fname.substr(0, fnsp) : fname;
+			var text = ftype == "image/jpeg" ? "<<image '" + fname + "' < 50%>>" : "[[" + fname + "|" + fname + "]]";
+			var action = 'InsertTiddlerText("'.concat(fnxt, '","', text, '","', window.location.search.substr(1), '")');
+			pw.setTimeout(action, 1);
 
-		if (dud)
-		{
-			// and/or just list the tiddler:
-			pw.createTiddlyLink(dud,fnxt,true);
-			dud.appendChild(pd.createElement("br"));
+			if (dud) {
+				// and/or just list the tiddler:
+				pw.createTiddlyLink(dud, fnxt, true);
+				dud.appendChild(pd.createElement("br"));
+			}
 		}
 	}
 	var dur = pd.getElementById("displayUploadResult");
@@ -43,9 +44,12 @@ function init()
 	{
 		while(dur.hasChildNodes())
 			dur.removeChild(dur.firstChild);
-			
+
 		var mur = document.getElementById("displayUploadResult");
-		moveElements(mur,dur,pd);
+		if (mur.innerHTML == 'U' + 'LR') // avoid substitution in uploadFile(self)
+			mur.parentNode.removeChild(mur);
+		else
+			moveElements(mur,dur,pd);
 	}
 }
 function setStylesheet(s,id)
@@ -127,7 +131,7 @@ function fileSelected()
 
 		</script>
 	</head>
-	<body onload="init();" style="font-family: arial,helvetica; font-size: .75em; background-color:Transparent;">
+	<body onload="init();" style="font-family: arial,helvetica; font-size: .75em; background-color: transparent;">
 	<div id="displayUploadResult" visible="false">ULR</div>
 	<form id="upldlg" name="upldlg" method="post" enctype="Multipart/Form-Data" onsubmit="return valid()">
 		<table border=0>
