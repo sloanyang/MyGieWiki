@@ -1658,6 +1658,30 @@ class MainPage(webapp.RequestHandler):
 		self.response.out.write(ut)
 		u.close()
 	
+		
+  def uploadTiddlers(self):
+	filedata = self.request.get("MyFile")
+	url = 'http:' + self.path
+	urlimport = UrlImport().all().filter('url',url).get()
+	if urlimport == None:
+		urlimport = UrlImport()
+		urlimport.url = url
+	urlimport.data = db.Blob(filedata)
+	urlimport.put()
+	self.response.out.write(
+'<html>'
+'<header><title>Upload succeeded</title>'
+'<script>'
+'function main() { \n'
+'	act = "onUploadTiddlers()";'
+'	window.parent.setTimeout(act,100);\n'
+'}\n'
+'</script></header>'
+'<body style="margin: 0 0 0 0;" onload="main()">'
+'<a href="/">success..</a>'
+'</body>'
+'</html>')
+
   def fileList(self):
 	files = UploadedFile.all()
 	owner = self.request.get("owner")

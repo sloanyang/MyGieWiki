@@ -1,18 +1,22 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <!--
-	File: 	http://iewiki.net/UploadDialog.htm
-	Version	2007-06-23 18:00 
+	File: 	/static/UploadDialog.htm
+	Version	2011-01-16 19:00 
 -->
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-	<head>
+<head>
 		<title>UploadDialog</title>
-		<script type="text/javascript">
-function init()
-{
-	var bImg = window.location.search.length > 1;
-	if (bImg == false)
+	<script type="text/javascript">
+function init() {
+	if (window.location.search == '?tiddlers') {
 		setStylesheet("*.imgctl { visibility: hidden }");
-		
+	}
+	else {
+		setStylesheet(".submit0 { visibility: hidden }");
+		var bImg = window.location.search.length > 1;
+		if (bImg == false)
+			setStylesheet("*.imgctl { visibility: hidden }  .title_prompt { display: block }");
+	}
 	var fid = document.getElementById("upldlg");
 	fid.setAttribute("action",window.location.hash.substr(1));
 
@@ -108,12 +112,6 @@ function valid()
 		alert("Please select the file to upload");
 		return false;
 	}
-	else if (document.upldlg.filename.value == "") {
-		fnp = srcfn.split('\\');
-		if (fnp.length == 1)
-			fnp = srcfn.split('/');
-		document.upldlg.filename.value = fnp[fnp.length - 1];
-	}
 	return true;
 }
 
@@ -125,29 +123,14 @@ function fileSelected()
 	fid.value = v;
 }
 
-		</script>
-	</head>
-	<body onload="init();" style="font-family: arial,helvetica; font-size: .75em; background-color:Transparent;">
+</script>
+</head>
+<body onload="init();" style="font-family: arial,helvetica; font-size: .75em; background-color:Transparent; margin: 0 0 0 0;">
 	<div id="displayUploadResult" visible="false"></div>
-	<form id="upldlg" name="upldlg" method="post" enctype="Multipart/Form-Data" onsubmit="return valid()">
-		<table border=0>
-		<td colspan=3>
-		Select the file to upload<br />
-		<input name="MyFile" type="File" id="MyFile" size="70" onchange="valid()"/><br />
-		</td>
-		<tr>
-		<td>
-		Name the uploaded file<br />
-		<input name="filename" type="text" id="filename" />
-		</td>
-		<td ><span class="imgctl">Align<br /><select name="align"><option>center</option><option>left</option><option>right</option></select></span></td>
-		<td ><span class="imgctl">Width<br /><select name="width"><option>100%</option><option>67%</option><option>50%</option><option>33%</option></select></span><br /></td>
-		</tr>
-		</table>
-		<input name="SubmitNewFile" type="Submit" id="Submit1" value="Upload file" />
-		<!--&nbsp; Existing files:<select name="existing" id="SubmitNewFile" onchange="fileSelected()"><option></option>{1}</select>
-		<input name="SubmitNewVersion" type="Submit" id="SubmitNewVersion" value="Replace existing file" />-->
-		<input name="method" type="hidden" id="method" value="uploadFile" />
+	<form id="upldlg" name="upldlg" method="post" enctype="Multipart/Form-Data" onsubmit="return valid()" style="margin-bottom: 0;">
+		<input name="MyFile" type="file" id="MyFile" size="70" onchange="valid()"/> 
+		<input name="SubmitTiddlers" type="submit" id="submit0" style="visibility:visible" value="Upload" />
+		<input name="method" type="hidden" id="method" value="uploadTiddlers" />
 	</form>
-	</body>
+</body>
 </html>

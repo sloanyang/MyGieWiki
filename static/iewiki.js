@@ -7198,6 +7198,10 @@ PageProperties = {
 			}
 		}
 	},
+	promptForUpload: function() {
+		var delc = document.getElementById('libraryCatalog');
+		createUploadFrame(delc,'tiddlers','upoadTiddlerFrame', 28, '/static/UploadDialog.htm');
+	},
 	listTemplates: function () {
 		var tl = http.getTemplates();
 		if (tl.Success) {
@@ -7230,6 +7234,12 @@ PageProperties = {
 			}
 		}
 	}
+}
+
+function onUploadTiddlers() {
+	var delc = document.getElementById('libraryCatalog');
+	removeChildren(delc);
+	importFromDialog(null, 'http:' + window.location.pathname);
 }
 
 config.macros.localDiv = {
@@ -7924,16 +7934,15 @@ function getChildByClassName(e,name)
 	return e;
 }
 
-function createUploadFrame(place, qs, id)
+function createUploadFrame(place, qs, id, height, src)
 {
-	var theFrame = document.createElement("IFRAME");
-	var ts = new Date();
-	theFrame.src = "/static/UploadDialog.htm?" + qs + "#" + window.location.pathname;
-	theFrame.height = 196;
+	var theFrame = document.createElement('iframe');
+	theFrame.src = (src ? src :'/UploadDialog.htm') + '?' + qs + '#' + window.location.pathname;
+	theFrame.height = height || 196;
 	theFrame.width = "100%";
 	theFrame.frameBorder = 0;
 	if (id)
-	    theFrame.id = id;
+		theFrame.id = id;
 	place.appendChild(theFrame);
 }
 

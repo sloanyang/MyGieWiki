@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!-- Copyright (c) UnaMesa Association 2004-2009; see /static/iewiki.js -->
-<!-- giewiki ver.: 1.7.0 -->
+<!-- giewiki ver.: 1.8.1 -->
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:output method='html' version='1.0' encoding='UTF-8' indent='yes'/>
@@ -428,6 +428,7 @@ body {font-size:0.8em;}
 &lt;div class='tagged' macro='tags'&gt;&lt;/div&gt;
 &lt;div class='viewer' macro='view versions wikified'&gt;&lt;/div&gt;
 &lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
+&lt;div class='tagClear'&gt;&lt;/div&gt;
 &lt;hr/&gt;
 &lt;div class='comments' macro='comments'&gt;&lt;/div&gt;
 &lt;!--}}}--&gt;

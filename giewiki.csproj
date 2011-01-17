@@ -72,7 +72,9 @@
     <Content Include="help-anonymous.xml" />
     <Content Include="help-authenticated.xml" />
     <Content Include="iewiki.py" />
-    <Content Include="iewiki.xsl" />
+    <Content Include="iewiki.xsl">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="index.py" />
     <Content Include="Hello.py" />
     <Content Include="LibraryUsageHelp.xml" />
@@ -99,6 +101,7 @@
     <Content Include="static\scratch.js" />
     <Content Include="static\upload.js" />
     <Content Include="static\UploadDialog.htm" />
+    <Content Include="twcomp.html" />
     <Content Include="UploadDialog.htm" />
     <Content Include="PageTemplateHelp.xml" />
     <Content Include="YouTube.xml">
