@@ -614,6 +614,8 @@ function main() {
     config.read(store.fetchTiddler("_MetaData"));
 
     invokeParamifier(params, "onload");
+    var hms = store.getTiddlerText("HttpMethods");
+	if (hms) http._init(hms.split('\n'));
 
     var pluginProblem = loadPlugins();
     loadShadowTiddlers(true);
