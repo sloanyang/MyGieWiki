@@ -2701,13 +2701,13 @@ config.commands.editTiddler.handler = function(event, src, title) {
 	var fields = tiddlerElem.getAttribute("tiddlyFields");
 	var st = store.getTiddler(title);
 	if (st && st.from) {
-		var ics = (st.from.startsWith('http:') || st.from.startsWith('/')) ? [ '[[', st.from,'|', st.from, ']]'].join('') : '~' + st.from;
-		config.annotations[title] = [ "Included from ", ics, '. <script label="Copy it here">config.commands.editTiddler.copy("', st.from, '","', title, '");</script> to edit this tiddler'].join('');
+		var ics = (st.from.startsWith('http:') || st.from.startsWith('/')) ? ['[[', st.from, '|', st.from, ']]'].join('') : '~' + st.from;
+		config.annotations[title] = ["Included from ", ics, '. <script label="Copy it here">config.commands.editTiddler.copy("', st.from, '","', title, '");</script> to edit this tiddler'].join('');
 	}
 	if (!st)
 		st = TryGetTiddler(title);
 	if (st && st.id && (!st.from)) {
-		var editVer = -1;
+		var editVer = -1; // most recent
 		if (st.version != st.currentVer) {
 			if (window.confirm("Version " + st.version + " is not the current version!\nProceed to edit starting with this version?") == false)
 				return;
@@ -2715,14 +2715,17 @@ config.commands.editTiddler.handler = function(event, src, title) {
 				editVer = st.version;
 		}
 		if (config.options.txtLockDuration != "") {
-			var reply = http.editTiddler({ id: st.id, version: editVer, duration: config.options.txtLockDuration });
+			var reply = http.editTiddler({ id: st.id, version: editVer, hasVersion: st.version, duration: config.options.txtLockDuration });
 			st.key = reply.key;
 			if (reply.Success) {
 				st.lock = reply.now;
 				st.until = reply.until;
-				st.title = reply.title;
-				st.text = reply.text;
-				st.tags = reply.tags.readBracketedList();
+				if (reply.title) {
+					st.title = reply.title;
+					st.text = reply.text;
+					st.tags = reply.tags.readBracketedList();
+					displayMessage("NB: This was modified since you last retrieved it.");
+				}
 			}
 			else {
 				if (!window.confirm(reply.Message + " - proceed anyway?")) {

@@ -447,7 +447,7 @@ class MainPage(webapp.RequestHandler):
 	p.save()
 	return p
 
-  def lock(self,t,usr):
+  def lock(self,t,usr,hasit):
 	try:
 		minutes = int(self.request.get("duration"))
 	except:
@@ -456,7 +456,12 @@ class MainPage(webapp.RequestHandler):
 	el = EditLock( id = t.id, user = usr, user_ip = self.request.remote_addr, duration = minutes)
 	ek = el.put()
 	until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
-	return {"Success": True, "now": el.time, "until": until, "key": str(ek), "title": t.title, "text": t.text, "tags": t.tags }
+	re = {"Success": True, "now": el.time, "until": until, "key": str(ek) }
+	if not hasit:
+  		re["title"] = t.title
+  		re["text"] = t.text
+  		re["tags"] = t.tags
+  	return re
   
   def editTiddler(self):
 	"http version tiddlerId"
@@ -468,6 +473,7 @@ class MainPage(webapp.RequestHandler):
 	if error == None:
 		tid = self.request.get('id')
 		version = eval(self.request.get('version'))
+		hasVer = eval(self.request.get('hasVersion'))
 		if tid.startswith('include-'):
 			return self.fail("Included from " + tid[8:])
 		if version == -1:
@@ -477,10 +483,11 @@ class MainPage(webapp.RequestHandler):
 		if t == None:
 			error = "Tiddler doesn't exist"
 		else:
+			hasit = t.version == hasVer
 			usr = users.get_current_user()
 			el = EditLock().all().filter("id",t.id).get() # get existing lock, if any
 			if el == None: # tiddler is not locked
-				return self.reply(self.lock(t,usr))
+				return self.reply(self.lock(t,usr,hasit))
 			until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
 			if (usr == el.user if usr != None else self.request.remote_addr == el.user_ip):
 				# possibly we should extend the lock duration
@@ -490,7 +497,7 @@ class MainPage(webapp.RequestHandler):
 						" until " + unicode(until) + "( another " + unicode(until -  datetime.datetime.utcnow()) + ")"
 			else:
 				el.delete()
-				reply = self.lock(t,usr)
+				reply = self.lock(t,usr,hasit)
 				reply['until'] = until
 				return self.warn( "Lock held by " + userNameOrAddress(el.user, el.user_ip) + " broken", reply)
 	self.fail(error)
