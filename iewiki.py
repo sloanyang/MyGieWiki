@@ -7,6 +7,7 @@ import cgi
 import codecs
 import datetime
 import difflib
+import glob
 import logging
 import os
 import re
@@ -38,8 +39,15 @@ S_FALSE = 1
 E_FAIL = -1
 
 class library():
-	static = ['YouTube.xml']	
-	def local(self,main):
+	libraryPath = 'library/'
+	def static(self):
+		files = glob.glob(self.libraryPath + '*.xml')
+		pages = []
+		for p in files:
+			pages.append(p[len(self.libraryPath):])
+		return pages
+
+	def local(self):
 		pages = []
 		for p in Page.all():
 			if p.tags != None and 'library' in p.tags.split():
@@ -1767,6 +1775,11 @@ class MainPage(webapp.RequestHandler):
 
   def tiddlersFromSources(self,url,sources=None,cache=None,save=False):
 	try:
+		upr = urlparse.urlparse(url)
+		if upr[0] == 'local':
+			return Tiddler.all().filter('page',upr[2])
+		elif upr[0] == 'static':
+			url = library.libraryPath + upr[2]
 		xd = self.XmlFromSources(url,sources,cache,save)
 	except IOError, iox:
 		return Tiddler.all().filter('page',url)
@@ -2066,10 +2079,7 @@ class MainPage(webapp.RequestHandler):
 		try:
 			lib = library()
 			lm = getattr(lib,ln)
-			if type(lm) == list:
-				self.reply({'pages': lm})
-			else:
-				self.reply({'pages': lm(self)})
+			self.reply({'pages': lm()})
 		except Exception,x:
 			self.fail("Importing " + ln + ": " + unicode(x))
 	

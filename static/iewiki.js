@@ -8228,7 +8228,8 @@ function importFromDialog(url,what) {
 	if (document.getElementById(liblistId))
 		return;
 	var deli = document.getElementById('libraryImport');
-	//removeChildren(deli);
+	if (what.indexOf(':') == -1) // other than fully specified (http:..)
+		what = url + ':' + what;
 	wikify('<<importTiddlers ' + what + '>>',deli);
 }
 
