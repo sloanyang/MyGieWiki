@@ -112,6 +112,12 @@ function valid()
 		alert("Please select the file to upload");
 		return false;
 	}
+	else {
+		fnp = srcfn.split('\\');
+		if (fnp.length == 1)
+			fnp = srcfn.split('/');
+		document.upldlg.filename.value = fnp[fnp.length - 1];
+	}
 	return true;
 }
 
@@ -131,6 +137,7 @@ function fileSelected()
 		<input name="MyFile" type="file" id="MyFile" size="70" onchange="valid()"/> 
 		<input name="SubmitTiddlers" type="submit" id="submit0" style="visibility:visible" value="Upload" />
 		<input name="method" type="hidden" id="method" value="uploadTiddlers" />
+		<input name="filename" type="hidden" id="filename" />
 	</form>
 </body>
 </html>

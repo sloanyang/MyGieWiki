@@ -458,11 +458,11 @@ class MainPage(webapp.RequestHandler):
 	until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
 	re = {"Success": True, "now": el.time, "until": until, "key": str(ek) }
 	if not hasit:
-  		re["title"] = t.title
-  		re["text"] = t.text
-  		re["tags"] = t.tags
-  	return re
-  
+		re["title"] = t.title
+		re["text"] = t.text
+		re["tags"] = t.tags
+	return re
+
   def editTiddler(self):
 	"http version tiddlerId"
 	page = Page.all().filter("path",self.path).get()
@@ -1676,7 +1676,8 @@ class MainPage(webapp.RequestHandler):
 		
   def uploadTiddlers(self):
 	filedata = self.request.get("MyFile")
-	url = 'http:' + self.path
+	filename = self.request.get("filename")
+	url = 'file:' + self.path + '/' + filename
 	urlimport = UrlImport().all().filter('url',url).get()
 	if urlimport == None:
 		urlimport = UrlImport()
@@ -1688,12 +1689,12 @@ class MainPage(webapp.RequestHandler):
 '<header><title>Upload succeeded</title>'
 '<script>'
 'function main() { \n'
-'	act = "onUploadTiddlers()";'
+'	act = "onUploadTiddlers(' + "'" + url + "'" + ')";'
 '	window.parent.setTimeout(act,100);\n'
 '}\n'
 '</script></header>'
-'<body style="margin: 0 0 0 0;" onload="main()">'
-'<a href="/">success..</a>'
+'<body style="margin: 0 0 0 0; text-align: center; font-family: Arial" onload="main()">'
+'<center><a href="/">success..</a></center>'
 '</body>'
 '</html>')
 
@@ -1807,7 +1808,7 @@ class MainPage(webapp.RequestHandler):
   def XmlFromSources(self,url,sources=None,cache=None,save=False):
 	if url.startswith('//'):
 		url = 'http:' + url
-	if url.startswith("http:"):
+	if url.startswith("http:") or url.startswith("file:"):
 		if sources == None or 'local' in sources:
 			importedFile = UrlImport.all().filter('url',url).get()
 			if importedFile != None:

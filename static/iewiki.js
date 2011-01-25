@@ -7241,10 +7241,10 @@ PageProperties = {
 	}
 }
 
-function onUploadTiddlers() {
+function onUploadTiddlers(url) {
 	var delc = document.getElementById('libraryCatalog');
 	removeChildren(delc);
-	importFromDialog(null, 'http:' + window.location.pathname);
+	importFromDialog(null, url);
 }
 
 config.macros.localDiv = {
