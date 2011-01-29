@@ -1787,12 +1787,12 @@ class MainPage(webapp.RequestHandler):
 	try:
 		upr = urlparse.urlparse(url)
 		if upr[0] == 'local':
-			return Tiddler.all().filter('page',upr[2])
+			return Tiddler.all().filter('page',upr[2]).filter('current', True)
 		elif upr[0] == 'static':
 			url = library.libraryPath + upr[2]
 		xd = self.XmlFromSources(url,sources,cache,save)
 	except IOError, iox:
-		return Tiddler.all().filter('page',url)
+		return Tiddler.all().filter('page',url).filter('current', True)
 	except Exception, x:
 		self.warnings.append('failed to read ' + unicode(url) + ":" + unicode(x))
 		return None
@@ -1810,7 +1810,7 @@ class MainPage(webapp.RequestHandler):
   def XmlFromSources(self,url,sources=None,cache=None,save=False):
 	if url.startswith('//'):
 		url = 'http:' + url
-	if url.startswith("http:") or url.startswith("file:"):
+	if url.startswith('http:') or url.startswith('file:'):
 		if sources == None or 'local' in sources:
 			importedFile = UrlImport.all().filter('url',url).get()
 			if importedFile != None:
@@ -2398,23 +2398,24 @@ class MainPage(webapp.RequestHandler):
 
 	elDoc = xd.createElement("document")
 		
-	if twd == None: # normal giewiki output
+	if twd == None: # classic giewiki output
 		elStArea = xd.createElement("storeArea")
 		elShArea = xd.createElement("shadowArea")
-	else: # TiddlyWiki output
+	else: # HTML output
 		self.response.headers['Content-Type'] = 'text/html'
 		elStArea = xd.createElement('div')
 		elStArea.setAttribute('id','storeArea')
 		elShArea = xd.createElement('div')
 		elShArea.setAttribute('id','shadowArea')
-		h = ''.join(['http://',  self.request.host, self.path, '?', self.request.query ])
-		noEditAccess = not AccessToPage(page,self.user) in ['edit','all']
-		for t in tiddict.itervalues():
-			if noEditAccess:
-				t.id = ''
-			setattr(t,'server.type',unicode('giewiki'))
-			setattr(t,'server.host',unicode(h))
-			setattr(t,'server.page.revision',unicode(t.modified.strftime("%Y%m%d%H%M%S")))
+		if not metaData: # offline TW generation
+			h = ''.join(['http://',  self.request.host, self.path, '?', self.request.query ])
+			noEditAccess = not AccessToPage(page,self.user) in ['edit','all']
+			for t in tiddict.itervalues():
+				if noEditAccess:
+					t.id = ''
+				setattr(t,'server.type',unicode('giewiki'))
+				setattr(t,'server.host',unicode(h))
+				setattr(t,'server.page.revision',unicode(t.modified.strftime('%Y%m%d%H%M%S')))
 
 	if metaData:
 		metaDiv = xd.createElement('div')
@@ -2465,8 +2466,8 @@ class MainPage(webapp.RequestHandler):
 	elDoc.appendChild(elStArea) # the root element
 	elDoc.appendChild(elShArea)
 	
+	scripts = dict()
 	if len(tiddict) > 0:
-		scripts = dict()
 		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
 		for id, t in tiddict.iteritems():
 			# pages at /_python/ are executable script...
@@ -2536,8 +2537,15 @@ class MainPage(webapp.RequestHandler):
 			if text.startswith(xmldecl):
 				text = text[len(xmldecl):]
 			globalPatch = 'config.defaultCustomFields["server.host"] = "' + self.request.url + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n'
-			psPos = twdtext.rfind('</script>')
-			twdtext = ''.join([ twdtext[0:psPos], globalPatch, twdtext[psPos:] ])
+			eoS = '</script>'
+			psPos = twdtext.rfind(eoS)
+			twdparts = [ twdtext[0:psPos], globalPatch, eoS ]
+			psPos += len(eoS)
+			if metaData:
+				for (k,v) in scripts.iteritems():
+					twdparts.append('\n<script src="/dynamic/js' + self.request.get('path') + "/" + k + '" type="text/javascript"></script>')
+			twdparts.append(twdtext[psPos:])
+			twdtext = ''.join(twdparts)
 			cssa = '<div id="shadowArea">';
 			mysa = elShArea.toxml()
 			if len(mysa) > len(cssa) + 6:

@@ -10,6 +10,8 @@ class MainJs(webapp.RequestHandler):
 	path = self.request.path
 	epos = path.rfind('/')
 	p = path[len('/dynamic/js'):epos]
+	if p == '':
+		p = '/'
 	s = path[epos + 1:]
 	d = memcache.get(p)
 	if d != None:
@@ -29,8 +31,11 @@ class MainXsl(webapp.RequestHandler):
 	if d != None:
 		incls = []
 		for (k,v) in d.iteritems():
-			incls.append('<script src="/dynamic/js' + self.request.get('path') + "/" + k + '" />')
-		self.response.out.write(text.replace('<script src="/static/iewiki.js" />', '<script src="/static/iewiki.js" />\n' + '\n'.join(incls)))
+			p = self.request.get('path')
+			if p[-1:] != '/':
+				p += '/'
+			incls.append('<script src="/dynamic/js' + p + k + '" type="text/javascript"></script>')
+		self.response.out.write(text.replace('<script src="/static/iewiki.js" type="text/javascript"></script>', '<script src="/static/iewiki.js" type="text/javascript"></script>\n' + '\n'.join(incls)))
 	else:
 		self.response.out.write(text);
 

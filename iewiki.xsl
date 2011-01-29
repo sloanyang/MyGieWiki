@@ -18,8 +18,8 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 #shadowArea {display:none;}
 #javascriptWarning {width:100%; text-align:center; font-weight:bold; background-color:#dd1100; color:#fff; padding:1em 0em;}
 	</style>
-<script src="/config.js" />
-<script src="/static/iewiki.js" />
+<script src="/config.js" type="text/javascript"></script>
+<script src="/static/iewiki.js" type="text/javascript"></script>
 </head>
 <body onload="main()">
 <div id="copyright">
