@@ -1458,7 +1458,9 @@ class MainPage(webapp.RequestHandler):
 		xd.add(rt,"ref",ac.ref)
 		xd.add(rt,"tiddler",ac.tiddler)
 		if dt.has_key(ac.tiddler) == False:
-			dt[ac.tiddler] = Tiddler.all().filter('id',ac.tiddler).filter('current',True).get()
+			at = Tiddler.all().filter('id',ac.tiddler).filter('current',True).get()
+			if at != None:
+				dt[ac.tiddler] = at
 	ta = xd.add(re,"tiddlers",attrs={'type':'object[]'})
 	for (id,tn) in dt.iteritems():
 		ti = xd.add(ta,"tiddler")

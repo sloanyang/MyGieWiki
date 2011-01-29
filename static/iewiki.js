@@ -1901,13 +1901,15 @@ config.macros.pageProperties.onClick = function(e) {
 };
 
 config.macros.comments.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
-    var ced = createTiddlyElement(place,"div",null,"commentToolbar");
-    if (tiddler.comments > 0)
-	    createTiddlyButton(ced, this.listLabel.format([tiddler.comments]), this.listPrompt, this.onListClick);
+	if (tiddler.from && !tiddler.from.startsWith('/')) // cannot comment on foreign tiddlers	
+		return;
+	var ced = createTiddlyElement(place,"div",null,"commentToolbar");
+	if (tiddler.comments > 0)
+		createTiddlyButton(ced, this.listLabel.format([tiddler.comments]), this.listPrompt, this.onListClick);
 	if (tiddler.Notes())
-	    createTiddlyButton(ced, this.notesLabel.format([tiddler.Notes()]), this.notesPrompt, this.onNotesClick);
+		createTiddlyButton(ced, this.notesLabel.format([tiddler.Notes()]), this.notesPrompt, this.onNotesClick);
 	if (tiddler.messages)
-	    createTiddlyButton(ced, this.messagesLabel.format([tiddler.messages]), this.notesPrompt, this.onMessagesClick);
+		createTiddlyButton(ced, this.messagesLabel.format([tiddler.messages]), this.notesPrompt, this.onMessagesClick);
 
 	if (config.access == "view") return;
 	createTiddlyButton(ced, this.addCommentLabel, this.addCommentPrompt, this.onAddCommentClick);
@@ -7740,12 +7742,12 @@ config.macros.recentComments = {
 				createTiddlyElement(tr,"td",null,null,c.who);
 				var tdl = createTiddlyElement(tr,"td");
 				var tiddlr = tiddict[c.tiddler];
-				if (tiddlr.page != window.location.pathname) {
+				if (tiddlr && tiddlr.page && tiddlr.page != window.location.pathname) {
 					var a = createExternalLink(tdl,tiddlr.page + "#" + encodeURIComponent(String.encodeTiddlyLink(tiddlr.title)));
 					a.appendChild(document.createTextNode(tiddlr.title));
 				}
 				else
-					createTiddlyLink(tdl,tiddlr.title,true);
+					createTiddlyLink(tdl,tiddlr ? tiddlr.title : "(deleted tiddler)",true);
 				createTiddlyElement(tr,"td",null,null,c.text);
 			}
 			tr = createTiddlyElement(tbody,"tr");
