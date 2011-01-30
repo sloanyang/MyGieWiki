@@ -31,7 +31,8 @@ from google.appengine.api import namespace_manager
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade, CopyIntoNamespace
 
-giewikiVersion = '2.7'
+giewikiVersion = '2.9'
+TWComp = 'twcomp.html'
 
 # status codes, COM style:
 S_OK = 0
@@ -1785,12 +1786,15 @@ class MainPage(webapp.RequestHandler):
 
   def tiddlersFromSources(self,url,sources=None,cache=None,save=False):
 	try:
+		excl = []
 		upr = urlparse.urlparse(url)
 		if upr[0] == 'local':
 			return Tiddler.all().filter('page',upr[2]).filter('current', True)
 		elif upr[0] == 'static':
 			url = library.libraryPath + upr[2]
 		xd = self.XmlFromSources(url,sources,cache,save)
+		if upr[0] == 'file':
+			excl.append('GiewikiAdaptor')
 	except IOError, iox:
 		return Tiddler.all().filter('page',url).filter('current', True)
 	except Exception, x:
@@ -1804,7 +1808,7 @@ class MainPage(webapp.RequestHandler):
 				pe = es[0]
 			else:
 				raise ImportException(pe.nodeName + " contains " + unicode(len(es)) + " body elements.")
-		return self.TiddlersFromXml(pe,url)
+		return self.TiddlersFromXml(pe,url,excl)
 	return None
 
   def XmlFromSources(self,url,sources=None,cache=None,save=False):
@@ -1842,13 +1846,13 @@ class MainPage(webapp.RequestHandler):
 		return xml.dom.minidom.parse(url)
 
 
-  def TiddlersFromXml(self,te,path):
-	list = []
+  def TiddlersFromXml(self,te,path,excl=[]):
+	lst = []
 
 	def append(t):
 		if t != None:
-			# self.Trace('Append ' + t.title + ' from ' + t.page)
-			list.append(t)
+			if not t.title in excl:
+				lst.append(t)
 
 	if te.tagName in ('body','document'):
 		for acn in te.childNodes:
@@ -1863,7 +1867,7 @@ class MainPage(webapp.RequestHandler):
 				append(TiddlerFromXml(ce,path))
 	else:
 		append(TiddlerFromXml(te,path))
-	return list
+	return lst
 	
   def evaluate(self):
 	xd = self.initXmlResponse()
@@ -2257,7 +2261,7 @@ class MainPage(webapp.RequestHandler):
   def getIncludeFiles(self,rootpath,page,defaultTiddlers,twd):
 	tiddict = dict()
 	includefiles = self.request.get('include').split()
-	if twd != None and twd != 'twcomp.html':
+	if twd != None and twd != TWComp:
 		includefiles.append('GiewikiAdaptor.xml')
 		self.addTiddler(tiddict, "SiteTitle", page.title, page.titleModified, page.owner)
 		self.addTiddler(tiddict, "SiteSubtitle", page.subtitle, page.subtitleModified, page.owner)
@@ -2291,7 +2295,7 @@ class MainPage(webapp.RequestHandler):
 				tdx = []
 				for tdo in tds:
 					if tdo == None:
-						self.warnings.append("Internal error: None in TiddlersFromXml")
+						self.warnings.append("Internal error: None in TiddlersFromSources")
 					elif tfs == None or tdo.title in tfs:
 						tiddict[tdo.title] = tdo
 						if tfs != None:
@@ -2500,7 +2504,7 @@ class MainPage(webapp.RequestHandler):
 				if xsl == "/static/iewiki.xsl":
 					xsl = "/dynamic/iewiki-xsl?path=" + self.path
 				scripts[t.title] = t.text
-				memcache.add(self.path,scripts,5);
+				memcache.set(self.path,scripts,5);
 				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
 			else:
 				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
@@ -2542,8 +2546,8 @@ class MainPage(webapp.RequestHandler):
 			twdparts = [ twdtext[0:psPos], globalPatch, eoS ]
 			psPos += len(eoS)
 			if metaData:
-				for (k,v) in scripts.iteritems():
-					twdparts.append('\n<script src="/dynamic/js' + self.request.get('path') + "/" + k + '" type="text/javascript"></script>')
+				for k in scripts:
+					twdparts.append('\n<script src="/dynamic/js' + self.request.path + "/" + k + '" type="text/javascript"></script>')
 			twdparts.append(twdtext[psPos:])
 			twdtext = ''.join(twdparts)
 			cssa = '<div id="shadowArea">';
@@ -2569,7 +2573,7 @@ class MainPage(webapp.RequestHandler):
 	else:
 		self.traceLevel = trace
 		self.trace = []
-		memcache.add(self.request.remote_addr, self.traceLevel, 300) # 5 minutes
+		memcache.set(self.request.remote_addr, self.traceLevel, 300) # 5 minutes
 		self.Trace("TL=" + memcache.get(self.request.remote_addr))
 
 	self.getSubdomain()
@@ -2595,10 +2599,10 @@ class MainPage(webapp.RequestHandler):
 	twd = self.request.get('twd',None)
 	xsl = self.request.get('xsl',None)
 	if twd == None and xsl == None:	# Unless a TiddlyWiki is required or a style sheet is specified
-		xsl = "/static/iewiki.xsl"	# use the default,
+		twd = TWComp # xsl = "/static/iewiki.xsl"	# use the default,
 		metaData = True
 		message = "You have successfully installed giewiki" if rootpath else ""
-	elif twd == 'twcomp.html':
+	elif twd == TWComp:
 		metaData = True
 		message = None
 	else:

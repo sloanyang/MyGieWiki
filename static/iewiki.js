@@ -8018,6 +8018,14 @@ function UrlInclude(what) {
 }
 
 config.macros.importTiddlers = {
+	sortf: function(a,b)
+	{
+		a = a.title.toUpperCase();
+		b = b.title.toUpperCase();
+		if (a < b) return -1;
+		if (a > b) return 1;
+		return 0;
+	},
 	handler: function (place, macroName, params, wikifier, paramString) {
 		if (params.length == 0)
 			wikify("The importTiddlers macro lets you easily import from ~TiddlyWiki or giewiki documents on the web or on this web site. Usage:<br>    {{{<<importTiddlers URL>>}}}<br>substituting URL with the web address or filename of the library you want to use. Edit this tiddler to insert the parameter"
@@ -8035,7 +8043,11 @@ config.macros.importTiddlers = {
 				var tiddlers = params.length == 1 ? params[0].split('||') : params;
 			var workMessage = "Getting <br>" + aurl + "</br>";
 			displayMessage(workMessage);
-			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter || '' });
+//			var sortf = function(a,b) {
+//				displayMessage('"' + a + '" < "' + b + '": ' + (a < b)
+//				return a.title < b.title; 
+//			};
+			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter || '' }).sort(config.macros.importTiddlers.sortf);
 			clearMessage(workMessage);
 			var nCurrent = 0;
 			var nExcluded = 0;
