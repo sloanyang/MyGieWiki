@@ -151,9 +151,11 @@ config.optionsDesc = {
 // Default tiddler templates
 var DEFAULT_VIEW_TEMPLATE = 1;
 var DEFAULT_EDIT_TEMPLATE = 2;
+var SPECIAL_EDIT_TEMPLATE = 3;
 config.tiddlerTemplates = {
     1: "ViewTemplate",
-    2: "EditTemplate"
+    2: "EditTemplate",
+	3: "SpecialEditTemplate"
 };
 
 // More messages (rather a legacy layout that should not really be like this)
@@ -319,6 +321,14 @@ config.commands = {
         hideReadOnly: true,
         text: "done",
         tooltip: "Save changes to this tiddler"
+    },
+    applyChanges: {
+        text: "apply",
+        tooltip: "Save and apply changes"
+    },
+    cancelChanges: {
+        text: "cancel",
+        tooltip: "Cancel changes"
     },
     cancelTiddler: {
         text: "cancel",
@@ -495,7 +505,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~TextToolbar|preview tag help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges|\n|~TextToolbar|preview tag help|',
     DefaultTiddlers: "[[GettingStarted]]",
     MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -2528,6 +2538,22 @@ config.macros.tabs.onClickTab = function(e) {
 };
 
 config.macros.tabs.switchTab = function(tabset, tab) {
+	if (tabset.nextSibling && tabset.nextSibling.childNodes.length > 0) {
+		var nct = tabset.nextSibling.childNodes[0];
+		var fn = nct.getAttribute("tiddler");
+		if (fn) {
+			var st = store.getTiddler(fn);
+			var fields = {};
+			story.gatherSaveFields(nct, fields);
+			var et = st.text;
+			if (!(fields.text === undefined) && fields.text != st.text) {
+				if (window.confirm("Cancel changes to " + fn))
+					store.notify(fn,true);
+				else
+					return;
+			}
+		}
+	}
     var cookie = tabset.getAttribute("cookie");
     var theTab = null;
     var nodes = tabset.childNodes;
@@ -2542,10 +2568,17 @@ config.macros.tabs.switchTab = function(tabset, tab) {
     if (theTab) {
         if (tabset.nextSibling && tabset.nextSibling.className == "tabContents")
             removeNode(tabset.nextSibling);
-        var tabContent = createTiddlyElement(null, "div", null, "tabContents");
+        var tabContent = createTiddlyElement(null, 'div', null, 'tabContents');
         tabset.parentNode.insertBefore(tabContent, tabset.nextSibling);
-        var contentTitle = theTab.getAttribute("content");
-        wikify(store.getTiddlerText(contentTitle), tabContent, null, store.getTiddler(contentTitle));
+        var content = theTab.getAttribute('content');
+		if (content.startsWith('js;')) {
+			var jxa = content.split(';');
+			var evx = eval(jxa[1]);
+			if (typeof(evx) == 'function')
+				evx(tabContent,jxa,theTab);
+		}
+		else
+	        wikify(store.getTiddlerText(content), tabContent, null, store.getTiddler(content));
         if (cookie) {
             config.options[cookie] = tab;
         }
@@ -2797,7 +2830,26 @@ config.commands.saveTiddler.handler = function(event, src, title) {
 		if (x)
 			displayMessage(x);
 	}
-	
+};
+
+config.commands.applyChanges.handler = function(event, src, title) {
+	try {
+		var newTitle = story.saveTiddler(title, event.shiftKey, null);
+		return false;
+	} catch (x) {
+		if (x)
+			displayMessage(x);
+	}
+};
+
+config.commands.cancelChanges.handler = function(event, src, title) {
+	try {
+		story.refreshTiddler(title, SPECIAL_EDIT_TEMPLATE, true);
+		store.notify(title,true);
+	} catch (x) {
+		if (x)
+			displayMessage(x);
+	}
 };
 
 config.commands.editTiddler.isEnabled = function(tdlr) {
@@ -2941,11 +2993,23 @@ config.commands.tag.handler = function(event, src, title) {
     return displayPart(src,"tag");
 };
 
-config.commands.preview.handler = function(event, src, title) {
-    var pe = displayPart(src,"preview").childNodes[1];
-    var te = displayPart(src).childNodes[1].firstChild.firstChild.firstChild;
-	removeChildren(pe);
-    wikify(te.value,pe);
+config.commands.preview.handler = function(e, src, title) {
+    var pe = displayPart(src,'preview')
+	if (pe) {
+		pe = pe.childNodes[1];
+		var te = displayPart(src).childNodes[1].firstChild.firstChild.firstChild;
+		removeChildren(pe);
+		wikify(te.value,pe);
+	}	
+	var dt = story.findContainingTiddler(resolveTarget(window.event));
+	var fn = dt.getAttribute("tiddler");
+	var st = store.getTiddler(fn);
+	var fields = {};
+	story.gatherSaveFields(dt, fields);
+	var et = st.text;
+	st.text = fields.text;
+	store.notify(fn,true);
+	st.text = et;
 };
 
 config.commands.reload.handler = function(event, src, title) {
@@ -2954,12 +3018,14 @@ config.commands.reload.handler = function(event, src, title) {
 
 function displayPart(src,id)
 {
-	while (src.tagName != "FIELDSET")
+	while (src && src.tagName != 'FIELDSET')
 		src = src.parentNode;
-	if (id)
-		while (src.id != id)
-			src = src.nextSibling;
-	src.style.display = "block";
+	if (src) {
+		if (id)
+			while (src.id != id)
+				src = src.nextSibling;
+		src.style.display = 'block';
+	}
 	return src;
 }
 
@@ -4013,8 +4079,12 @@ Story.prototype.displayTiddlers = function(srcElement, titles, template, animate
         this.displayTiddler(srcElement, titles[t], template, animate, unused, customFields);
 };
 
+Story.prototype.specialCases = [];
 Story.prototype.displayTiddler = function(srcElement, tiddler, template, animate, unused, customFields, toggle, animationSrc) {
     var title = (tiddler instanceof Tiddler) ? tiddler.title : tiddler;
+	var sch = this.specialCases[title];
+	if (sch && sch(title))
+		return;
     var tiddlerElem = this.getTiddler(title);
     if (tiddlerElem) {
         if (toggle)
@@ -4380,7 +4450,7 @@ Story.prototype.hasChanges = function(title) {
     return false;
 };
 
-Story.prototype.saveTiddler = function(title, minorUpdate) {
+Story.prototype.saveTiddler = function(title, minorUpdate,newTemplate) {
     var tiddlerElem = this.getTiddler(title);
     if (tiddlerElem) {
         var fields = {};
@@ -4396,7 +4466,10 @@ Story.prototype.saveTiddler = function(title, minorUpdate) {
             this.closeTiddler(newTitle, false);
         tiddlerElem.id = this.tiddlerId(newTitle);
         tiddlerElem.setAttribute("tiddler", newTitle);
-        tiddlerElem.setAttribute("template", DEFAULT_VIEW_TEMPLATE);
+		if (newTemplate === undefined)
+			newTemplate = DEFAULT_VIEW_TEMPLATE;
+		if (newTemplate != null)
+			tiddlerElem.setAttribute("template", newTemplate);
         tiddlerElem.setAttribute("dirty", "false");
         if (config.options.chkForceMinorUpdate)
             minorUpdate = !minorUpdate;
@@ -8249,6 +8322,29 @@ function importFromDialog(url,what) {
 		what = url + ':' + what;
 	wikify('<<importTiddlers ' + what + '>>',deli);
 }
+
+function editTiddlerHere(place,args,tab) {
+	story.createTiddler(place, null, args[2], args[3] || SPECIAL_EDIT_TEMPLATE);
+}
+
+SpecialEditorTiddlers = [ 'PageProperties', 'MainMenu', 'DefaultTiddlers', 'ColorPalette', 'StyleSheet' ];
+
+for (var a=0; a<SpecialEditorTiddlers.length; a++) {
+	Story.prototype.specialCases[SpecialEditorTiddlers[a]] = function(tn)
+	{
+		var tps = document.getElementById('tiddlerPageSetup');
+		if (!tps)
+			return false;
+		for (var ac = tps.firstChild; ac; ac = ac.nextSibling) {
+			if (hasClass(ac,'viewer')) {
+				config.macros.tabs.switchTab(ac.firstChild.firstChild,tn);
+				return true;
+			}
+		}
+		return window.confirm('show ' + tn);
+	};
+}
+
 
 /***
 Name:	InlineJavascriptPlugin  (static/inlinescript.htm)

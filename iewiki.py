@@ -624,7 +624,7 @@ class MainPage(webapp.RequestHandler):
 	tlr.author_ip = self.AuthorIP() # ToDo: Get user's sig in stead
 
 	tls = Tiddler.all().filter('id', tlr.id).filter('version >=',tlr.version - 1)
-	
+
 	for atl in tls:
 		if atl.version >= tlr.version:
 			tlr.version = atl.version + 1
@@ -634,9 +634,11 @@ class MainPage(webapp.RequestHandler):
 			atl.current = False
 			tlr.comments = atl.comments
 			atl.put()
-				
+
 	tlr.current = True
-	if "includes" in tlr.tags.split():
+
+	taglist = [] if tlr.tags == None else tlr.tags.split()
+	if "includes" in taglist:
 		tlf = list()
 		tls = tlr.text.split("\n")
 		for tlx in tls:
@@ -654,7 +656,7 @@ class MainPage(webapp.RequestHandler):
 				tlxs = Tiddler.all().filter("page", parts[0]).filter("title", parts[1]).filter("current",True).get()
 				if tlxs != None:
 					incl = Include.Unique(tlr.page,tlxs.id)
-					if "current" in tlr.tags.split():
+					if "current" in taglist:
 						incl.version = tlxs.version
 					else:
 						incl.version = None
@@ -671,8 +673,7 @@ class MainPage(webapp.RequestHandler):
 	if page != None:
 		page.Update(tlr)
 
-	tags = tlr.tags.split()
-	isShared = True if ("shadowTiddler" in tags or "sharedTiddler" in tags) else False
+	isShared = True if ("shadowTiddler" in taglist or "sharedTiddler" in taglist) else False
 	st = ShadowTiddler.all().filter('id',tlr.id).get()
 	if st != None:
 		if isShared:
@@ -2606,7 +2607,7 @@ class MainPage(webapp.RequestHandler):
 		metaData = True
 		message = None
 	else:
-		metaData = False
+		metaData = xsl != None
 		message = None
 
 	defaultTiddlers = None

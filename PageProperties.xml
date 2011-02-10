@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <tiddler title="PageProperties" viewTemplate="ViewOnlyTemplate">
-	<pre>!Page properties
-&lt;script&gt;return PageProperties.init();&lt;/script&gt;
+	<pre>&lt;script&gt;return PageProperties.init();&lt;/script&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 95&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 95&gt;&gt;|
 |Owner&lt;br&gt;&lt;&lt;input text owner 35&gt;&gt;|Group(s) &lt;&lt;defineGroup&gt;&gt;&lt;br&gt;&lt;&lt;input text groups 30&gt;&gt;|Locked&lt;br&gt;&lt;&lt;input checkbox locked false&gt;&gt;|
