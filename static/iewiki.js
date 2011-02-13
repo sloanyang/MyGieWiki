@@ -506,8 +506,8 @@ config.shadowTiddlers = {
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
     ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges|\n|~TextToolbar|preview tag help|',
-    DefaultTiddlers: "[[GettingStarted]]",
-    MainMenu: "[[GettingStarted]]<br>[[SiteMap]]<br>[[RecentChanges]]<br>[[RecentComments]]",
+    DefaultTiddlers: "[[PageSetup]]",
+    MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~More" "More lists" TabMore>>',
@@ -736,7 +736,9 @@ function loadPlugins() {
                 p.executed = true;
                 var startTime = new Date();
                 try {
-                    if (tiddler.text)
+					if (tiddler.tags.indexOf('systemScript') >= 0)
+						p.log.push("Loaded as an external script");
+                    else if (tiddler.text)
                         window.eval(tiddler.text);
                     nLoaded++;
                 } catch (ex) {
@@ -4450,7 +4452,7 @@ Story.prototype.hasChanges = function(title) {
     return false;
 };
 
-Story.prototype.saveTiddler = function(title, minorUpdate,newTemplate) {
+Story.prototype.saveTiddler = function(title, minorUpdate, newTemplate) {
     var tiddlerElem = this.getTiddler(title);
     if (tiddlerElem) {
         var fields = {};
@@ -7445,7 +7447,7 @@ function expandFolder(ev)
 		else {
 			var any = false;
 			for (var i = 0; i < tl.length; i++) 
-				if (tl[i].search(/SiteTitle|SiteSubtitle|DefaultTiddlers|MainMenu/) == -1) {
+				if (tl[i].search(/SiteTitle|SiteSubtitle|DefaultTiddlers|MainMenu|StyleSheet|ColorPalette/) == -1) {
 					if (href != window.location.pathname)
 						hr = href + "#" + encodeURIComponent(String.encodeTiddlyLink(tl[i]));
 					else
@@ -8335,16 +8337,63 @@ for (var a=0; a<SpecialEditorTiddlers.length; a++) {
 		var tps = document.getElementById('tiddlerPageSetup');
 		if (!tps)
 			return false;
-		for (var ac = tps.firstChild; ac; ac = ac.nextSibling) {
-			if (hasClass(ac,'viewer')) {
-				config.macros.tabs.switchTab(ac.firstChild.firstChild,tn);
-				return true;
-			}
-		}
+		var tse = getElementsByClassName('tabset','div',tps);
+		if (tse)
+			return config.macros.tabs.switchTab(tse,tn) || true;
 		return window.confirm('show ' + tn);
 	};
 }
 
+CommonTasks = {
+	RemoveText: function(what,where) {
+		var te = store.getTiddler(where);
+		var tx = te.text.replace(what,'');
+		if (tx != te.text) {
+			var se = story.getTiddlerField(where,'text');
+			if (se)
+				se.value = tx;
+			displayMessage(what + " removed from " + where);
+			return store.saveTiddler(where,where,tx,config.options.txtUserName,new Date());
+		}
+		else
+			return false;
+	},
+	RemoveThisLi: function () {
+		var src = window.event.srcElement;
+		var cul = src.parentElement.parentElement;
+		cul.removeChild(src.parentElement);
+	}
+}
+
+// adapted from http://muffinresearch.co.uk/archives/2006/04/29/getelementsbyclassname-deluxe-edition/
+// v1.03 Copyright (c) 2006 Stuart Colville
+function getElementsByClassName(strClass, strTag, objContElm, arr) {
+	strTag = strTag || "*";
+	objContElm = objContElm || document;
+	var objColl = objContElm.getElementsByTagName(strTag);
+	if (!objColl.length &&  strTag == "*" &&  objContElm.all) objColl = objContElm.all;
+	var delim = strClass.indexOf('|') != -1  ? '|' : ' ';
+	var arrClass = strClass.split(delim);
+	for (var i = 0, j = objColl.length; i < j; i++) {
+	var arrObjClass = objColl[i].className.split(' ');
+	if (delim == ' ' && arrClass.length > arrObjClass.length) continue;
+	var c = 0;
+comparisonLoop:
+	for (var k = 0, l = arrObjClass.length; k < l; k++) {
+		for (var m = 0, n = arrClass.length; m < n; m++) {
+			if (arrClass[m] == arrObjClass[k]) c++;
+				if (( delim == '|' && c == 1) || (delim == ' ' && c == arrClass.length)) {
+					if (arr)
+						arr.push(objColl[i]);
+					else
+						return objColl[i];
+					break comparisonLoop;
+				}
+			}
+		}
+	}
+	return arr && arr.length ? arr.length : 0;
+}
 
 /***
 Name:	InlineJavascriptPlugin  (static/inlinescript.htm)

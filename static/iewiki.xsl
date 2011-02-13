@@ -88,7 +88,7 @@ border-right:1px solid [[ColorPalette::TertiaryLight]];
 }
 .tabUnselected {color:[[ColorPalette::Background]]; background:[[ColorPalette::TertiaryMid]];}
 .tabContents {color:[[ColorPalette::PrimaryDark]]; background:[[ColorPalette::TertiaryPale]]; border:1px solid [[ColorPalette::TertiaryLight]];}
-.tabContents .button {border:0;}
+.tabContents .button {border:0; padding: 0.2em 0.4em;}
 
 #sidebar {}
 #sidebarOptions input {border:1px solid [[ColorPalette::PrimaryMid]];}
@@ -143,9 +143,9 @@ border-color:[[ColorPalette::PrimaryDark]] [[ColorPalette::PrimaryPale]] [[Color
 .toolbar {color:[[ColorPalette::PrimaryMid]];}
 .commentToolbar {color:[[ColorPalette::PrimaryMid]];}
 .toolbar a {color:[[ColorPalette::TertiaryLight]];}
-.commentToolbar a {color:[[ColorPalette::TertiaryLight]];}
+.commentToolbar a {color:[[ColorPalette::TertiaryDark]];}
 .selected .toolbar a {color:[[ColorPalette::TertiaryMid]];}
-.selected .commentToolbar a {color:[[ColorPalette::TertiaryMid]];}
+.selected .commentToolbar a {color:[[ColorPalette::TertiaryDark]];}
 .selected .toolbar a:hover {color:[[ColorPalette::Foreground]];}
 .selected .commentToolbar a:hover {color:[[ColorPalette::Foreground]];}
 
@@ -172,6 +172,8 @@ border-color:[[ColorPalette::PrimaryDark]] [[ColorPalette::PrimaryPale]] [[Color
 
 .viewer .listTitle {list-style-type:none; margin-left:-2em;}
 .viewer .button {border:1px solid [[ColorPalette::SecondaryMid]];}
+.tabContents .button {border:1px solid [[ColorPalette::TertiaryPale]];}
+.tabContents .button:hover {border-color:[[ColorPalette::SecondaryMid]];}
 .viewer blockquote {border-left:3px solid [[ColorPalette::TertiaryDark]];}
 
 .viewer table, table.twtable {border:2px solid [[ColorPalette::TertiaryDark]];}
@@ -230,7 +232,7 @@ ol ol ol ol ol {list-style-type:lower-alpha;}
 ol ol ol ol ol ol {list-style-type:lower-roman;}
 ol ol ol ol ol ol ol {list-style-type:decimal;}
 
-fieldset { padding:0px 4px 4px 4px; }
+fieldset { padding:0px 8px 4px 4px; }
 
 .txtOptionInput {width:11em;}
 
@@ -298,6 +300,7 @@ a.tiddlyLinkNonExisting.shadow {font-weight:bold;}
 .tabContents ul, .tabContents ol {margin:0; padding:0;}
 .txtMainTab .tabContents li {list-style:none;}
 .tabContents li.listLink { margin-left:.75em;}
+.tabContents .tiddler {padding:0.1em 0.5em 0.5em 0.5em}
 
 #contentWrapper {display:block;}
 #splashScreen {display:none;}
@@ -447,6 +450,19 @@ body {font-size:0.8em;}
 &lt;!--}}}--&gt;
 </pre>
 </div>
+<div title="SpecialEditTemplate">
+<pre>&lt;!--{{{--&gt;
+&lt;div class='editor' macro='edit text'&gt;&lt;/div&gt;
+&lt;div class='commentToolbar' macro='toolbar [[ToolbarCommands::SpecialEditToolbar]]'&gt;&lt;/div&gt;
+&lt;!--}}}--&gt;
+</pre>
+</div>
+<div title="SpecialViewTemplate">
+<pre>&lt;!--{{{--&gt;
+&lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
+&lt;!--}}}--&gt;
+</pre>
+</div>
 <div title="ViewOnlyTemplate">
 <pre>&lt;!--{{{--&gt;
 &lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
@@ -454,14 +470,6 @@ body {font-size:0.8em;}
 &lt;div class='tagClear'&gt;&lt;/div&gt;
 &lt;!--}}}--&gt;
 </pre>
-</div>
-<div title="GettingStarted">
-	<pre>
-To get started with this blank page, you should change the following tiddlers:
-* PageProperties: The title of the page, as shown above, user access levels, etc. (also accessed via the edit menu)
-* MainMenu: The menu that appears on the left (also accessed via the more/special tab on the right)
-* DefaultTiddlers: Contains the names of the tiddlers that you want to appear when the page is opened (likewise)
-	</pre>
 </div>
 <div title="UserProfile" viewTemplate="ViewOnlyTemplate">
 <pre>
@@ -483,13 +491,27 @@ tiddler|UserProfile|my profile|Edit my profile|
 link|/_ah/admin|DataStore|config.admin
 </pre>
 </div>
+<div title="PageSetup">
+<pre>
+&lt;&lt;tabs chkPageSetup
+'PageProperties' 'Title, access, template/includes' 'js;editTiddlerHere;PageProperties;SpecialViewTemplate'
+'MainMenu' 'The left column' 'js;editTiddlerHere;MainMenu'
+'DefaultTiddlers' 'Middle column initial content' 'js;editTiddlerHere;DefaultTiddlers'
+'ColorPalette' 'Color palette' 'js;editTiddlerHere;ColorPalette'
+'StyleSheet' 'Custom styles' 'js;editTiddlerHere;StyleSheet'
+&gt;&gt;
+!Common tasks
+* &lt;script label=&quot;Remove&quot;&gt;CommonTasks.RemoveText('[[PageSetup]]\n','MainMenu')&amp;&amp;CommonTasks.RemoveThisLi()&lt;/script&gt; PageSetup from MainMenu (it is available from the editing menu).
+* &lt;script label=&quot;Remove&quot;&gt;CommonTasks.RemoveText('[[PageSetup]]','DefaultTiddlers')&amp;&amp;CommonTasks.RemoveThisLi()&lt;/script&gt; PageSetup from DefaultTiddlers.
+</pre>
+</div>
 <div title="EditingMenu">
 <pre>
 macro|newTiddler|
 macro|newJournal|"DD MMM YYYY" "journal"
 tiddler|CreateNewPage|new page|Create new page|p
 tiddler|UploadDialog|upload file|Upload a local file|u
-tiddler|PageProperties|page properties|Edit page properties|p
+tiddler|PageSetup|page setup|Edit page properties and presentation|p
 tiddler|File list|file list|list of uploaded files|f
 </pre>
 </div>
