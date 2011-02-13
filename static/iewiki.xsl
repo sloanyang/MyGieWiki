@@ -491,7 +491,7 @@ tiddler|UserProfile|my profile|Edit my profile|
 link|/_ah/admin|DataStore|config.admin
 </pre>
 </div>
-<div title="PageSetup">
+<div title="PageSetup" viewTemplate="ViewOnlyTemplate">
 <pre>
 &lt;&lt;tabs chkPageSetup
 'PageProperties' 'Title, access, template/includes' 'js;editTiddlerHere;PageProperties;SpecialViewTemplate'

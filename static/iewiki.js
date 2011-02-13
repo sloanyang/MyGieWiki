@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.8.0
+   version:	1.9.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -622,7 +622,7 @@ function main() {
     loadShadowTiddlers(false);
     store.loadFromDiv("storeArea", "store", true);
     config.read(store.fetchTiddler("_MetaData"));
-
+	store.removeTiddler("_MetaData");
     invokeParamifier(params, "onload");
     var hms = store.getTiddlerText("HttpMethods");
 	if (hms) http._init(hms.split('\n'));
@@ -3552,14 +3552,17 @@ TiddlyWiki.prototype.removeTiddler = function(title) {
                 return displayMessage(result.error);
         }
         if (tiddler.hasShadow) {
-			merge(tiddler,tiddler.ovs[0]);
+			if (tiddler.ovs) {
+				merge(tiddler,tiddler.ovs[0]);
+				for (var i = 1; i < tiddler.ovs.length; i++)
+					delete tiddler.ovs[i];
+			}
 			tiddler.currentVer = 0;
+			delete tiddler.id;
 			delete tiddler.versions;
-			for (var i = 1; i < tiddler.ovs.length; i++)
-				delete tiddler.ovs[i];
 		}
 		else
-	        this.deleteTiddler(title);
+			this.deleteTiddler(title);
         this.notify(title, true);
         this.setDirty(true);
     }
@@ -8118,10 +8121,6 @@ config.macros.importTiddlers = {
 				var tiddlers = params.length == 1 ? params[0].split('||') : params;
 			var workMessage = "Getting <br>" + aurl + "</br>";
 			displayMessage(workMessage);
-//			var sortf = function(a,b) {
-//				displayMessage('"' + a + '" < "' + b + '": ' + (a < b)
-//				return a.title < b.title; 
-//			};
 			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter || '' }).sort(config.macros.importTiddlers.sortf);
 			clearMessage(workMessage);
 			var nCurrent = 0;

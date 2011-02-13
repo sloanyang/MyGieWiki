@@ -77,7 +77,11 @@
     </Content>
     <Content Include="index.py" />
     <Content Include="Hello.py" />
-    <Content Include="LibraryUsageHelp.xml" />
+    <Content Include="LibraryUsageHelp.xml">
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="library\tiddlywiki.abego-software.xml" />
+    <Content Include="library\YouTube.xml" />
     <Content Include="PageProperties.xml">
       <SubType>Designer</SubType>
     </Content>
@@ -104,6 +108,7 @@
     <Content Include="twcomp.html" />
     <Content Include="UploadDialog.htm" />
     <Content Include="PageTemplateHelp.xml" />
+    <Content Include="SpecialTiddlers.xml" />
     <Content Include="YouTube.xml">
       <SubType>Designer</SubType>
     </Content>

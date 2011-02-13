@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.8.0
+# ver.:	1.9.0
 
 import cgi
 import codecs
@@ -54,6 +54,13 @@ class library():
 			if p.tags != None and 'library' in p.tags.split():
 				pages.append(p.path)
 		return pages
+
+	def uploads(self):
+		files = []
+		for f in UploadedFile.all():
+			if f.mimetype in ['text/xml','text/html']:
+				files.append(f.path)
+		return files
 
 class MyError(Exception):
   def __init__(self, value):
@@ -1129,12 +1136,13 @@ class MainPage(webapp.RequestHandler):
 	xd = XmlDocument()
 	xroot = xd.add(xd,'SiteMap', attrs={'type':'object[]'})
 	for p in pal:
-		xpage = xd.createElement('page')
-		xroot.appendChild(xpage)
-		xd.add(xpage,'path',p.path)
-		xd.add(xpage,'title',p.title)
-		if p.tags != None:
-			xd.add(xpage,'tags',p.tags)
+		if p.tags == None or 'hidden' not in p.tags.split():
+			xpage = xd.createElement('page')
+			xroot.appendChild(xpage)
+			xd.add(xpage,'path',p.path)
+			xd.add(xpage,'title',p.title)
+			if p.tags != None:
+				xd.add(xpage,'tags',p.tags)
 	self.sendXmlResponse(xd)
 
   def createPage(self):
@@ -1789,12 +1797,21 @@ class MainPage(webapp.RequestHandler):
 	try:
 		excl = []
 		upr = urlparse.urlparse(url)
-		if upr[0] == 'local':
+		scheme = upr[0]
+		if scheme == 'local':
 			return Tiddler.all().filter('page',upr[2]).filter('current', True)
-		elif upr[0] == 'static':
+		elif scheme == 'uploads':
+			te = UploadedFile.all().filter('path',upr[2]).get()
+			if te == None:
+				return None
+			else:
+				xd = FixTWSyntaxAndParse(te.data)
+				url = None
+		elif scheme == 'static':
 			url = library.libraryPath + upr[2]
-		xd = self.XmlFromSources(url,sources,cache,save)
-		if upr[0] == 'file':
+		if url != None:
+			xd = self.XmlFromSources(url,sources,cache,save)
+		if scheme == 'file':
 			excl.append('GiewikiAdaptor')
 	except IOError, iox:
 		return Tiddler.all().filter('page',url).filter('current', True)
@@ -2079,7 +2096,7 @@ class MainPage(webapp.RequestHandler):
 	elif ln.find(':/') > 0:
 		try:
 			ups = urlparse.urlparse(ln)
-			result = urlfetch.fetch(ln,'method=openLibrary&library=' + ups.path,'POST') #ln[ln.find(':/')+2:],'POST')
+			result = urlfetch.fetch(ln,'method=openLibrary&library=' + ups.path,'POST')
 		except urlfetch.Error, ex:
 			raise ImportException("Could not get the file <b>" + ln + "</b>:<br/>Exception " + unicode(ex.__class__.__doc__))
 		if result.status_code != 200:
@@ -2425,6 +2442,7 @@ class MainPage(webapp.RequestHandler):
 	if metaData:
 		metaDiv = xd.createElement('div')
 		metaDiv.setAttribute('title', "_MetaData")
+		metaDiv.setAttribute('version','-1')
 		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
 		metaDiv.setAttribute('clientip', self.request.remote_addr)
 		if page == None:
