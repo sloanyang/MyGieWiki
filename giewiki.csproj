@@ -109,9 +109,6 @@
     <Content Include="UploadDialog.htm" />
     <Content Include="PageTemplateHelp.xml" />
     <Content Include="SpecialTiddlers.xml" />
-    <Content Include="YouTube.xml">
-      <SubType>Designer</SubType>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

@@ -37,11 +37,9 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 " />
-<!--PRE-HEAD-START-->
 <!--{{{-->
 <link rel='alternate' type='application/rss+xml' title='RSS' href='index.xml' />
 <!--}}}-->
-<!--PRE-HEAD-END-->
 <title>
 
 </title>
@@ -54,8 +52,6 @@ DAMAGE.
 #shadowArea {display:none;}
 #javascriptWarning {width:100%; text-align:center; font-weight:bold; background-color:#dd1100; color:#fff; padding:1em 0em;}
 </style>
-<!--POST-HEAD-START-->
-<!--POST-HEAD-END-->
 <script src="/config.js" type="text/javascript"></script>
 <script src="/static/iewiki.js" type="text/javascript"></script>
 <script type="text/javascript">
@@ -63,8 +59,6 @@ DAMAGE.
 </script>
 </head>
 <body onload="main();" onunload="if(window.unload) unload();">
-<!--PRE-BODY-START-->
-<!--PRE-BODY-END-->
 <div id="copyright">
 Welcome to TiddlyWiki created by Jeremy Ruston, Copyright &copy; 2007 UnaMesa Association
 </div>
@@ -83,12 +77,6 @@ This page requires JavaScript to function properly.<br /><br />If you are using 
 <div id="contentWrapper"></div>
 <div id="contentStash"></div>
 <div id="shadowArea">
-<div title="MarkupPreHead">
-<pre>&lt;!--{{{--&gt;
-&lt;link rel='alternate' type='application/rss+xml' title='RSS' href='index.xml' /&gt;
-&lt;!--}}}--&gt;
-</pre>
-</div>
 <div title="ColorPalette">
 <pre>Background: #f4f3f2
 Foreground: #000
@@ -595,23 +583,6 @@ See also the AdvancedOptions
   <pre>&lt;html&gt;&lt;div class='title'&gt;Recent comments&lt;/div&gt;&lt;/html&gt;
 &lt;&lt;recentComments&gt;&gt;</pre>
 </div>
-<div title="DebugConsole">
-<pre>&lt;script label="Python"&gt;
-	var re = document.getElementById(formName() + 'output');
-	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
-	re.appendChild(document.createTextNode(http.evaluate(GetForm(place))));
-	createTiddlyElement(re,'br')
-&lt;/script&gt; &lt;script label="Javascript"&gt;
-	var re = document.getElementById(formName() + 'output');
-	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
-	var exp = GetForm(place).expression;
-	var text = eval(exp);
-	if (typeof(text) == 'object') if (text.output) text=text.output;
-	re.appendChild(document.createTextNode(text)); createTiddlyElement(re,'br')
-&lt;/script&gt;
-|&gt;|&lt;&lt;localDiv output&gt;&gt;|
-|&gt;|&gt;|Evaluate&lt;br&gt;&lt;&lt;input textarea expression 20*70&gt;&gt;|
-</pre>></div>
 <div title="UploadDialog" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;&lt;uploadDialog&gt;&gt;</pre>
 </div>
@@ -649,13 +620,7 @@ forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"a
 </pre>
 </div>
 </div>
-<!--POST-SHADOWAREA-->
 <div id="storeArea">
 </div>
-<!--POST-STOREAREA-->
-<!--POST-BODY-START-->
-<!--POST-BODY-END-->
-<!--POST-SCRIPT-START-->
-<!--POST-SCRIPT-END-->
 </body>
 </html>

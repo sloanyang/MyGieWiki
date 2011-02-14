@@ -32,13 +32,6 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 </noscript>
 <div id="contentWrapper"></div>
 <div id="shadowArea">
-<div title="MarkupPreHead">
-	<pre>
-		&lt;!--{{{--&gt;
-		&lt;link rel='alternate' type='application/rss+xml' title='RSS' href='index.xml' /&gt;
-		&lt;!--}}}--&gt;
-	</pre>
-</div>
 <div title="ColorPalette">
 <pre>Background: #f4f3f2
 Foreground: #000
@@ -546,23 +539,6 @@ See also the AdvancedOptions
   <pre>&lt;html&gt;&lt;div class='title'&gt;Recent comments&lt;/div&gt;&lt;/html&gt;
 &lt;&lt;recentComments&gt;&gt;</pre>
 </div>
-<div title="DebugConsole">
-<pre>&lt;script label="Python"&gt;
-	var re = document.getElementById(formName() + 'output');
-	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
-	re.appendChild(document.createTextNode(http.evaluate(GetForm(place))));
-	createTiddlyElement(re,'br')
-&lt;/script&gt; &lt;script label="Javascript"&gt;
-	var re = document.getElementById(formName() + 'output');
-	createTiddlyElement(re,'div',null,null,GetForm(place).expression);
-	var exp = GetForm(place).expression;
-	var text = eval(exp);
-	if (typeof(text) == 'object') if (text.output) text=text.output;
-	re.appendChild(document.createTextNode(text)); createTiddlyElement(re,'br')
-&lt;/script&gt;
-|&gt;|&lt;&lt;localDiv output&gt;&gt;|
-|&gt;|&gt;|Evaluate&lt;br&gt;&lt;&lt;input textarea expression 20*70&gt;&gt;|
-</pre>></div>
 <div title="UploadDialog" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;&lt;uploadDialog&gt;&gt;</pre>
 </div>
