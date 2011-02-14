@@ -61,7 +61,7 @@ updateTemplate\n\
 getTemplates'
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 8, revision: 0, date: new Date("Dec 31, 2010"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 9, revision: 0, date: new Date("Feb 14, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
