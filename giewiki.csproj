@@ -85,6 +85,7 @@
     <Content Include="PageProperties.xml">
       <SubType>Designer</SubType>
     </Content>
+    <Content Include="PageTemplateHelp.xml" />
     <Content Include="PluginManager.xml" />
     <Content Include="empty.html" />
     <Content Include="PublishPlugin.xml" />

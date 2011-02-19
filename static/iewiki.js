@@ -8334,18 +8334,20 @@ function editTiddlerHere(place,args,tab) {
 
 SpecialEditorTiddlers = [ 'PageProperties', 'MainMenu', 'DefaultTiddlers', 'ColorPalette', 'StyleSheet' ];
 
+Story.prototype.specialCaseEditorOpen = function(tn)
+{
+	var tps = document.getElementById('tiddlerPageSetup');
+	if (!tps)
+		return false;
+	var tse = getElementsByClassName('tabset','div',tps);
+	if (tse)
+		return config.macros.tabs.switchTab(tse,tn) || true;
+	return window.confirm('show ' + tn);
+};
+
 for (var a=0; a<SpecialEditorTiddlers.length; a++) {
-	Story.prototype.specialCases[SpecialEditorTiddlers[a]] = function(tn)
-	{
-		var tps = document.getElementById('tiddlerPageSetup');
-		if (!tps)
-			return false;
-		var tse = getElementsByClassName('tabset','div',tps);
-		if (tse)
-			return config.macros.tabs.switchTab(tse,tn) || true;
-		return window.confirm('show ' + tn);
-	};
-}
+	Story.prototype.specialCases[SpecialEditorTiddlers[a]] = Story.prototype.specialCaseEditorOpen;
+	}
 
 CommonTasks = {
 	RemoveText: function(what,where) {
