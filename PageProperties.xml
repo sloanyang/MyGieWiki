@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
-<tiddler title="PageProperties" viewTemplate="ViewOnlyTemplate">
+<tiddler title="PageProperties" viewTemplate="ViewOnlyTemplate" tags="excludeLists">
 	<pre>&lt;script&gt;return PageProperties.init();&lt;/script&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 95&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 95&gt;&gt;|

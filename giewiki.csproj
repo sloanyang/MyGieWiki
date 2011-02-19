@@ -107,8 +107,8 @@
     <Content Include="static\UploadDialog.htm" />
     <Content Include="twcomp.html" />
     <Content Include="UploadDialog.htm" />
-    <Content Include="PageTemplateHelp.xml" />
     <Content Include="SpecialTiddlers.xml" />
+    <Content Include="page-setup-first.xml" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

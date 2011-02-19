@@ -2996,7 +2996,7 @@ config.commands.tag.handler = function(event, src, title) {
 };
 
 config.commands.preview.handler = function(e, src, title) {
-    var pe = displayPart(src,'preview')
+	var pe = displayPart(src,'preview')
 	if (pe) {
 		pe = pe.childNodes[1];
 		var te = displayPart(src).childNodes[1].firstChild.firstChild.firstChild;
@@ -3005,13 +3005,11 @@ config.commands.preview.handler = function(e, src, title) {
 	}	
 	var dt = story.findContainingTiddler(resolveTarget(window.event));
 	var fn = dt.getAttribute("tiddler");
-	var st = store.getTiddler(fn);
 	var fields = {};
 	story.gatherSaveFields(dt, fields);
-	var et = st.text;
-	st.text = fields.text;
+	var et = store.replaceText(fn,fields.text);
 	store.notify(fn,true);
-	st.text = et;
+	store.replaceText(fn,et);
 };
 
 config.commands.reload.handler = function(event, src, title) {
@@ -3364,6 +3362,12 @@ function TiddlyWiki() {
         }
 		this.fetchFromServer = ffs;
     };
+	this.replaceText = function(title,text) {
+		var pet = tiddlers[title].text;
+		tiddlers[title].text = text;
+		delete this.slices[title];
+		return pet;
+	};
 }
 
 TiddlyWiki.prototype.setDirty = function(dirty) {

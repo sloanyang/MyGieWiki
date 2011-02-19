@@ -2017,7 +2017,8 @@ class MainPage(webapp.RequestHandler):
 			host = '.' + host
 		prjs = u.Projects(self.subdomain).split(' ')
 		for p in prjs:
-			urls.append(p + host)
+			if len(p) > 0:
+				urls.append(p + host)
 		self.reply({ \
 			'Success': True, \
 			'txtUserName': NoneIsBlank(u.txtUserName),
@@ -2289,8 +2290,7 @@ class MainPage(webapp.RequestHandler):
 				includefiles.append('help-anonymous.xml')
 				defaultTiddlers = "Welcome" # title from help-anonymous.xml
 			else:
-				includefiles.append('help-authenticated.xml')
-				defaultTiddlers = "Welcome\nPageProperties\nPagePropertiesHelp" # titles from help-authenticated.xml
+				includefiles.append('page-setup-first.xml')
 				tiddict['PageProperties'] = TiddlerFromXml(xml.dom.minidom.parse('PageProperties.xml').documentElement,self.path)
 
 	if defaultTiddlers != None:
@@ -2312,6 +2312,8 @@ class MainPage(webapp.RequestHandler):
 			if tds != None:
 				tdx = []
 				for tdo in tds:
+					if tdo != None:
+						tdo.id = 'included'
 					if tdo == None:
 						self.warnings.append("Internal error: None in TiddlersFromSources")
 					elif tfs == None or tdo.title in tfs:
@@ -2439,6 +2441,49 @@ class MainPage(webapp.RequestHandler):
 				setattr(t,'server.host',unicode(h))
 				setattr(t,'server.page.revision',unicode(t.modified.strftime('%Y%m%d%H%M%S')))
 
+	scripts = dict()
+	if len(tiddict) > 0:
+		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
+		for id, t in tiddict.iteritems():
+			# pages at /_python/ are executable script...
+			if t.page != None and t.page.startswith("/_python/") and t.page != self.path:
+				# ...either to be called from a http (XmlHttpRequest) method
+				if t.tags == 'HttpMethod':
+					if httpMethods != None:
+						httpMethods.append(t.title)
+					else:
+						t.text = "No proxy for:\n"
+					t.text= "{{{\n" + t.text + "\n}}}"
+				else: # ...or immediately
+					try:
+						if t.tags == "test":
+							text = "{{{\n" + t.text + "\n}}}\n"
+						code = compile(t.text, t.title, 'exec')
+						exec code in globals(), locals()
+						if t.tags == "test":
+							t.text = text + t.text
+					except Exception, x:
+						t.text = unicode(x)
+
+			if t.tags != None and "shadowTiddler" in t.tags.split():
+				if t.page != self.path: # remove tag if not the source page
+					tags = t.tags.split()
+					tags.remove("shadowTiddler")
+					t.tags = ' '.join(tags)
+				elShArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
+			elif t.tags != None and "systemScript" in t.tags.split():
+				if xsl == "/static/iewiki.xsl":
+					xsl = "/dynamic/iewiki-xsl?path=" + self.path
+				scripts[t.title] = t.text
+				memcache.set(self.path,scripts,5);
+				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
+			else:
+				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
+
+		if httpMethods != None:
+			httpMethodTiddler.text = '\n'.join(httpMethods)
+			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,self.user))
+
 	if metaData:
 		metaDiv = xd.createElement('div')
 		metaDiv.setAttribute('title', "_MetaData")
@@ -2486,55 +2531,12 @@ class MainPage(webapp.RequestHandler):
 			xpage.appendChild(xd.createTextNode(p.subtitle))
 		elStArea.appendChild(metaDiv)
 
-	elDoc.appendChild(elStArea) # the root element
-	elDoc.appendChild(elShArea)
-	
-	scripts = dict()
-	if len(tiddict) > 0:
-		httpMethods = [ httpMethodTiddler.text ] if httpMethodTiddler != None else None
-		for id, t in tiddict.iteritems():
-			# pages at /_python/ are executable script...
-			if t.page != None and t.page.startswith("/_python/") and t.page != self.path:
-				# ...either to be called from a http (XmlHttpRequest) method
-				if t.tags == 'HttpMethod':
-					if httpMethods != None:
-						httpMethods.append(t.title)
-					else:
-						t.text = "No proxy for:\n"
-					t.text= "{{{\n" + t.text + "\n}}}"
-				else: # ...or immediately
-					try:
-						if t.tags == "test":
-							text = "{{{\n" + t.text + "\n}}}\n"
-						code = compile(t.text, t.title, 'exec')
-						exec code in globals(), locals()
-						if t.tags == "test":
-							t.text = text + t.text
-					except Exception, x:
-						t.text = unicode(x)
-
-			if t.tags != None and "shadowTiddler" in t.tags.split():
-				if t.page != self.path: # remove tag if not the source page
-					tags = t.tags.split()
-					tags.remove("shadowTiddler")
-					t.tags = ' '.join(tags)
-				elShArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
-			elif t.tags != None and "systemScript" in t.tags.split():
-				if xsl == "/static/iewiki.xsl":
-					xsl = "/dynamic/iewiki-xsl?path=" + self.path
-				scripts[t.title] = t.text
-				memcache.set(self.path,scripts,5);
-				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
-			else:
-				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
-
-		if httpMethods != None:
-			httpMethodTiddler.text = '\n'.join(httpMethods)
-			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,self.user))
-
 	if xsl != None and xsl != "":	# except if no CSS is desired
 		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
 
+	elDoc.appendChild(elShArea)
+	elDoc.appendChild(elStArea) # the root element
+	
 	xd.appendChild(elDoc)
 	text = xd.toxml()
 	if twd != None:

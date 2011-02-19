@@ -227,7 +227,7 @@ class UserProfile(db.Expando):
 		rootUser = UserProfile.all().filter('user',users.get_current_user()).get()
 		if rootUser != None:
 			return rootUser.projects
-	return self.projects # should be blank...
+	return '' if self.projects is None else self.projects # should be blank...
 
 class PenName(db.Model):
   penname = db.StringProperty()

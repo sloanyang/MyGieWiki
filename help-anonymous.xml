@@ -6,8 +6,11 @@ The data is:
 * ''Groups''&lt;br&gt;You may define a group (or multiple groups) of people that should have elevated access to the page.
 * ''Access permissions''&lt;br&gt;The level of access that various user classes should have to this page.
 * ''Template / Library includes''&lt;br&gt;Shows any page template or library resources that you include into this page.
-* ''Read-only options''&lt;br&gt;Various aspects of how the page looks to someone who does not have edit access.
+* ''Tags''::&lt;br&gt;Optional. When given, these will show up in the SiteMap (except ''hidden'' which will prevent a page from being included in the SiteMap).
+* ''Read-only options''&lt;br&gt;Various aspects of how the page looks to someone who does not have edit access:
+** ''Prior versions''&lt;br&gt;Allows the reader access to prior versions of a tiddler, if they are preserved.
+** ''"view" button''&lt;br&gt;Allows the reader to see the "raw" text of a tiddler, including it's markup.
 
-The page properties dialog is normally accessed via the edit menu, but for a page with no data, it opens automatically.&lt;br&gt;
+	The page properties dialog is normally accessed via the edit menu, but for a page with no data, it opens automatically.&lt;br&gt;
 The login dialog is usually accessed via the button at the top of the toolset on the right.
 </pre></div></storeArea><shadowArea/></document>
