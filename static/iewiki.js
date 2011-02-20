@@ -7250,10 +7250,13 @@ PageProperties = {
 			ee.parentNode.removeChild(ee);
 		
 		var output = [['Library: <html><span id="', liblistId, '">', url, '</span></html> has:'].join('')];
+		var urlParts = url.split('/');
+		var qry = urlParts[urlParts.length-1];
+		if (!qry.startsWith('?'))
+			qry = '';
 		for (var al = lines.shift(); al; al = lines.shift()) {
-			var urlParts = url.split('/');
 			if (urlParts.length > 1) {
-				var ups = url.split('/').slice(0, 3).join('/') + al;
+				var ups = urlParts.slice(0, 3).join('/') + al + qry;
 				al = al.split('/').pop();
 			}
 			else
@@ -8113,7 +8116,6 @@ config.macros.importTiddlers = {
 			wikify("The importTiddlers macro lets you easily import from ~TiddlyWiki or giewiki documents on the web or on this web site. Usage:<br>    {{{<<importTiddlers URL>>}}}<br>substituting URL with the web address or filename of the library you want to use. Edit this tiddler to insert the parameter"
 				+ config.macros.importTiddlers.menu(), place);
 		else {
-			var custumUse = story.findContainingTiddler(place).getAttribute('id') != 'tiddlerPageProperties';
 			var aurl = params.shift();
 			var filt = params.shift();
 			if (filt == 'all') {
@@ -8123,69 +8125,84 @@ config.macros.importTiddlers = {
 				var afilter = params.join(' ');
 			else if (filt == 'tiddlers' && params.length)
 				var tiddlers = params.length == 1 ? params[0].split('||') : params;
-			var workMessage = "Getting <br>" + aurl + "</br>";
-			displayMessage(workMessage);
-			var libs = http.tiddlersFromUrl({ url: aurl, filter: afilter || '' }).sort(config.macros.importTiddlers.sortf);
-			clearMessage(workMessage);
-			var nCurrent = 0;
-			var nExcluded = 0;
-			if (libs) {
-				this.aurl = aurl;
-				this.libs = libs;
-				var wd = createTiddlyElement(place, "div", "wrdiv:" + aurl);
-				var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
-				var links = [];
-				for (var t = 0; t < libs.length; t++) {
-					var lt = libs[t];
+			config.macros.importTiddlers.renderTL(place,aurl,afilter,tiddlers);
+		}
+	},
+	renderTL: function(place,aurl,afilter,tiddlers,remote) {
+		var workMessage = "Getting <br>" + aurl + "</br>";
+		displayMessage(workMessage);
+		var custumUse = story.findContainingTiddler(place).getAttribute('id') != 'tiddlerPageProperties';
+		var rqa = { url: aurl, filter: afilter || '' };
+		if (remote)
+			rqa.source = 'remote';
+		var libs = http.tiddlersFromUrl(rqa).sort(config.macros.importTiddlers.sortf);
+		clearMessage(workMessage);
+		var nCurrent = 0;
+		var nExcluded = 0;
+		if (libs) {
+			this.aurl = aurl;
+			this.libs = libs;
+			var wd = createTiddlyElement(place, "div", "wrdiv:" + aurl);
+			var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
+			var links = [];
+			for (var t = 0; t < libs.length; t++) {
+				var lt = libs[t];
 
-					if (tiddlers && tiddlers.indexOf(lt.title) == -1 || lt.title == "_MetaData")
-						continue;
-					if (lt.current) { var checked = 'checked="1"'; nCurrent++; }
-					else { var checked = ''; nExcluded++; }
-					var ltav = t;
-					var line = ['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td><input type="checkbox" id="cht', ltav, '" ', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl, '">', lt.title.htmlEncode(), '</a></td><td>', lt.tags, '</td></tr>'].join('');
-					links[t] = 'itl' + ltav;
-					hta.push(line);
-				}
-				if (nCurrent + nExcluded > 1)
-					hta.push(['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td colspan="2"><input type="checkbox" id="chkAll', aurl, '" name=chkAll" value="1" />', "Select all the above", '</td></tr>'].join(''));
-				if (custumUse)
-					hta.push('</tbody></table><a href="javascript:;" id="cmdImport">import (permanently)</a> or <a href="/" id="cmdInclude" target="_blank">include (once, via query string)</a>.');
-				if (afilter)
-					afilter = " tagged " + afilter;
-				var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers.", afilter];
-				if (tiddlers && nCurrent < libs.length)
-					resmsg.push("Currently ", nCurrent > 0 ? nCurrent : "none", " are included.");
-				if (tiddlers && libs.length > nCurrent + nExcluded)
-					resmsg.push(' <a href="javascript:;" id="sea', aurl, '"> Show all</a>');
-				wd.innerHTML = resmsg.join('') + hta.join('');
-				if (nCurrent + nExcluded > 1)
-					document.getElementById('chkAll' + aurl).onchange = function (ev) {
-						var cke = resolveTarget(ev || window.event);
-						var tbe = cke.parentElement.parentElement.parentElement;
-						for (var tre = tbe.firstChild; tre; tre = tre.nextSibling) {
-							var cksn = tre.firstChild.firstChild;
-							cksn.checked = cke.checked;
-							if (cksn != cke)
-								config.macros.importTiddlers.onchange(cksn);
-						}
-					};
-				if (tiddlers) {
-					var seaUrl = document.getElementById('sea' + aurl);
-					if (seaUrl)
-						seaUrl.onclick = config.macros.importTiddlers.showAll;
-				}
-				for (t in links) {
-					if (isNaN(t)) continue;
-					var chtid = 'cht' + t;
-					var chtel = document.getElementById(chtid);
-					chtel.onchange = function (ev) { config.macros.importTiddlers.onchange(resolveTarget(ev || window.event)); };
-					document.getElementById(links[t]).onclick = config.macros.importTiddlers.fetch;
-				}
-				if (custumUse)
-					document.getElementById('cmdImport').onclick = config.macros.importTiddlers.importSelected;
-
+				if (tiddlers && tiddlers.indexOf(lt.title) == -1 || lt.title == "_MetaData")
+					continue;
+				if (lt.current) { var checked = 'checked="1"'; nCurrent++; }
+				else { var checked = ''; nExcluded++; }
+				var ltav = t;
+				var line = ['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td><input type="checkbox" id="cht', ltav, '" ', checked, ' name="', ltav, '" value="1" /><a href="javascript:;" id="itl', ltav, '" title="', aurl, '">', lt.title.htmlEncode(), '</a></td><td>', lt.tags, '</td></tr>'].join('');
+				links[t] = 'itl' + ltav;
+				hta.push(line);
 			}
+			if (nCurrent + nExcluded > 1)
+				hta.push(['<tr class="', t % 2 ? 'evenRow' : 'oddRow', '"><td colspan="2"><input type="checkbox" id="chkAll', aurl, '" name=chkAll" value="1" />', "Select all the above", '</td></tr>'].join(''));
+			if (custumUse)
+				hta.push('</tbody></table><a href="javascript:;" id="cmdImport">import (permanently)</a> or <a href="/" id="cmdInclude" target="_blank">include (once, via query string)</a>.');
+			if (afilter)
+				afilter = " tagged " + afilter;
+			var resmsg = ['<a href="', aurl, '">', aurl, "</a> contains ", libs.length, " tiddlers.", afilter];
+			if (tiddlers && nCurrent < libs.length)
+				resmsg.push("Currently ", nCurrent > 0 ? nCurrent : "none", " are included.");
+			if (tiddlers && libs.length > nCurrent + nExcluded)
+				resmsg.push(' <a href="javascript:;" id="sea', aurl, '"> Show all</a>');
+			else if (aurl.startsWith('http:'))
+				resmsg.push(' <a href="javascript:;" id="rqs', aurl, '" title="Update your copy of this file"> Refresh cache</a>');
+			wd.innerHTML = resmsg.join('') + hta.join('');
+			if (nCurrent + nExcluded > 1)
+				document.getElementById('chkAll' + aurl).onchange = function (ev) {
+					var cke = resolveTarget(ev || window.event);
+					var tbe = cke.parentElement.parentElement.parentElement;
+					for (var tre = tbe.firstChild; tre; tre = tre.nextSibling) {
+						var cksn = tre.firstChild.firstChild;
+						cksn.checked = cke.checked;
+						if (cksn != cke)
+							config.macros.importTiddlers.onchange(cksn);
+					}
+				};
+			if (tiddlers) {
+				var seaUrl = document.getElementById('sea' + aurl);
+				if (seaUrl)
+					seaUrl.onclick = config.macros.importTiddlers.showAll;
+			}
+			var rqsUrl = document.getElementById('rqs' + aurl);
+			if (rqsUrl) {
+				rqsUrl.onclick = config.macros.importTiddlers.refresh;
+				rqsUrl.setAttribute('aurl',aurl);
+			}
+			if (afilter)
+				rqsUrl.setAttribute('filter',afilter);
+			for (t in links) {
+				if (isNaN(t)) continue;
+				var chtid = 'cht' + t;
+				var chtel = document.getElementById(chtid);
+				chtel.onchange = function (ev) { config.macros.importTiddlers.onchange(resolveTarget(ev || window.event)); };
+				document.getElementById(links[t]).onclick = config.macros.importTiddlers.fetch;
+			}
+			if (custumUse)
+				document.getElementById('cmdImport').onclick = config.macros.importTiddlers.importSelected;
 		}
 	},
 	showAll: function (ev) {
@@ -8194,6 +8211,17 @@ config.macros.importTiddlers = {
 		var pel = target.parentElement;
 		removeChildren(pel);
 		config.macros.importTiddlers.serve(url, false, true, pel.id);
+		//var libs = http.tiddlersFromUrl({ url: url, filter: afilter || '' }).sort(config.macros.importTiddlers.sortf);
+	},
+	refresh: function(ev) {
+		var target = resolveTarget(ev || window.event);
+		var aurl = target.getAttribute('aurl');
+		var filt = target.getAttribute('filter');
+		var wrd = document.getElementById( "wrdiv:" + aurl);
+		var place = wrd.parentElement;
+		place.removeChild(wrd);
+		config.macros.importTiddlers.renderTL(place,aurl,filt,null,true);
+		var libs = http.tiddlersFromUrl({ url: aurl, filter: filt || '', source: 'remote' }).sort(config.macros.importTiddlers.sortf);
 	},
 	onchange: function (target) {
 		var idx = Number(target.id.substring(3));

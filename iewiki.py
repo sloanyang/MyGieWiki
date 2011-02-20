@@ -1744,11 +1744,12 @@ class MainPage(webapp.RequestHandler):
 	url = self.request.get('url')
 	iftagged = self.request.get('filter')
 	cache = self.request.get('cache')
+	source = self.request.get('source',None)
 	select = self.request.get('select')
 	cache = 60 if cache == "" else int(cache) # default cache age: 60 s
 	try:
 		self.warnings = []
-		tiddlers = self.tiddlersFromSources(url,cache=cache,save=True)
+		tiddlers = self.tiddlersFromSources(url,source,cache=cache,save=True)
 		if tiddlers == None:
 			return self.fail('\n'.join(self.warnings))
 	except xml.parsers.expat.ExpatError, ex:
@@ -1837,7 +1838,7 @@ class MainPage(webapp.RequestHandler):
 			importedFile = UrlImport.all().filter('url',url).get()
 			if importedFile != None:
 				return FixTWSyntaxAndParse(importedFile.data)
-		if sources == None or 'remote' in sources:	
+		if sources == None or 'remote' in sources:
 			content = memcache.get(url)	if cache != None else None
 			if content == None:
 				try:
@@ -1854,8 +1855,10 @@ class MainPage(webapp.RequestHandler):
 			if xd == None:
 				return None
 			if save:
-				urlimport = UrlImport()
-				urlimport.url = url
+				urlimport = UrlImport.all().filter('url',url).get()
+				if urlimport is None:
+					urlimport = UrlImport()
+					urlimport.url = url
 				urlimport.data = db.Blob(content)
 				urlimport.put()
 			return xd
