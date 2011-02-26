@@ -408,17 +408,20 @@ class MainPage(webapp.RequestHandler):
 	else:
 		self.merge = False
 		self.subdomain = None
+		#LogEvent("GetSubdomain", self.request.host)
 		return
 
 	if pos >= 0 and hostc[pos] != 'latest': # App engine uses this for alternate versions
 		self.subdomain = hostc[pos]
 		self.sdo = SubDomain.all().filter('preurl', self.subdomain).get()
+		#LogEvent("GetSubdomain", self.request.host + " >> " + self.subdomain)
 		namespace_manager.set_namespace(self.subdomain)
 		self.merge = False
 		if pos > 0:
 			if hostc[0] == 'merge':
 				self.merge = True
 	else:
+		#LogEvent("GetSubdomain", self.request.host + " >none")
 		self.subdomain = None
 
   def initXmlResponse(self):
@@ -2197,9 +2200,9 @@ class MainPage(webapp.RequestHandler):
 		div.setAttribute('tags', unicode(t.tags));
 		
 	td = t.dynamic_properties()
-	logging.info(unicode(len(td)) + " dps")
+	#logging.info(unicode(len(td)) + " dps")
 	for m in td:
-		logging.info("DP " + m)
+		# logging.info("DP " + m)
 		try:
 			tavm = getattr(t,m)
 			if type(tavm) == str:
@@ -2264,7 +2267,9 @@ class MainPage(webapp.RequestHandler):
 		return page
 	if self.subdomain != None and (not hasattr(self.sdo,"version") or self.sdo.version < giewikiVersion):
 		namespace_manager.set_namespace(None)
+		LogEvent('CurrentPage', "Upgrading page " + self.path + " of " + self.request.host)
 		page = Page.all().filter('sub',self.subdomain).filter("path",self.path).get()
+		LogEvent('CurrentPage', "Page version " + (page.gwversion if page != None else "Page not found"))
 		namespace_manager.set_namespace(self.subdomain)
 		return page
 	return None
@@ -2659,8 +2664,12 @@ class MainPage(webapp.RequestHandler):
 				message = "Start by defining root page properties"
 				
 	if page != None and page.gwversion < giewikiVersion:
-		Upgrade(self,giewikiVersion)
-		self.warnings.append("DataStore was upgraded")
+		self.warnings.append(Upgrade(self,giewikiVersion))
+	elif page != None:
+		LogEvent("Page request ", self.request.url)
+	else:
+		LogEvent("No page", self.request.url)
+
 	if page == None and not rootpath:
 		if self.path == '/UploadDialog.htm':
 			ftwd = open('UploadDialog.htm')
@@ -2670,7 +2679,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			# Not an existing page, perhaps an uploaded file ?
 			file = UploadedFile.all().filter("path =", urllib.unquote(self.path)).get()
-			LogEvent("Get file", self.path)
+			#LogEvent("Get file", self.path)
 			if file == None:
 				self.response.set_status(404)
 				return

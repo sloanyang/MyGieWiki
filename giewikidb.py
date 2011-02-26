@@ -3,6 +3,9 @@
 # URL:	http://code.google.com/p/giewiki
 # ver.:	1.7.0
 
+import logging
+import datetime
+
 from google.appengine.ext import db
 from google.appengine.api import users
 from google.appengine.api import namespace_manager
@@ -232,8 +235,8 @@ class UserProfile(db.Expando):
 class PenName(db.Model):
   penname = db.StringProperty()
   user = db.ReferenceProperty(UserProfile)
-  
-class SubDomain(db.Model):
+
+class SubDomain(db.Expando):
   preurl = db.StringProperty()
   ownerprofile = db.ReferenceProperty(UserProfile)
   owneruser = db.UserProperty()
@@ -323,11 +326,13 @@ def upgradePage(p,version):
 		setattr(p,'tags', '')
 		setattr(p,'template',None)
 	if hasattr(p,'sub') and p.sub != None:
+		logging.info("CopyIntoNamespace " + p.path + " > " + p.sub)
 		np = CopyIntoNamespace(p,p.sub)
 		setattr(np,'gwversion',version)
 		np.put()
 		p.delete()
 	else:
+		logging.info('upgradePage ' + p.path + ' v.' + version)
 		setattr(p,'gwversion',version)
 		p.put()
 
@@ -337,16 +342,22 @@ def upgradeSub(p,version):
 		p.delete()
 		
 def Upgrade(mainPage, version):
-	UpgradeTable(Page,upgradePage,version,mainPage)
-	UpgradeTable(Tiddler,upgradeSub,version,mainPage)
-	UpgradeTable(UploadedFile,upgradeSub,version,mainPage)
+	sdo = mainPage.sdo
+	if mainPage.subdomain != None and sdo != None and sdo.preurl != None and (not hasattr(sdo,"version") or sdo.version < '2.7'):
+		UpgradeTable(Page,upgradePage,version,mainPage)
+		UpgradeTable(Tiddler,upgradeSub,version,mainPage)
+		UpgradeTable(UploadedFile,upgradeSub,version,mainPage)
+		namespace_manager.set_namespace(mainPage.subdomain)
+		return "DataStore of Project " + str(sdo.preurl) + " was upgraded to version " + str(version)
+	else:
+		return ""
 
 def UpgradeTable(c,f,v,mp):
 	cursor = None
 	repeat = True
 	while repeat:
-		if mp.subdomain != None and (not hasattr(mp.sdo,"version") or mp.sdo.version < '2.7'):
-			namespace_manager.set_namespace(None)
+		logging.info("Setting ns None: " + ("old" if not hasattr(mp.sdo,"version") else str(mp.sdo.version) ))
+		namespace_manager.set_namespace(None)
 		ts = c.all()
 		if cursor != None:
 			ts.with_cursor(cursor)
