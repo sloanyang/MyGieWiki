@@ -104,6 +104,7 @@ class Page(db.Model):
   subtitle = db.StringProperty()
   subtitleModified = db.DateTimeProperty()
   tags = db.StringProperty()
+  tiddlertags = db.StringProperty()
   locked = db.BooleanProperty()
   anonAccess = db.IntegerProperty()
   authAccess = db.IntegerProperty()
@@ -122,6 +123,7 @@ class Page(db.Model):
 	d['title'] = s.title
 	d['subtitle'] = s.subtitle
 	d['tags'] = s.tags
+	d['tiddlertags'] = s.tiddlertags
 	d['locked'] = s.locked
 	d['anonAccess'] = s.anonAccess
 	d['authAccess'] = s.authAccess

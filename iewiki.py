@@ -1053,6 +1053,7 @@ class MainPage(webapp.RequestHandler):
 			if 'template' in self.request.get('tags').split() and (page.tags == None or (not 'template' in page.tags.split())):
 				saveTemplate = True
 			page.tags = self.request.get('tags')
+			page.tiddlertags = self.request.get('tiddlertags')
 			page.locked = self.request.get('locked') == 'true'
 			page.anonAccess = Page.access[self.request.get('anonymous')]
 			page.authAccess = Page.access[self.request.get('authenticated')]
@@ -1077,6 +1078,7 @@ class MainPage(webapp.RequestHandler):
 			'title': page.title,
 			'subtitle': page.subtitle,
 			'tags': page.tags,
+			'tiddlertags': page.tiddlertags if hasattr(page,'tiddlertags') else '',
 			'owner': page.owner,
 			'locked': page.locked,
 			'anonymous': Page.access[page.anonAccess],
@@ -2513,6 +2515,7 @@ class MainPage(webapp.RequestHandler):
 			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
 			metaDiv.setAttribute('sitetitle',page.title);
 			metaDiv.setAttribute('subtitle',page.subtitle);
+			metaDiv.setAttribute('tiddlertags',page.tiddlertags if hasattr(page,'tiddlertags') else '')
 			if page.groups != None:
 				metaDiv.setAttribute('groups',page.groups);
 				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
