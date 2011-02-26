@@ -81,6 +81,9 @@ def Filetype(filename):
 	else:
 		return fp[1].lower()
 
+def AttrValueOrBlank(o,a):
+	return unicode(getattr(o,a)) if hasattr(o,a) and getattr(o,a) != None else ''
+
 def MimetypeFromFiletype(ft):
 	if ft == "txt":
 		return "text/plain"
@@ -2515,7 +2518,7 @@ class MainPage(webapp.RequestHandler):
 			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
 			metaDiv.setAttribute('sitetitle',page.title);
 			metaDiv.setAttribute('subtitle',page.subtitle);
-			metaDiv.setAttribute('tiddlertags',page.tiddlertags if hasattr(page,'tiddlertags') else '')
+			metaDiv.setAttribute('tiddlertags', AttrValueOrBlank(page,'tiddlertags'))
 			if page.groups != None:
 				metaDiv.setAttribute('groups',page.groups);
 				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):

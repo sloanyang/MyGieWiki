@@ -177,11 +177,11 @@ config.views = {
             }
         },
     editor: {
-        tagPrompt: "Type tags separated with spaces, [[use double square brackets]] if necessary, or add existing",
+        tagPrompt: "Type tags separated by spaces, [[use double square brackets]] if necessary, or add existing or predefined",
         defaultText: "",
         tagChooser: {
             text: "tags",
-            tooltip: "Choose existing tags to add to this tiddler",
+            tooltip: "Choose tags to add to this tiddler",
             popupNone: "There are no tags defined",
             tagTooltip: "Add the tag '%0'"
             }
@@ -567,6 +567,7 @@ config.read = function(t) {
 	this.viewPrior = window.eval(fields.viewprior);
 	this.locked = fields.locked;
 	this.pages = this.readPages(t.ace);
+	this.tiddlerTags = fields.tiddlertags.readBracketedList();
 	this.warnings = fields.warnings;
 	var st = store.getTiddler('SiteTitle');
 	if (!st || st.hasShadow)
@@ -2302,7 +2303,10 @@ config.macros.tagChooser.onClick = function(ev) {
     var e = ev || window.event;
     var lingo = config.views.editor.tagChooser;
     var popup = Popup.create(this);
-    var tags = store.getTags("excludeLists");
+	var preList = [];
+	for (var i = 0; i < config.tiddlerTags.length; i++)
+		preList.push([config.tiddlerTags[i],0])
+    var tags = store.getTags("excludeLists",preList);
     if (tags.length == 0)
         createTiddlyText(createTiddlyElement(popup, "li"), lingo.popupNone);
     for (var t = 0; t < tags.length; t++) {
@@ -3700,8 +3704,9 @@ TiddlyWiki.prototype.search = function(searchRegExp, sortField, excludeTag, matc
 // Returns a list of all tags in use
 //   excludeTag - if present, excludes tags that are themselves tagged with excludeTag
 // Returns an array of arrays where [tag][0] is the name of the tag and [tag][1] is the number of occurances
-TiddlyWiki.prototype.getTags = function(excludeTag) {
-    var results = [];
+TiddlyWiki.prototype.getTags = function(excludeTag, results) {
+	if (results === undefined)
+		var results = [];
     this.forEachTiddler(function(title, tiddler) {
         for (var g = 0; g < tiddler.tags.length; g++) {
             var tag = tiddler.tags[g];
