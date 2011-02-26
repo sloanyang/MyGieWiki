@@ -4214,6 +4214,11 @@ Story.prototype.refreshTiddler = function(title, template, force, customFields, 
             }
             if (customFields)
                 this.addCustomFields(tiddlerElem, customFields);
+			if (template == "EditTemplate") {
+				var atf = [];
+				if (getElementsByClassName('tagFrame','fieldset',tiddlerElem,atf))
+					atf[0].style = "display:" + tiddler.tags.length > 0 ? "block" : "none";
+			}
             forceReflow();
         }
     }
