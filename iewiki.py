@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.9.0
+# ver.:	1.9.1
 
 import cgi
 import codecs
@@ -411,6 +411,7 @@ class MainPage(webapp.RequestHandler):
 	else:
 		self.merge = False
 		self.subdomain = None
+		self.sdo = None
 		#LogEvent("GetSubdomain", self.request.host)
 		return
 
@@ -1113,6 +1114,7 @@ class MainPage(webapp.RequestHandler):
 	if update:
 		pt.text = self.getText(page)
 	pt.title = page.title
+	pt.tiddlertags = page.tiddlertags
 	pt.put()
 
   def updateTemplate(self):
@@ -2354,6 +2356,8 @@ class MainPage(webapp.RequestHandler):
 				if ptc != None:
 					tl = ptc
 			xd = xml.dom.minidom.parseString(tl.text.encode('utf-8'))
+			if AttrValueOrBlank(page,'tiddlertags') == '':
+				page.tiddlertags = AttrValueOrBlank(tl,'tiddlertags')
 			tds = self.TiddlersFromXml(xd.documentElement,page.template.page)
 			if tds != None:
 				for tdo in tds:

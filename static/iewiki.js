@@ -2996,7 +2996,9 @@ config.commands.jump.handlePopup = function(popup, title) {
 };
 
 config.commands.tag.handler = function(event, src, title) {
-    return displayPart(src,"tag");
+	var aec = displayPart(src,'tag').getElementsByTagName('textarea');
+	if (aec.length)
+		aec[0].focus();
 };
 
 config.commands.preview.handler = function(e, src, title) {
@@ -4222,7 +4224,7 @@ Story.prototype.refreshTiddler = function(title, template, force, customFields, 
 			if (template == "EditTemplate") {
 				var atf = [];
 				if (getElementsByClassName('tagFrame','fieldset',tiddlerElem,atf))
-					atf[0].style = "display:" + tiddler.tags.length > 0 ? "block" : "none";
+					atf[0].style.display = tiddler.tags.length > 0 ? "block" : "none";
 			}
             forceReflow();
         }

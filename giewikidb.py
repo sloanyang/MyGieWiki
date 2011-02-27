@@ -81,6 +81,7 @@ class PageTemplate(db.Model):
   page = db.StringProperty()
   text = db.TextProperty()
   title = db.StringProperty()
+  tiddlertags = db.StringProperty()
   updated = db.DateTimeProperty(auto_now_add=True)
   version = db.IntegerProperty()
   current = db.BooleanProperty()
