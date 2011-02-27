@@ -82,7 +82,7 @@ def Filetype(filename):
 		return fp[1].lower()
 
 def AttrValueOrBlank(o,a):
-	return unicode(getattr(o,a)) if hasattr(o,a) and getattr(o,a) != None else ''
+	return unicode(getattr(o,a)) if o != None and hasattr(o,a) and getattr(o,a) != None else ''
 
 def MimetypeFromFiletype(ft):
 	if ft == "txt":
@@ -1058,6 +1058,9 @@ class MainPage(webapp.RequestHandler):
 				saveTemplate = True
 			page.tags = self.request.get('tags')
 			page.tiddlertags = self.request.get('tiddlertags')
+			tttags = AttrValueOrBlank(page.template,'tiddlertags')
+			if page.tiddlertags == tttags:
+				page.tiddlertags = ''
 			page.locked = self.request.get('locked') == 'true'
 			page.anonAccess = Page.access[self.request.get('anonymous')]
 			page.authAccess = Page.access[self.request.get('authenticated')]
@@ -1078,11 +1081,14 @@ class MainPage(webapp.RequestHandler):
 				self.saveTemplate(page)
 			self.reply({'Success': True })
 	else: # Get
-		self.reply({ 
+		tiddlertags = page.tiddlertags if hasattr(page,'tiddlertags') else ''
+		if tiddlertags == '' and page.template != None:
+			tiddlertags = AttrValueOrBlank(page.template,'tiddlertags')
+		self.reply({
 			'title': page.title,
 			'subtitle': page.subtitle,
 			'tags': page.tags,
-			'tiddlertags': page.tiddlertags if hasattr(page,'tiddlertags') else '',
+			'tiddlertags': tiddlertags,
 			'owner': page.owner,
 			'locked': page.locked,
 			'anonymous': Page.access[page.anonAccess],
