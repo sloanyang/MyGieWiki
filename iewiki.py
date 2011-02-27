@@ -293,14 +293,15 @@ def exportTable(xd,xr,c,wnn,enn):
 		else:
 			cursor = ts.cursor()
 	
-def mergeDict(td,ts):
+def mergeDict(td,ts,filter=None):
 	for t in ts:
-		key = t.title
-		if key in td:
-			if t.version > td[key].version or t.id != td[key].id:
+		if filter == None or filter(t):
+			key = t.title
+			if key in td:
+				if t.version > td[key].version or t.id != td[key].id:
+					td[key] = t
+			else:
 				td[key] = t
-		else:
-			td[key] = t
 
 def getUserPenName(user):
 	up = UserProfile.all().filter('user',user).get()
@@ -409,7 +410,6 @@ class MainPage(webapp.RequestHandler):
 		pos = len(hostc) - 2
 	# elif... support for app.org.tld domains -- TODO
 	else:
-		self.merge = False
 		self.subdomain = None
 		self.sdo = None
 		#LogEvent("GetSubdomain", self.request.host)
@@ -420,10 +420,6 @@ class MainPage(webapp.RequestHandler):
 		self.sdo = SubDomain.all().filter('preurl', self.subdomain).get()
 		#LogEvent("GetSubdomain", self.request.host + " >> " + self.subdomain)
 		namespace_manager.set_namespace(self.subdomain)
-		self.merge = False
-		if pos > 0:
-			if hostc[0] == 'merge':
-				self.merge = True
 	else:
 		#LogEvent("GetSubdomain", self.request.host + " >none")
 		self.subdomain = None
@@ -1343,6 +1339,7 @@ class MainPage(webapp.RequestHandler):
 	error = None
 	if page != None:
 		who = userWho()
+		own = False
 		if who == '':
 			if page.anonAccess < page.ViewAccess:
 				error = "You need to log in to access this page"
@@ -1350,13 +1347,15 @@ class MainPage(webapp.RequestHandler):
 			if page.authAccess < page.ViewAccess:
 				if page.groupAccess < page.ViewAccess or HasGroupAccess(page.groups,who) == False:
 					error = "You do not have access to this page"
-			
+		else:
+			own = True
 	if error == None:
 		tiddlers = Tiddler.all().filter('page', pg).filter('current', True)
 		if tiddlers.count() > 0:
 			tr.setAttribute('type', 'string[]')
 			for t in tiddlers:
-				xd.add(tr,"tiddler",unicode(t.title))
+				if own or not hasattr(t,'private'):
+					xd.add(tr,"tiddler",unicode(t.title))
 		else:
 			error = "Page '" + pg + "' is empty"
 		
@@ -2393,13 +2392,18 @@ class MainPage(webapp.RequestHandler):
 				except Exception, x:
 					self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
 						' has been deleted! <a href="', self.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
-	
+
 		tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
-		mergeDict(tiddict, tiddlers)
-	
-	if self.merge == True:
-		tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
-		mergeDict(tiddict,tiddlers)
+		own = users.get_current_user() == page.owner
+		def filter(t):
+			priv = hasattr(t,'private')
+			if own:
+				if priv:
+					delattr(t,'private')
+				return True
+			else:
+				return not priv
+		mergeDict(tiddict, tiddlers, filter)
 	
 	if page != None:
 		includes = Include.all().filter("page", self.path)

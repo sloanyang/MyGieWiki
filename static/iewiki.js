@@ -398,6 +398,11 @@ config.commands = {
         text: "tag",
         tooltip: "Add tags"
     },
+	attributes: {
+		type: "popup",
+		text: "attributes",
+		tooltip: "Toggle special tags"
+	},
     help: {
         text: "help",
         tooltip: "Display formatting help"
@@ -505,7 +510,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges|\n|~TextToolbar|preview tag help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges|\n|~TextToolbar|preview tag attributes help|',
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -567,7 +572,7 @@ config.read = function(t) {
 	this.viewPrior = window.eval(fields.viewprior);
 	this.locked = fields.locked;
 	this.pages = this.readPages(t.ace);
-	this.tiddlerTags = fields.tiddlertags.readBracketedList();
+	this.tiddlerTags = fields.tiddlertags ? fields.tiddlertags.readBracketedList() : [];
 	this.warnings = fields.warnings;
 	var st = store.getTiddler('SiteTitle');
 	if (!st || st.hasShadow)
@@ -3001,6 +3006,37 @@ config.commands.tag.handler = function(event, src, title) {
 		aec[0].focus();
 };
 
+config.commands.attributes.handlePopup = function(popup, title) {
+	var finder = function() {
+		var atf = [];
+		if (getElementsByClassName('tagFrame','fieldset',story.getTiddler(title),atf))
+			return atf[0].getElementsByTagName('textarea')[0];
+	};
+	var handler = function(ev) {
+		var target = resolveTarget(ev || window.event);
+		var tag = target.getAttribute('tag');
+		var tee = finder();
+			var etl = tee.value.readBracketedList();
+			var eti = etl.indexOf(tag);
+			if (eti == -1) {
+				etl.push(tag);
+				// todo: open tags fieldset
+			}
+			else
+				etl.remove(tag);
+			tee.value = etl.join(' ');
+	};
+	var add = function(aLabel,aTag) {
+		var act = finder().value.readBracketedList().indexOf(aTag) == -1 ? "mark" : "clear";
+		var checked = act == "mark" ? '+ ' : '- ';
+		createTiddlyButton(createTiddlyElement(popup, 'li'),checked + aLabel,act + ' ' + aTag,handler,null,null,null,{ tiddler: title, tag: aTag });
+	};
+	if (config.owner == config.options.txtUserName)
+		add("private",'isPrivate');
+	add("exclude from index",'excludeLists');
+	add("exclude from search",'excludeSearch');
+};
+
 config.commands.preview.handler = function(e, src, title) {
 	var pe = displayPart(src,'preview')
 	if (pe) {
@@ -3635,6 +3671,9 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		fromVer: fromVersion,
 		shadow: tiddler.hasShadow ? 1 : 0
 	}
+	if (tags.readBracketedList().indexOf('isPrivate') > -1)
+		m.private = 'true';
+
 	for (fn in fields) {
 		m[fn] = fields[fn];
 	}
