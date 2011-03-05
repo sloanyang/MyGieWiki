@@ -3020,7 +3020,8 @@ config.commands.attributes.handlePopup = function(popup, title) {
 			var eti = etl.indexOf(tag);
 			if (eti == -1) {
 				etl.push(tag);
-				// todo: open tags fieldset
+				for (var pte = tee.parentElement; pte; pte = pte.parentElement)
+					if (pte.id == 'tag') { pte.style.display = 'block'; break; }
 			}
 			else
 				etl.remove(tag);
@@ -3671,7 +3672,7 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		fromVer: fromVersion,
 		shadow: tiddler.hasShadow ? 1 : 0
 	}
-	if (tags.readBracketedList().indexOf('isPrivate') > -1)
+	if (tags && tags.readBracketedList().indexOf('isPrivate') > -1)
 		m.private = 'true';
 
 	for (fn in fields) {
