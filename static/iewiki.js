@@ -514,7 +514,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history >  revertTiddler truncateTiddler|\n|~TextToolbar|preview tag attributes help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes help|',
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -3068,6 +3068,7 @@ config.commands.history.handler = function(e, src, title) {
 			var tiddler = store.fetchTiddler(t);
 			if (!t) return;
 			var res = http.tiddlerHistory({ tiddlerId: tiddler.id, shadow: store.isShadowTiddler(t) ? 1 : 0 });
+			removeChildren(arr[0]);
 			wikify(res.versions,arr[0],null,tiddler);
 		}
 	}
@@ -7079,7 +7080,15 @@ function onClickTiddlerVersion(e) {
                 merge(tiddler, cv);
                 tiddler.title = t;
                 tiddler.currentVer = currentVer;
-                story.refreshTiddler(t, null, true);
+				var cte = story.findContainingTiddler(theTarget);
+				var ar = [];
+				if (cte && getElementsByClassName('viewer special','*',cte,ar)) {
+					ar[0].innerHTML = "";
+					var st = store.getTiddler(t)
+					wikify(st.text,ar[0],null,st);
+				}
+				else
+					story.refreshTiddler(t, null, true);
             }
         }
     } catch (ex) {
@@ -8090,8 +8099,9 @@ config.macros.diff = {
 
 function getChildByClassName(e,name)
 {
-	for (e = e.firstChild; e.className != name; e = e.nextSibling) {
-		if (!e) break;
+	for (e = e.firstChild; e; e = e.nextSibling) {
+		if (e.classList && e.classList.contains(name))
+			break;
 	}
 	return e;
 }
