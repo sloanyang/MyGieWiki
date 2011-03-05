@@ -386,6 +386,10 @@ config.commands = {
         text: "jump",
         tooltip: "Jump to another open tiddler"
     },
+    history: {
+		text: "history",
+		tooltip: "Show history"
+	},
     preview: {
         text: "preview",
         tooltip: "Preview formattet text"
@@ -510,7 +514,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges|\n|~TextToolbar|preview tag attributes help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history >  revertTiddler truncateTiddler|\n|~TextToolbar|preview tag attributes help|',
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -3009,8 +3013,8 @@ config.commands.tag.handler = function(event, src, title) {
 config.commands.attributes.handlePopup = function(popup, title) {
 	var finder = function() {
 		var atf = [];
-		if (getElementsByClassName('tagFrame','fieldset',story.getTiddler(title),atf))
-			return atf[0].getElementsByTagName('textarea')[0];
+		if (getElementsByClassName('tagFrame','*',story.getTiddler(title),atf))
+			return atf[0].getElementsByTagName('input')[0];
 	};
 	var handler = function(ev) {
 		var target = resolveTarget(ev || window.event);
@@ -3055,8 +3059,22 @@ config.commands.preview.handler = function(e, src, title) {
 	store.replaceText(fn,et);
 };
 
+config.commands.history.handler = function(e, src, title) {
+	var pto = story.findContainingTiddler(resolveTarget(e || window.event));
+	if (pto) {
+		var arr = [];
+		if (getElementsByClassName('history','*',pto, arr)) {
+			var t = pto.getAttribute('tiddler');
+			var tiddler = store.fetchTiddler(t);
+			if (!t) return;
+			var res = http.tiddlerHistory({ tiddlerId: tiddler.id, shadow: store.isShadowTiddler(t) ? 1 : 0 });
+			wikify(res.versions,arr[0],null,tiddler);
+		}
+	}
+},
+
 config.commands.reload.handler = function(event, src, title) {
-    story.refreshTiddler(title,null,true);
+	story.refreshTiddler(title,null,true);
 };
 
 function displayPart(src,id)
