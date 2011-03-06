@@ -3005,7 +3005,7 @@ config.commands.jump.handlePopup = function(popup, title) {
 };
 
 config.commands.tag.handler = function(event, src, title) {
-	var aec = displayPart(src,'tag').getElementsByTagName('textarea');
+	var aec = displayPart(src,'tag').getElementsByTagName('input');
 	if (aec.length)
 		aec[0].focus();
 };
@@ -7086,6 +7086,9 @@ function onClickTiddlerVersion(e) {
 					ar[0].innerHTML = "";
 					var st = store.getTiddler(t)
 					wikify(st.text,ar[0],null,st);
+					var et = store.replaceText(t,st.text);
+					store.notify(t,true);
+					store.replaceText(t,et);
 				}
 				else
 					story.refreshTiddler(t, null, true);
