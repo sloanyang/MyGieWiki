@@ -2142,20 +2142,6 @@ config.macros.comments.replyClick = function(ev) {
 	config.macros.comments.createInputBox(tdc, "Your reply",config.macros.comments.onSaveReplyClick,config.macros.comments.onCancelReplyClick);
 }
 
-config.macros.deletePage.handler = function(place) {
-	if (config.access == 'all' && window.location.pathname != '/')
-		createTiddlyButton(place, this.label, this.prompt, this.onClick, "linkbutton");
-};
-
-config.macros.deletePage.onClick = function(e) {
-	if (!confirm("Do you really want to delete this page?")) return;
-	if (http.deletePage(window.location.href).Success) {
-		story.closeAllTiddlers();
-		story.displayTiddler(null, "SiteMap");
-		displayMessage("This page has now been deleted");
-	}
-}
-
 config.macros.slider.onClickSlider = function(ev) {
     var e = ev || window.event;
     var n = this.nextSibling;
@@ -7165,25 +7151,29 @@ config.macros.input = {
 		if (params.length == 1 && f && f[ffn] != null)
 			params[1] = f[ffn]; // get default value from form
 		f.controls = f.controls || [];
-		f.controls[ffn] = initer(place, ffn, params, wikifier, paramString, tiddler);
+		f.controls[ffn] = initer(place, ffn, params, wikifier, paramString, tiddler, f.updateaccess);
 	},
 	// <<input text name width text>>
-	text: function (place, name, params, wikifier, paramString, tiddler) {
+	text: function (place, name, params, wikifier, paramString, tiddler, updateAccess) {
 		var c = createTiddlyElement(place, "input", name, null, null, { href: "javascript:;" });
 		if (params.length > 0)
 			c.size = params[0];
+		if (!updateAccess)
+			c.setAttribute("readOnly", "readOnly");
 		c.value = params.length > 1 ? params[1] : "";
 		c.onchange = config.macros.input.fieldChanged;
 		return c;
 	},
 	// <<input textarea name rows*cols text>>
-	textarea: function (place, name, params, wikifier, paramString, tiddler) {
+	textarea: function (place, name, params, wikifier, paramString, tiddler, updateAccess) {
 		var attribs = { href: "javascript:;" };
 		var md = params[0].split('*');
 		attribs.rows = md[0];
 		if (md.length > 1)
 			attribs.cols = md[1];
 		var c = createTiddlyElement(place, "textarea", name, null, null, attribs);
+		if (!updateAccess)
+			c.setAttribute("readOnly", "readOnly");
 		c.value = params.length > 1 ? params[1] : "";
 		c.onchange = config.macros.input.fieldChanged;
 		return c;
@@ -7199,13 +7189,16 @@ config.macros.input = {
 		if (params.length > 1 && params[1].handler)
 			params[1].handler(place, params[1]);
 	},
-	select: function (place, name, params, wikifier, paramString, tiddler) {
+	select: function (place, name, params, wikifier, paramString, tiddler, updateAccess) {
 		var valus = config.macros.input.parameter(params[0]);
 		var value = params.length > 1 && params[1] ? params[1] : valus.split('|')[0];
-		var osdo = params.length > 2 ? params[2] : "";
-		var cbl = createTiddlyElement(place, "a", name, null, value, { href: "javascript:;", values: valus, onselect: osdo });
-		cbl.onclick = config.macros.input.dropSelect;
-		return cbl;
+		if (updateAccess) {
+			var osdo = params.length > 2 ? params[2] : "";
+			var cbl = createTiddlyElement(place, "a", name, null, value, { href: "javascript:;", values: valus, onselect: osdo });
+			cbl.onclick = config.macros.input.dropSelect;
+			return cbl;
+		} else
+			return createTiddlyElement(place,'span',null,null,value);
 	},
 	dropSelect: function (ev) {
 		var e = ev || window.event;
@@ -7258,6 +7251,15 @@ config.macros.input = {
 	}
 }
 
+config.macros.submitButton = {
+	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
+		if (eval(params[0]))
+			createTiddlyButton(place,params[1],params[2],new Function('',params[3]),'button linkbutton redbutton');
+		else if (params.length > 4)
+			createTiddlyElement(place,'span',null,params[4],params[5]);
+	}
+};
+
 PageProperties = {
 	selectedTemplate: '',
 	init: function () {
@@ -7281,7 +7283,7 @@ PageProperties = {
 		}
 		else {
 			forms.PageProperties = {};
-			return "''[As you are not logged in, this dialog is not functional]''";			
+			return "''[As you are not logged in, this dialog is not functional]''";
 		}
 	},
 	activated: function () {
@@ -7375,6 +7377,14 @@ PageProperties = {
 	promptForUpload: function() {
 		var delc = document.getElementById('libraryCatalog');
 		createUploadFrame(delc,'tiddlers','upoadTiddlerFrame', 28, '/static/UploadDialog.htm');
+	},
+	promptToDeletePage: function() {
+		if (!confirm("Do you really want to delete this page?")) return;
+		if (http.deletePage(window.location.href).Success) {
+			story.closeAllTiddlers();
+			story.displayTiddler(null, "SiteMap");
+			displayMessage("This page has now been deleted");
+		}
 	},
 	listTemplates: function () {
 		var tl = http.getTemplates();

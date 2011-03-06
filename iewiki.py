@@ -1085,7 +1085,8 @@ class MainPage(webapp.RequestHandler):
 			'subtitle': page.subtitle,
 			'tags': page.tags,
 			'tiddlertags': tiddlertags,
-			'owner': page.owner,
+			'owner': page.owner if hasattr(page,'ownername') == False or page.ownername is None else page.ownername,
+			'updateaccess': page.owner == users.get_current_user(),
 			'locked': page.locked,
 			'anonymous': Page.access[page.anonAccess],
 			'authenticated': Page.access[page.authAccess],
@@ -1185,11 +1186,12 @@ class MainPage(webapp.RequestHandler):
 	if user == None and pad.anonAccess != "":
 		return self.fail("You cannot create new pages")
 
-	if self.request.get("defaults") == "get":
+	if self.request.get('defaults') == 'get':
 		return self.reply({
-			"anonymous":Page.access[pad.anonAccess], 
-			"authenticated":Page.access[pad.authAccess],
-			"group":Page.access[pad.groupAccess] })
+			'anonymous': Page.access[pad.anonAccess], 
+			'authenticated': Page.access[pad.authAccess],
+			'group': Page.access[pad.groupAccess],
+			'updateaccess': True })
 	      
 	url = parent + self.request.get("address")
 	page = Page.all().filter('path =',url).get()
@@ -2043,12 +2045,14 @@ class MainPage(webapp.RequestHandler):
 			'txtEmail': u.txtEmail if hasattr(u,'txtEmail') else cu.email(), 
 			'aboutme': NoneIsBlank(u.aboutme),
 			'tiddler': NoneIsBlank(u.tiddler),
-			'projects': ' '.join(urls)})
+			'projects': ' '.join(urls),
+			'updateaccess': True })
 	elif cu != None:
 		self.reply({ \
 			'Success': True, \
 			'txtUserName': cu.nickname(),
-			'txtEmail': cu.email() })
+			'txtEmail': cu.email(),
+			'updateaccess': True })
 	else:
 		self.reply()
 

@@ -237,6 +237,9 @@ border-color:[[ColorPalette::PrimaryDark]] [[ColorPalette::PrimaryPale]] [[Color
 .commentTD {background:[[ColorPalette::Background]];}
 .btnReplies {border:0;}
 
+.redbutton { color: #cc0000 }
+.redbutton:hover { color: #ff0000 }
+
 /*}}}*/
 </pre>
 </div>
@@ -609,12 +612,14 @@ forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"a
 <div title="DefineGroup" >
 <pre>
 	&lt;script&gt;
-	listOfAllGroups = http.getGroups();
-	if (!listOfAllGroups.length)
-		listOfAllGroups[0] = "(none defined)";
-	else
-		listOfAllGroups[0] = "Select..."
-	listOfAllGroups = listOfAllGroups.join('|');
+var fn = formName(place);
+listOfAllGroups = http.getGroups();
+if (!listOfAllGroups.length)
+	listOfAllGroups[0] = "(none defined)";
+else
+	listOfAllGroups.unshift("Select...");
+listOfAllGroups = listOfAllGroups.join('|');
+forms[fn] = { 'updateaccess': true };
 	&lt;/script&gt;
 |Group&lt;br&gt;&lt;&lt;input select groupname javascript:listOfAllGroups "" ListGroupMembers()&gt;&gt;|New group&lt;br&gt;&lt;&lt;input text name 36&gt;&gt; &lt;script label=&quot;Create&quot; title=&quot;Create group&quot;&gt;OnCreateGroup(http.createGroup(forms.DefineGroup));&lt;/script&gt;|
 |Members:|&lt;html&gt;&lt;div id="groupMemberList"&gt;&lt;/html&gt;|

@@ -80,7 +80,9 @@
     <Content Include="LibraryUsageHelp.xml">
       <SubType>Designer</SubType>
     </Content>
-    <Content Include="library\tiddlywiki.abego-software.xml" />
+    <Content Include="library\tiddlywiki.abego-software.xml">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="library\YouTube.xml" />
     <Content Include="PageProperties.xml">
       <SubType>Designer</SubType>
