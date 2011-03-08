@@ -2948,7 +2948,7 @@ config.commands.truncateTiddler.handler = function(event,src,title) {
 	if (doit) {
 		var res = http.deleteVersions({ tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version})
 		tiddler.versions = res.versions;
-		tiddler.fields['vercnt'] = res.vercnt;
+		tiddler.fields.vercnt = res.vercnt;
 		story.setDirty(tiddler.title, false);
 		story.refreshTiddler(tiddler.title,null,true);
 	}
@@ -3043,6 +3043,10 @@ config.commands.preview.handler = function(e, src, title) {
 	var et = store.replaceText(fn,fields.text);
 	store.notify(fn,true);
 	store.replaceText(fn,et);
+};
+
+config.commands.history.isEnabled = function(tdlr) {
+	return tdlr.fields.vercnt > 0;
 };
 
 config.commands.history.handler = function(e, src, title) {
