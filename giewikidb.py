@@ -156,7 +156,22 @@ class Page(db.Model):
 	if users.get_current_user() != self.owner and self.authAccess < 6 and (self.groupAccess < 6 or HasGroupAccess(self.groups,userWho()) == False):
 		return "Edit access is restricted"
 	return None
-	
+
+class DeletionLog(db.Model):
+	def __init__(self, tiddler,fingerprint,comment):
+		super( DeletionLog, self ).__init__()
+		self.title = tiddler.title
+		self.tiddler = tiddler
+		self.fingerprint = fingerprint
+		self.deletedByUser = users.get_current_user()
+		self.deletionComment = comment
+	title = db.StringProperty()
+	tiddler = db.ReferenceProperty(Tiddler)
+	deletedAt = db.DateTimeProperty(auto_now_add=True)
+	fingerprint = db.StringProperty()
+	deletedByUser = db.UserProperty()
+	deletionComment = db.StringProperty()
+
 class Comment(db.Model):
   tiddler = db.StringProperty()
   version = db.IntegerProperty()
@@ -302,18 +317,24 @@ def ReadAccessToPage( page, user = None):
 			return True
 	return False
 
-def AccessToPage( page, user = users.get_current_user()):
+def AccessToPage( page, user):
 	if page.__class__ == unicode:
 		page = Page.all().filter('path',page).get()
 	if page == None: # Un-cataloged page - restricted access
-		return 'all' if users.is_current_user_admin() else 'none'
+		return 'admin' if users.is_current_user_admin() else 'none'
 	if page.owner == user or users.is_current_user_admin():
-		return 'all'
+		return 'admin'
 	if user != None:
 		access = page.groupAccess if HasGroupAccess(page.groups,user.nickname()) else page.authAccess
 	else:
 		access = page.anonAccess
 	return Page.access[access]
+
+def IsSoleOwner(tid,user):
+	for tv in Tiddler.all().filter('id',tid):
+		if not tv.author == user:
+			return False
+	return True
 
 def CopyIntoNamespace(e,ns):
 	namespace_manager.set_namespace(ns)

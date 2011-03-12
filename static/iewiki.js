@@ -114,6 +114,7 @@ merge(config.options, {
     chkToggleLinks: false,
     chkForceMinorUpdate: false,
     chkConfirmDelete: true,
+    chkRequireDeleteReason: true,
     chkInsertTabs: false,
     chkUsePreForStorage: true, // Whether to use <pre> format for storage
     chkDisplayInstrumentation: false,
@@ -140,6 +141,7 @@ config.optionsDesc = {
     chkToggleLinks: "Clicking on links to open tiddlers causes them to close",
     chkForceMinorUpdate: "Don't update modifier username and date when editing tiddlers",
     chkConfirmDelete: "Require confirmation before deleting tiddlers",
+    chkRequireDeleteReason: "Ask for a reason for deletion",
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
     txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
     txtMaxEditRows: "Maximum number of rows in edit boxes",
@@ -355,7 +357,8 @@ config.commands = {
         hideReadOnly: true,
         text: "delete",
         tooltip: "Delete this tiddler",
-        warning: "Are you sure you want to delete '%0'?"
+        warning: "Are you sure you want to delete '%0'?",
+        prompt: "Why are you deleting '%0'?"
     },
     revertTiddler: { 
         hideReadOnly: true,
@@ -1914,7 +1917,7 @@ config.macros.permaview.onClick = function(e)
 };
 
 config.macros.pageProperties.handler = function(place) {
-	if (config.access == 'all' && readOnly) // if !readOnly, it's in the editing menu
+	if (config.access == 'admin' && readOnly) // if !readOnly, it's in the editing menu
 		createTiddlyButton(place, this.label, this.prompt, this.onClick);
 };
 
@@ -2902,14 +2905,21 @@ config.commands.cancelTiddler.handler = function(event, src, title) {
 };
 
 config.commands.deleteTiddler.handler = function(event, src, title) {
-    var deleteIt = true;
-    if (config.options.chkConfirmDelete)
-        deleteIt = confirm(this.warning.format([title]));
-    if (deleteIt) {
-        store.removeTiddler(title);
-        story.closeTiddler(title, true);
-    }
-    return false;
+	var deleteIt = true;
+	if (config.options.chkConfirmDelete)
+		deleteIt = window.confirm(this.warning.format([title]));
+	if (deleteIt && config.options.chkRequireDeleteReason) {
+		var reason = window.prompt(this.prompt.format([title]),"");
+		if (reason == null)
+			return false;
+	}
+	else
+		var reason = "No reason";
+
+	if (deleteIt && store.removeTiddler(title,reason))
+		story.closeTiddler(title, true);
+
+	return false;
 };
 
 config.commands.revertTiddler.handler = function(event, src, title) {
@@ -3599,15 +3609,15 @@ TiddlyWiki.prototype.addNotification = function(title, fn) {
     return this;
 };
 
-TiddlyWiki.prototype.removeTiddler = function(title) {
-    var tiddler = this.fetchTiddler(title);
-    if (tiddler) {
-        if (tiddler.id) {
-            var result = http.deleteTiddler({ tiddlerId: tiddler.id });
-            if (result.error)
-                return displayMessage(result.error);
-        }
-        if (tiddler.hasShadow) {
+TiddlyWiki.prototype.removeTiddler = function(title,reason) {
+	var tiddler = this.fetchTiddler(title);
+	if (tiddler) {
+		if (tiddler.id) {
+			var result = http.deleteTiddler({ tiddlerId: tiddler.id, comment: reason });
+			if (!result.Success)
+				return false;
+		}
+		if (tiddler.hasShadow) {
 			if (tiddler.ovs) {
 				merge(tiddler,tiddler.ovs[0]);
 				for (var i = 1; i < tiddler.ovs.length; i++)
@@ -3619,9 +3629,9 @@ TiddlyWiki.prototype.removeTiddler = function(title) {
 		}
 		else
 			this.deleteTiddler(title);
-        this.notify(title, true);
-        this.setDirty(true);
-    }
+		this.notify(title, true);
+		return true;
+	}
 };
 
 TiddlyWiki.prototype.setTiddlerTag = function(title, status, tag) {
@@ -4668,6 +4678,7 @@ function displayMessage(text, linkText) {
     } else {
         e.innerHTML = text; //e.appendChild(document.createTextNode(text));
     }
+	return text;
 }
 
 function clearMessage(m) {
@@ -7267,7 +7278,7 @@ config.macros.submitButton = {
 PageProperties = {
 	selectedTemplate: '',
 	init: function () {
-		accessTypes = "all|edit|add|comment|view|none|";
+		accessTypes = "admin|all|edit|add|comment|view|none|";
 		if (config.isLoggedIn()) {
 			forms.PageProperties = http.pageProperties();
 

@@ -28,8 +28,8 @@ from google.appengine.api import urlfetch
 from google.appengine.api import mail
 from google.appengine.api import namespace_manager
 
-from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
-from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, Upgrade, CopyIntoNamespace
+from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
+from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace
 
 giewikiVersion = '2.9'
 TWComp = 'twcomp.html'
@@ -93,6 +93,8 @@ def MimetypeFromFiletype(ft):
 		return "text/xml"
 	if ft == "jpg" or ft == "jpeg":
 		return "image/jpeg"
+	if ft == "png":
+		return "image/png"
 	if ft == "gif":
 		return "image/gif"
 	return "application/octet-stream"
@@ -583,7 +585,7 @@ class MainPage(webapp.RequestHandler):
 			rqlist = memcache.get(mckey)
 			if rqlist == None:
 				rqlist = []
-			error = 'Please <a href="' + self.request.url + '?method=authenticate" target="_blank">authenticate your post</a>'
+			error = 'Please <a href="' + self.request.url + '?method=authenticate" target="_blank">authenticate your post</a>'	
 			if tlr.id == '':
 				tlr.id = unicode(uuid.uuid4())
 				tlr.version = 0
@@ -902,8 +904,23 @@ class MainPage(webapp.RequestHandler):
   def deleteTiddler(self):
 	self.initXmlResponse()
 	tid = self.request.get('tiddlerId')
+	usr = users.get_current_user()
+	if usr == None:
+		return self.fail("Only authenticated users can delete a tiddler!")
+	
+	if self.request.get('comment') == "":
+		return self.fail("A reason for deletion must be given!")
+
+	page = self.CurrentPage()
+	if page == None:
+		return self.fail("Oops: page not found!")
+
+	access = AccessToPage(page,self.user)
+	if not access in ['admin', 'all']:
+		if not (access in ['edit','add'] and IsSoleOwner(tid,self.user)):
+			return self.fail("You are not allowed to do this")
+
 	if tid.startswith('include-'):
-		page = self.CurrentPage()
 		urlparts = tid[8:].split('#')
 		url = urlparts[0] + '#'
 		part = urlparts[1]
@@ -921,15 +938,24 @@ class MainPage(webapp.RequestHandler):
 		self.reply()
 	for st in ShadowTiddler.all().filter('id',tid):
 		st.delete()
-	tls = Tiddler.all().filter('id', tid)
-	any = False
-	for tlr in tls:
-		tlr.delete()
-		any = True
-	if any:
+	ctlr = Tiddler.all().filter('id', tid).filter('current',True).get()
+	if ctlr != None:
+		ctlr.current = False
+		setattr(ctlr,'isRecycled',True)
+		dle = DeletionLog(ctlr,self.request.remote_addr,self.request.get('comment')).put()
+		ctlr.put()
 		self.reply()
 	else:
-		self.fail("Tiddler " + tid + " does not exist");
+		return self.fail("Oops: That tiddler doesn't exist!")
+	### Used to be:
+	#any = False
+	#for tlr in tls:
+	#	tlr.delete()
+	#	any = True
+	#if any:
+	#	self.reply()
+	#else:
+	#	self.fail("Tiddler " + tid + " does not exist");
 	
   def add(self):
 	self.reply({"Success": True, "result": int(self.request.get("a")) + int(self.request.get("b"))})
@@ -2464,7 +2490,7 @@ class MainPage(webapp.RequestHandler):
 		elShArea.setAttribute('id','shadowArea')
 		if not metaData: # offline TW generation
 			h = ''.join(['http://',  self.request.host, self.path, '?', self.request.query ])
-			noEditAccess = not AccessToPage(page,self.user) in ['edit','all']
+			noEditAccess = not AccessToPage(page,self.user) in ['edit','all','admin']
 			for t in tiddict.itervalues():
 				if noEditAccess:
 					t.id = ''
