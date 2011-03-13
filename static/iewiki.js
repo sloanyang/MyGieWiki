@@ -113,7 +113,7 @@ merge(config.options, {
     chkOpenInNewWindow: true,
     chkToggleLinks: false,
     chkForceMinorUpdate: false,
-    chkConfirmDelete: true,
+    chkRequireDeleteConfirm: true,
     chkRequireDeleteReason: true,
     chkInsertTabs: false,
     chkUsePreForStorage: true, // Whether to use <pre> format for storage
@@ -140,7 +140,7 @@ config.optionsDesc = {
     chkOpenInNewWindow: "Open external links in a new window",
     chkToggleLinks: "Clicking on links to open tiddlers causes them to close",
     chkForceMinorUpdate: "Don't update modifier username and date when editing tiddlers",
-    chkConfirmDelete: "Require confirmation before deleting tiddlers",
+    chkRequireDeleteConfirm: "Require confirmation before deleting tiddlers",
     chkRequireDeleteReason: "Ask for a reason for deletion",
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
     txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
@@ -2918,7 +2918,7 @@ config.commands.cancelTiddler.handler = function(event, src, title) {
 
 config.commands.deleteTiddler.handler = function(event, src, title) {
 	var deleteIt = true;
-	if (config.options.chkConfirmDelete)
+	if (config.options.chkRequireDeleteConfirm)
 		deleteIt = window.confirm(this.warning.format([title]));
 	if (deleteIt && config.options.chkRequireDeleteReason) {
 		var reason = window.prompt(this.prompt.format([title]),"");
@@ -2955,7 +2955,7 @@ config.commands.rescueTiddler.handler = function(event, src, title) {
 config.commands.revertTiddler.handler = function(event, src, title) {
 	var revertIt = true;
 	var tiddler = store.fetchTiddler(title);
-	if (config.options.chkConfirmDelete)
+	if (config.options.chkRequireDeleteConfirm)
 	{
 		if (config.admin && tiddler.version == tiddler.currentVer)
 			revertIt = confirm(this.adminWarning.format([title,tiddler.version]));
