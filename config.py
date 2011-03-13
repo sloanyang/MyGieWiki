@@ -46,6 +46,7 @@ getMessages\n\
 getTiddler\n\
 getTiddlers\n\
 fileList\n\
+recycleBin\n\
 getRecentChanges\n\
 getRecentComments\n\
 siteMap\n\
@@ -61,7 +62,7 @@ updateTemplate\n\
 getTemplates'
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 9, revision: 0, date: new Date("Feb 14, 2011"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 10, revision: 0, date: new Date("Mar 13, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\

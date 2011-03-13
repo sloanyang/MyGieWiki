@@ -64,7 +64,7 @@ Welcome to TiddlyWiki created by Jeremy Ruston, Copyright &copy; 2007 UnaMesa As
 </div>
 <noscript>
 <div id="javascriptWarning">
-This page requires JavaScript to function properly.<br /><br />If you are using Microsoft Internet Explorer you may need to click on the yellow bar above and select 'Allow Blocked Content'. You must then click 'Yes' on the following security warning.
+This page requires JavaScript to function properly.
 </div>
 </noscript>
 <div id="saveTest"></div>
@@ -505,6 +505,15 @@ body {font-size:0.8em;}
 <pre>&lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
 </pre>
 </div>
+<div title="SpecialViewTOTemplate">
+<pre>&lt;!--{{{--&gt;
+&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
+&lt;div class='title' macro='view title'&gt;&lt;/div&gt;
+&lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
+&lt;div class='tagClear'&gt;&lt;/div&gt;
+&lt;!--}}}--&gt;
+</pre>
+</div>
 <div title="ViewOnlyTemplate">
 <pre>&lt;!--{{{--&gt;
 &lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
@@ -556,11 +565,17 @@ tiddler|CreateNewPage|new page|Create new page|p
 tiddler|UploadDialog|upload file|Upload a local file|u
 tiddler|PageSetup|page setup|Edit page properties and presentation|p
 tiddler|File list|file list|list of uploaded files|f
+tiddler|Recycle bin|recycle bin|List of 'deleted' tiddlers|r
 </pre>
 </div>
-<div title="File list">
+<div title="File list" viewTemplate="SpecialViewTOTemplate">
 <pre>
 &lt;&lt;fileList&gt;&gt;
+</pre>
+</div>
+<div title="Recycle bin"  viewTemplate="SpecialViewTOTemplate">
+<pre>
+&lt;&lt;recycleBin *&gt;&gt;
 </pre>
 </div>
 <div title="OptionsPanel">

@@ -1,23 +1,23 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <!-- Copyright (c) UnaMesa Association 2004-2009; see /static/iewiki.js -->
-<!-- giewiki ver.: 1.8.1 -->
+<!-- giewiki ver.: 1.10.0 -->
 <xsl:stylesheet version="1.0"
 xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 <xsl:output method='html' version='1.0' encoding='UTF-8' indent='yes'/>
 <xsl:template match="/">
 <html>
 <head>
-	<link rel='alternate' type='application/rss+xml' title='RSS' href='index.xml' />
-	<title>
-	</title>
-	<style id="styleArea" type="text/css">
+<link rel='alternate' type='application/rss+xml' title='RSS' href='index.xml' />
+<title>
+</title>
+<style id="styleArea" type="text/css">
 #messageArea {display:none;}
 #copyright {display:none;}
 #storeArea {display:none;}
 #storeArea div {padding:0.5em; margin:1em 0em 0em 0em; border-color:#fff #666 #444 #ddd; border-style:solid; border-width:2px; overflow:auto;}
 #shadowArea {display:none;}
 #javascriptWarning {width:100%; text-align:center; font-weight:bold; background-color:#dd1100; color:#fff; padding:1em 0em;}
-	</style>
+</style>
 <script src="/config.js" type="text/javascript"></script>
 <script src="/static/iewiki.js" type="text/javascript"></script>
 </head>
@@ -26,9 +26,9 @@ xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 	Based on TiddlyWiki created by Jeremy Ruston, Copyright 2007 UnaMesa Association
 </div>
 <noscript>
-	<div id="javascriptWarning">
-		This page requires JavaScript to function properly.<br /><br />If you are using Microsoft Internet Explorer you may need to click on the yellow bar above and select 'Allow Blocked Content'. You must then click 'Yes' on the following security warning.
-	</div>
+<div id="javascriptWarning">
+	This page requires JavaScript.
+</div>
 </noscript>
 <div id="contentWrapper"></div>
 <div id="shadowArea">
@@ -191,6 +191,9 @@ border-color:[[ColorPalette::PrimaryDark]] [[ColorPalette::PrimaryPale]] [[Color
 .commentArea {background:[[ColorPalette::Background]];}
 .commentTD {background:[[ColorPalette::Background]];}
 .btnReplies {border:0;}
+
+.redbutton { color: #cc0000 }
+.redbutton:hover { color: #ff0000 }
 
 /*}}}*/
 </pre>
@@ -456,6 +459,15 @@ body {font-size:0.8em;}
 &lt;!--}}}--&gt;
 </pre>
 </div>
+<div title="SpecialViewTOTemplate">
+<pre>&lt;!--{{{--&gt;
+&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
+&lt;div class='title' macro='view title'&gt;&lt;/div&gt;
+&lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
+&lt;div class='tagClear'&gt;&lt;/div&gt;
+&lt;!--}}}--&gt;
+</pre>
+</div>
 <div title="ViewOnlyTemplate">
 <pre>&lt;!--{{{--&gt;
 &lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
@@ -484,7 +496,7 @@ tiddler|UserProfile|my profile|Edit my profile|
 link|/_ah/admin|DataStore|config.admin
 </pre>
 </div>
-<div title="PageSetup" viewTemplate="ViewOnlyTemplate">
+<div title="PageSetup" viewTemplate="SpecialViewTOTemplate">
 <pre>
 &lt;&lt;tabs chkPageSetup
 'PageProperties' 'Title, access, template/includes' 'js;editTiddlerHere;PageProperties;SpecialViewTemplate'
@@ -494,7 +506,7 @@ link|/_ah/admin|DataStore|config.admin
 'StyleSheet' 'Custom styles' 'js;editTiddlerHere;StyleSheet'
 'All..' 'Other special tiddlers' 'js;editTiddlerHere;SpecialTiddlers;SpecialViewTemplate'
 &gt;&gt;
-!Common tasks
+!Common tweaks
 * &lt;script label=&quot;Remove&quot;&gt;CommonTasks.RemoveText('[[PageSetup]]\n','MainMenu')&amp;&amp;CommonTasks.RemoveThisLi()&lt;/script&gt; PageSetup from MainMenu (it is available from the editing menu).
 * &lt;script label=&quot;Remove&quot;&gt;CommonTasks.RemoveText('[[PageSetup]]','DefaultTiddlers')&amp;&amp;CommonTasks.RemoveThisLi()&lt;/script&gt; PageSetup from DefaultTiddlers.
 </pre>
@@ -507,11 +519,17 @@ tiddler|CreateNewPage|new page|Create new page|p
 tiddler|UploadDialog|upload file|Upload a local file|u
 tiddler|PageSetup|page setup|Edit page properties and presentation|p
 tiddler|File list|file list|list of uploaded files|f
+tiddler|Recycle bin|recycle bin|List of 'deleted' tiddlers|r
 </pre>
 </div>
-<div title="File list">
+<div title="File list" viewTemplate="SpecialViewTOTemplate">
 <pre>
 &lt;&lt;fileList&gt;&gt;
+</pre>
+</div>
+<div title="Recycle bin"  viewTemplate="SpecialViewTOTemplate">
+<pre>
+&lt;&lt;recycleBin *&gt;&gt;
 </pre>
 </div>
 <div title="OptionsPanel">
@@ -563,12 +581,14 @@ forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"a
 <div title="DefineGroup" >
 <pre>
 	&lt;script&gt;
-	listOfAllGroups = http.getGroups();
-	if (!listOfAllGroups.length)
-		listOfAllGroups[0] = "(none defined)";
-	else
-		listOfAllGroups[0] = "Select..."
-	listOfAllGroups = listOfAllGroups.join('|');
+var fn = formName(place);
+listOfAllGroups = http.getGroups();
+if (!listOfAllGroups.length)
+	listOfAllGroups[0] = "(none defined)";
+else
+	listOfAllGroups.unshift("Select...");
+listOfAllGroups = listOfAllGroups.join('|');
+forms[fn] = { 'updateaccess': true };
 	&lt;/script&gt;
 |Group&lt;br&gt;&lt;&lt;input select groupname javascript:listOfAllGroups "" ListGroupMembers()&gt;&gt;|New group&lt;br&gt;&lt;&lt;input text name 36&gt;&gt; &lt;script label=&quot;Create&quot; title=&quot;Create group&quot;&gt;OnCreateGroup(http.createGroup(forms.DefineGroup));&lt;/script&gt;|
 |Members:|&lt;html&gt;&lt;div id="groupMemberList"&gt;&lt;/html&gt;|

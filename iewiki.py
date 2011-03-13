@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.9.1
+# ver.:	1.10.0
 
 import cgi
 import codecs
@@ -31,7 +31,7 @@ from google.appengine.api import namespace_manager
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace
 
-giewikiVersion = '2.9'
+giewikiVersion = '2.10'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -942,24 +942,52 @@ class MainPage(webapp.RequestHandler):
 	if ctlr != None:
 		ctlr.current = False
 		setattr(ctlr,'isRecycled',True)
-		dle = DeletionLog(ctlr,self.request.remote_addr,self.request.get('comment')).put()
+		DeletionLog().Log(ctlr,self.request.remote_addr,self.request.get('comment'))
 		ctlr.put()
 		self.reply()
 	else:
 		return self.fail("Oops: That tiddler doesn't exist!")
-	### Used to be:
-	#any = False
-	#for tlr in tls:
-	#	tlr.delete()
-	#	any = True
-	#if any:
-	#	self.reply()
-	#else:
-	#	self.fail("Tiddler " + tid + " does not exist");
-	
+
+  def recycleBin(self):
+	get = self.request.get('get')
+	if get != '':
+		tlr = Tiddler.get(get)
+		if tlr is None:
+			return self.fail("Key not found", get)
+		else:
+			return self.deliverTiddler(tlr,True)
+	if self.request.get('list') != '':
+		da = []
+		for t in DeletionLog.all():
+			if t.page.startswith(self.request.path):
+				da.append({'title': t.tiddler.title, 'page': t.page, 'key': t.tiddler.key(), 'by': t.deletedByUser, 'at': t.deletedAt, 'comment': t.deletionComment });
+		return self.reply({ 'tiddlers': da })
+	rescue = self.request.get('rescue')
+	if rescue:
+		ctlr = Tiddler.get(rescue)
+		if ctlr is None:
+			return self.fail("Tiddler not found: " + ctlr);
+		if ctlr.current:
+			return self.fail("Already restored")
+		ctlr.current = True
+		delattr(ctlr,'isRecycled')
+		ctlr.put()
+		for dle in DeletionLog.all():
+			if str(dle.tiddler.key()) == rescue:
+				dle.delete()
+				break
+		return self.reply()
+	if self.request.get('empty') and users.is_current_user_admin():
+		for dle in DeletionLog.all():
+			id = dle.tiddler.id
+			for dte in Tiddler.all().filter('id',id):
+				dte.delete()
+			dle.delete()
+		return self.reply()
+	self.fail("Invalid args");
+
   def add(self):
 	self.reply({"Success": True, "result": int(self.request.get("a")) + int(self.request.get("b"))})
-	
 
   def submitComment(self):
 	tls = Tiddler.all().filter('id', self.request.get("tiddler")).filter('current',True).get()
@@ -1424,35 +1452,45 @@ class MainPage(webapp.RequestHandler):
 		page = self.path
 		
 	t = Tiddler.all().filter('page', page).filter('title',title).filter('current', True).get()
-	if t == None:
+	if t is None:
 		try:
-			xdt = xml.dom.minidom.parse(title+'.xml')
+			xdt = xml.dom.minidom.parse(title + '.xml')
 			de = xdt.documentElement
 			if de.tagName == 'tiddler':
 				t = TiddlerFromXml(de,self.path)
+				if t is None:
+					return self.fail(title + " not found")
 				t.public = True
 			else:
-				self.reply({'success': False })
+				return self.reply({'success': False })
 		except Exception:
-			self.reply({'success': False })
-	if t != None:
-		if t.public or ReadAccessToPage(t.page):
-			rp = { \
-			'success': True, \
-			'id': t.id, \
-			'title': t.title, \
-			'text': t.text, \
-			'tags': t.tags, \
-			'created': t.created.strftime('%Y%m%d%H%M%S'),
-			'modifier': userNameOrAddress(t.author,t.author_ip),
-			'modified': t.modified.strftime('%Y%m%d%H%M%S'),
-			'version': t.version
-			}
-			if hasattr(t,'viewTemplate'):
-				rp['viewTemplate'] = t.viewTemplate
-			self.reply(rp)
-		else:
-			self.reply({"success": False, "Message": "No access" })
+			return self.reply({'success': False })
+
+	self.deliverTiddler(t)
+
+  def deliverTiddler(self,t,withKey=False):
+	if t.public or ReadAccessToPage(t.page):
+		rp = { \
+		'success': True, \
+		'id': t.id, \
+		'title': t.title, \
+		'text': t.text, \
+		'tags': t.tags, \
+		'created': t.created.strftime('%Y%m%d%H%M%S'),
+		'modifier': userNameOrAddress(t.author,t.author_ip),
+		'modified': t.modified.strftime('%Y%m%d%H%M%S'),
+		'version': t.version
+		}
+		if hasattr(t,'viewTemplate'):
+			rp['viewTemplate'] = t.viewTemplate
+		if withKey:
+			rp['key'] = t.key()
+			rp['path'] = t.page
+		self.reply(rp)
+		return True
+	else:
+		self.reply({"success": False, "Message": "No access" })
+		return False
 		
   def getGroups(self):
 	groups = Group.all().filter("admin =", users.get_current_user())
@@ -2712,13 +2750,13 @@ class MainPage(webapp.RequestHandler):
 					return
 			else:
 				message = "Start by defining root page properties"
-				
-	if page != None and page.gwversion < giewikiVersion:
-		self.warnings.append(Upgrade(self,giewikiVersion))
-	elif page != None:
+
+#	if page != None and page.gwversion < giewikiVersion:
+#		self.warnings.append(Upgrade(self,giewikiVersion))
+	if page != None:
 		LogEvent("Page request ", self.request.url)
 	else:
-		LogEvent("No page", self.request.url)
+		LogEvent("No page ", self.request.url)
 
 	if page == None and not rootpath:
 		if self.path == '/UploadDialog.htm':

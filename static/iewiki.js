@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.9.0
+   version:	1.10.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -356,10 +356,16 @@ config.commands = {
     deleteTiddler: { 
         hideReadOnly: true,
         text: "delete",
-        tooltip: "Delete this tiddler",
+        tooltip: "Throw this in the recycle bin",
         warning: "Are you sure you want to delete '%0'?",
-        prompt: "Why are you deleting '%0'?"
+        prompt: "Why are you deleting '%0'? (hit Cancel to abort)"
     },
+    rescueTiddler: {
+        hideReadOnly: true,
+		text: "rescue",
+		tooltip: "Restore this tiddler",
+		bin: []
+	},
     revertTiddler: { 
         hideReadOnly: true,
         text: "revert",
@@ -517,7 +523,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes help|',
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -2810,18 +2816,24 @@ function TryGetTiddler(title) {
 
 function DisplayNonLocalTiddler(from, url)
 {
-	st = http.getTiddler({'url': url});
-	if (st && st.success) {
-		var t = new Tiddler();
-		t.assign(st.title,st.text,st.modifier,
-			Date.convertFromYYYYMMDDHHMM(st.modified),st.tags,
-			Date.convertFromYYYYMMDDHHMM(st.created),
-			null, parseInt(st.version));
-		t.currentVer = t.version;
-		story.displayTiddler(from, t);
-	}
+	var st = http.getTiddler({'url': url });
+	if (st && st.success)
+		ShowExternalTiddler(from,st);
 	else
 		displayMessage(url + " not found");
+}
+
+function ShowExternalTiddler(from, st)
+{
+	var t = new Tiddler();
+	t.assign(st.title,st.text,st.modifier,
+		Date.convertFromYYYYMMDDHHMM(st.modified),st.tags,
+		Date.convertFromYYYYMMDDHHMM(st.created),
+		null, parseInt(st.version));
+	t.currentVer = t.version;
+	t.key = st.key;
+	story.displayTiddler(from, t);
+	return t;
 }
 
 config.commands.saveTiddler.handler = function(event, src, title) {
@@ -2916,10 +2928,28 @@ config.commands.deleteTiddler.handler = function(event, src, title) {
 	else
 		var reason = "No reason";
 
-	if (deleteIt && store.removeTiddler(title,reason))
+	if (deleteIt && store.removeTiddler(title,reason)) {
 		story.closeTiddler(title, true);
-
+		config.macros.recycleBin.close();
+	}
 	return false;
+};
+
+config.commands.rescueTiddler.isEnabled = function(tlr) {
+	return tlr.key;
+};
+
+config.commands.rescueTiddler.handler = function(event, src, title) {
+	var tiddler = config.commands.rescueTiddler.bin[title];
+	if (http.recycleBin({ rescue: tiddler.key }).Success) {
+		tiddler.key = null;
+		if (tiddler.path == window.location.pathname) {
+			store.addTiddler(tiddler);
+			story.refreshTiddler(tiddler.title,null,true);
+		}
+		else
+			window.location = tiddler.path;
+	}
 };
 
 config.commands.revertTiddler.handler = function(event, src, title) {
@@ -7977,6 +8007,57 @@ config.macros.fileList = {
 	}
 }
 
+config.macros.recycleBin = {
+	handler: function(place, macroName, params, wikifier, paramString)
+	{
+		this.rows = 0;
+		var trash = http.recycleBin({ list: paramString });
+		var tta = trash.tiddlers;
+		if (tta.length == 0)
+			return createTiddlyText(place,"The bin is empty");
+		var tbl = createTiddlyElement(place,'table');
+		var tbo = createTiddlyElement(tbl,'tbody');
+		this.addRow(tbo,"When","Who","Where","What","Why");
+		for (var i = 0; i < tta.length; i++) {
+			var tx = tta[i];
+			this.addRow(tbo,tx.at,tx.by,tx.page,tx.title,tx.comment,tx.key);
+		}
+		if (config.admin) {
+			var emptor = function() {
+				if (http.recycleBin({ empty: '*' }).Success)
+					config.macros.recycleBin.close();
+			};
+			createTiddlyButton(place,"Empty bin","Lose what's in here",emptor);
+		}
+	},
+	close: function() {
+		story.closeTiddler("Recycle bin",null);
+	},
+	retrieve: function(ev) {
+		var tb = resolveTarget(ev || window.event);
+		var id = tb.getAttribute('id');
+		var tlr = http.recycleBin({ get: id });
+		if (tlr && tlr.success) {
+			config.macros.recycleBin.close();
+			var xt = ShowExternalTiddler(null,tlr);
+			xt.path = tlr.path;
+			config.commands.rescueTiddler.bin[tlr.title] = xt;
+			displayMessage("Use rescue to restore this tiddler to where it was");
+		}
+	},
+	rows: 0,
+	addRow: function(tbo,when,who,where,what,why,key) {
+			var tr = createTiddlyElement(tbo,'tr',null,this.rows % 2 ? 'oddRow' : 'evenRow');
+			var tdw = createTiddlyElement(tr,'td',null,null, typeof when == 'object' ? when.formatString("YYYY-0MM-0DD hh:mm:0ss") : when);
+			var tdw = createTiddlyElement(tr,'td',null,null,who);
+			var tdw = createTiddlyElement(tr,'td',null,null,where);
+			var tdt = createTiddlyElement(tr,'td',null,null, this.rows ? null : what);
+			if (this.rows++ && key)
+				var ae = createTiddlyButton(tdt,what,null,this.retrieve,'deleted',null,null, { id: key });
+			var tdw = createTiddlyElement(tr,'td',null,null,why);
+	},
+}
+
 config.macros.author = {
 	handler: function(place, macroName, params, wikifier, paramString, tiddler)
 	{
@@ -7995,7 +8076,7 @@ config.macros.author = {
 	},
 	onclick: function(ev)
 	{
-		t = resolveTarget(ev || window.event);
+		var t = resolveTarget(ev || window.event);
 		var id = t.getAttribute("id").substring(5);
 		var au = authors[id];
 		if (au.tiddler != "")

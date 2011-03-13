@@ -1,7 +1,7 @@
 # this:	giewikidb.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.7.0
+# ver.:	1.10.0
 
 import logging
 import datetime
@@ -158,19 +158,19 @@ class Page(db.Model):
 	return None
 
 class DeletionLog(db.Model):
-	def __init__(self, tiddler,fingerprint,comment):
-		super( DeletionLog, self ).__init__()
-		self.title = tiddler.title
-		self.tiddler = tiddler
-		self.fingerprint = fingerprint
-		self.deletedByUser = users.get_current_user()
-		self.deletionComment = comment
-	title = db.StringProperty()
+	page = db.StringProperty()
 	tiddler = db.ReferenceProperty(Tiddler)
 	deletedAt = db.DateTimeProperty(auto_now_add=True)
 	fingerprint = db.StringProperty()
 	deletedByUser = db.UserProperty()
 	deletionComment = db.StringProperty()
+	def Log(self, tiddler,fingerprint,comment):
+		self.page = tiddler.page
+		self.tiddler = tiddler
+		self.fingerprint = fingerprint
+		self.deletedByUser = users.get_current_user()
+		self.deletionComment = comment
+		self.put()
 
 class Comment(db.Model):
   tiddler = db.StringProperty()
