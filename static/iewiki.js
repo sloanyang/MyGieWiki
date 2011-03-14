@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.10.0
+   version:	1.10.1
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -8005,7 +8005,7 @@ config.macros.fileList = {
 			createTiddlyElement(place,"br");
 		}
 	}
-}
+};
 
 config.macros.recycleBin = {
 	handler: function(place, macroName, params, wikifier, paramString)
@@ -8055,8 +8055,8 @@ config.macros.recycleBin = {
 			if (this.rows++ && key)
 				var ae = createTiddlyButton(tdt,what,null,this.retrieve,'deleted',null,null, { id: key });
 			var tdw = createTiddlyElement(tr,'td',null,null,why);
-	},
-}
+	}
+};
 
 config.macros.author = {
 	handler: function(place, macroName, params, wikifier, paramString, tiddler)
