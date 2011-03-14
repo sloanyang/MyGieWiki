@@ -2454,8 +2454,6 @@ config.macros.search.handler = function(place, macroName, params) {
     if (config.browser.isSafari) {
         txt.setAttribute("type", "search");
         txt.setAttribute("results", "5");
-    } else {
-        txt.setAttribute("type", "text");
     }
 };
 
@@ -3725,7 +3723,8 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		m.private = 'true';
 
 	for (fn in fields) {
-		m[fn] = fields[fn];
+		if (m[fn] === undefined)
+			m[fn] = fields[fn];
 	}
 	if (tiddler.key)
 		m.key = tiddler.key;
@@ -4492,7 +4491,7 @@ Story.prototype.isDirty = function(title) {
 Story.prototype.areAnyDirty = function() {
     var r = false;
     this.forEachTiddler(function(title, element) {
-        if (this.hasChanges(title))
+        if (title != 'PageSetup' && this.hasChanges(title))
             r = true;
     });
     return r;
