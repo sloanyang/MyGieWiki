@@ -1116,6 +1116,7 @@ class MainPage(webapp.RequestHandler):
 			page.authAccess = Page.access[self.request.get('authenticated')]
 			page.groupAccess = Page.access[self.request.get('group')]
 			page.groups = self.request.get('groups')
+			page.scripts = self.request.get('scripts')
 			page.viewbutton = True if self.request.get('viewbutton') == 'true' else False
 			page.viewprior = self.request.get('viewprior') == 'true'
 			if self.request.get('template') != '':
@@ -1147,6 +1148,7 @@ class MainPage(webapp.RequestHandler):
 			'group': Page.access[page.groupAccess],
 			'groups': page.groups,
 			'template': {} if page.template == None else { 'page': page.template.page, 'title': page.template.title, 'current': page.template.current },
+			'scripts': page.scripts if hasattr(page,'scripts') else '',
 			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
 			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
@@ -2758,25 +2760,31 @@ class MainPage(webapp.RequestHandler):
 	else:
 		LogEvent("No page ", self.request.url)
 
-	if page == None and not rootpath:
-		if self.path == '/UploadDialog.htm':
-			ftwd = open('UploadDialog.htm')
-			text = ftwd.read()
-			ftwd.close()
-			self.response.headers['Content-Type'] = 'text/html'
+	if page == None:
+		if rootpath:
+			pass
 		else:
-			# Not an existing page, perhaps an uploaded file ?
-			file = UploadedFile.all().filter("path =", urllib.unquote(self.path)).get()
-			#LogEvent("Get file", self.path)
-			if file == None:
-				self.response.set_status(404)
-				return
+			if self.path == '/UploadDialog.htm':
+				ftwd = open('UploadDialog.htm')
+				text = ftwd.read()
+				ftwd.close()
+				self.response.headers['Content-Type'] = 'text/html'
 			else:
-				text = file.data
-				self.response.headers['Content-Type'] = file.mimetype
-		self.response.headers['Cache-Control'] = 'no-cache'
-		self.response.out.write(text)
-		return
+				# Not an existing page, perhaps an uploaded file ?
+				file = UploadedFile.all().filter("path =", urllib.unquote(self.path)).get()
+				#LogEvent("Get file", self.path)
+				if file == None:
+					self.response.set_status(404)
+					return
+				else:
+					text = file.data
+					self.response.headers['Content-Type'] = file.mimetype
+			self.response.headers['Cache-Control'] = 'no-cache'
+			self.response.out.write(text)
+			return
+	else:
+		memcache.set(self.request.remote_addr,page) # used by config.js request
+
 	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
 		

@@ -1,7 +1,7 @@
 # this:	giewikidb.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.10.0
+# ver.:	1.10.2
 
 import logging
 import datetime
@@ -118,6 +118,7 @@ class Page(db.Model):
   viewbutton = db.BooleanProperty(True)
   viewprior = db.BooleanProperty(True)
   template = db.ReferenceProperty(PageTemplate)
+  scripts = db.StringProperty()
   def todict(s,d):
 	d['path'] = s.path
 	d['owner'] = s.owner

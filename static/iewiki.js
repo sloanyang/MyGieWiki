@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.10.1
+   version:	1.10.2
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -563,6 +563,7 @@ var formatter = null; // Default formatters for the wikifier
 var anim = typeof Animator == "function" ? new Animator() : null; // Animation engine
 var readOnly = false; // Whether we're in readonly mode
 var highlightHack = null; // Embarrassing hack department...
+
 var hadConfirmExit = false; // Don't warn more than once
 var safeMode = false; // Disable all plugins and cookies
 var installedPlugins = []; // Information filled in when plugins are executed
@@ -2926,7 +2927,8 @@ config.commands.deleteTiddler.handler = function(event, src, title) {
 	else
 		var reason = "No reason";
 
-	if (deleteIt && store.removeTiddler(title,reason)) {
+	store.getTiddler(title)._deleteReason = reason;
+	if (deleteIt && store.removeTiddler(title)) {
 		story.closeTiddler(title, true);
 		config.macros.recycleBin.close();
 	}
@@ -3053,7 +3055,7 @@ config.commands.attributes.handlePopup = function(popup, title) {
 			}
 			else
 				etl.remove(tag);
-			tee.value = etl.join(' ');
+			tee.value = String.encodeTiddlyLinkList(etl);
 	};
 	var add = function(aLabel,aTag) {
 		var act = finder().value.readBracketedList().indexOf(aTag) == -1 ? "mark" : "clear";
@@ -3637,11 +3639,11 @@ TiddlyWiki.prototype.addNotification = function(title, fn) {
     return this;
 };
 
-TiddlyWiki.prototype.removeTiddler = function(title,reason) {
+TiddlyWiki.prototype.removeTiddler = function(title) {
 	var tiddler = this.fetchTiddler(title);
 	if (tiddler) {
 		if (tiddler.id) {
-			var result = http.deleteTiddler({ tiddlerId: tiddler.id, comment: reason });
+			var result = http.deleteTiddler({ tiddlerId: tiddler.id, comment: tiddler._deleteReason });
 			if (!result.Success)
 				return false;
 		}
@@ -7310,7 +7312,8 @@ PageProperties = {
 		accessTypes = "admin|all|edit|add|comment|view|none|";
 		if (config.isLoggedIn()) {
 			forms.PageProperties = http.pageProperties();
-
+			var scripts = forms.PageProperties.scripts.split('|');
+			forms.PageProperties.usejquery = scripts.indexOf('jquery-1.5.1.min.js') >= 0;
 			forms.PageProperties.template.handler = function (place, me) {
 				PageProperties.selectedTemplate = me.page || "";
 				var atd = {
@@ -7366,6 +7369,7 @@ PageProperties = {
 		if (!forms.PageProperties.title)
 			return displayMessage("You need to set the Title");
 		forms.PageProperties.template = PageProperties.selectedTemplate;
+		forms.PageProperties.scripts = forms.PageProperties.usejquery ? 'jquery-1.5.1.min.js' : '';
 		var resp = http.pageProperties(forms.PageProperties);
 		if (resp.Success &&
 			config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties')))
@@ -8201,7 +8205,9 @@ config.macros.diff = {
 		createTiddlyElement(de,"legend",null,null,"Comparing version " + vnx + " (red) to version " + vny + " (green)");
 		var dce = createTiddlyElement(de,"div",null,'diffout');
 		dce.innerHTML = htr;
-		insertAfter(getChildByClassName(tel,'viewer'),de);
+		var ear = [];
+		if (getElementsByClassName('viewer','*',tel,ear))
+			insertAfter(ear[0],de);
 	}
 }
 
