@@ -59,6 +59,7 @@ removeGroupMember\n\
 evaluate\n\
 tiddlersFromUrl\n\
 openLibrary\n\
+listScripts\n\
 updateTemplate\n\
 getTemplates'
 

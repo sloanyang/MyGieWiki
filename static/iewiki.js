@@ -3066,6 +3066,8 @@ config.commands.attributes.handlePopup = function(popup, title) {
 		add("private",'isPrivate');
 	add("exclude from index",'excludeLists');
 	add("exclude from search",'excludeSearch');
+	add("treat as script",'systemConfig');
+	add("disable as script",'systemConfigDisable');
 };
 
 config.commands.preview.handler = function(e, src, title) {
@@ -7312,8 +7314,10 @@ PageProperties = {
 		accessTypes = "admin|all|edit|add|comment|view|none|";
 		if (config.isLoggedIn()) {
 			forms.PageProperties = http.pageProperties();
-			var scripts = forms.PageProperties.scripts.split('|');
-			forms.PageProperties.usejquery = scripts.indexOf('jquery-1.5.1.min.js') >= 0;
+			forms.PageProperties.scripts = forms.PageProperties.scripts.split('|');
+			var scripts = forms.PageProperties.scripts;
+			for (var i = 0; i < scripts.length; i++)
+				forms.PageProperties[scripts[i]] = true;
 			forms.PageProperties.template.handler = function (place, me) {
 				PageProperties.selectedTemplate = me.page || "";
 				var atd = {
@@ -7332,6 +7336,48 @@ PageProperties = {
 			forms.PageProperties = {};
 			return "''[As you are not logged in, this dialog is not functional]''";
 		}
+	},
+	listScripts: function() {
+		var e = window.event;
+		var tg = resolveTarget(e);
+		var scrlr = http.listScripts();
+		var desHandler = function(e) {
+			var ev = e || window.event;
+			var cbc = resolveTarget(ev);
+			var text = cbc.nextSibling.nodeValue;
+			forms.PageProperties[text] = cbc.checked;
+		};
+		var selHandler = function(e) {
+			var ev = e || window.event;
+			var text = resolveTarget(ev).innerText;
+			var bre = document.createElement('br');
+			insertAfter(tg,bre);
+			var cb = document.createElement("input");
+			cb.setAttribute("type", "checkbox");
+			cb.checked = true;
+			cb.onclick = desHandler;
+			insertAfter(bre,cb);
+			insertAfter(cb,document.createTextNode(text));
+			forms.PageProperties.scripts.push(text);
+			forms.PageProperties[text] = true;
+		};
+		if (scrlr.success) {
+			var popup = Popup.create(tg);
+			var values = scrlr.list.split('|');
+			for (var i = 0; i < values.length; i++)
+				createTiddlyButton(createTiddlyElement(popup, "li"), values[i], null, selHandler);
+			Popup.show();
+		}
+		e.cancelBubble = true;
+		if (e.stopPropagation) e.stopPropagation();
+	},
+	usedScripts: function() {
+		var scripts = forms.PageProperties.scripts;
+		var arr = [];
+		for (var i = 0; i < scripts.length; i++)
+			if (scripts[i])
+				arr.push( '<<input checkbox ' + scripts[i] + ' true>>' + scripts[i]);
+		return arr.length > 0 ? arr.join('<br>') : "(none)";
 	},
 	activated: function () {
 		if (!config.isLoggedIn()) {
@@ -7369,7 +7415,12 @@ PageProperties = {
 		if (!forms.PageProperties.title)
 			return displayMessage("You need to set the Title");
 		forms.PageProperties.template = PageProperties.selectedTemplate;
-		forms.PageProperties.scripts = forms.PageProperties.usejquery ? 'jquery-1.5.1.min.js' : '';
+		var scripts = forms.PageProperties.scripts;
+		var news = [];
+		for (var i = 0; i < scripts.length; i++)
+			if (forms.PageProperties[scripts[i]])
+				news.push(scripts[i]);
+		forms.PageProperties.scripts = news.join('|');
 		var resp = http.pageProperties(forms.PageProperties);
 		if (resp.Success &&
 			config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties')))

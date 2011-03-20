@@ -2204,6 +2204,17 @@ class MainPage(webapp.RequestHandler):
 		except Exception,x:
 			self.fail("Importing " + ln + ": " + unicode(x))
 	
+  def listScripts(self):
+	scriptPath = 'scripts/'
+	try:
+		files = glob.glob(scriptPath + '*.js')
+		scripts = []
+		for p in files:
+			scripts.append(p[len(scriptPath):])
+		self.reply({'success': True, 'list': '|'.join(scripts)})
+	except Exception,x:
+		self.fail(unicode(x))
+
   def traceMethod(self,m,method):
 	r = method()
 	if self.trace != False:
