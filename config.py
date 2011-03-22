@@ -1,7 +1,7 @@
 # this:	Config.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.9.2
+# ver.:	1.10.2
 
 import cgi
 import codecs
@@ -16,7 +16,6 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
-from google.appengine.api import memcache
 from google.appengine.api import namespace_manager
 
 from giewikidb import UserProfile
@@ -64,7 +63,7 @@ updateTemplate\n\
 getTemplates'
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 10, revision: 1, date: new Date("Mar 14, 2011"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 10, revision: 2, date: new Date("Mar 14, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -172,21 +171,6 @@ class ConfigJs(webapp.RequestHandler):
 	self.response.out.write('\n\t}\n};\nhttp._init(["')
 	self.response.out.write('","'.join(HttpMethods.split('\n')))
 	self.response.out.write('"]);')
-
-	page = memcache.get(self.request.remote_addr)
-	if not page is None:
-		if hasattr(page,'scripts') and page.scripts != None:
-			for sn in page.scripts.split('|'):
-				try:
-					sf = open('scripts/' + sn)
-					self.response.out.write(sf.read())
-					sf.close()
-				except Exception, x:
-					logging.error("Cannot read script " + sn)
-
-	#jqmf = open('scripts/jquery-1.5.1.min.js')
-	#self.response.out.write(jqmf.read())
-	#jqmf.close()
 
 ############################################################################
 

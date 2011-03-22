@@ -7333,7 +7333,7 @@ PageProperties = {
 			};
 		}
 		else {
-			forms.PageProperties = {};
+			forms.PageProperties = { scripts: [] };
 			return "''[As you are not logged in, this dialog is not functional]''";
 		}
 	},

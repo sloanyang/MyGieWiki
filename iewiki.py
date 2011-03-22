@@ -31,6 +31,8 @@ from google.appengine.api import namespace_manager
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace
 
+from javascripts import javascriptDict
+
 giewikiVersion = '2.10'
 TWComp = 'twcomp.html'
 
@@ -2205,12 +2207,10 @@ class MainPage(webapp.RequestHandler):
 			self.fail("Importing " + ln + ": " + unicode(x))
 	
   def listScripts(self):
-	scriptPath = 'scripts/'
 	try:
-		files = glob.glob(scriptPath + '*.js')
 		scripts = []
-		for p in files:
-			scripts.append(p[len(scriptPath):])
+		for (name,file) in javascriptDict.iteritems():
+			scripts.append(name)
 		self.reply({'success': True, 'list': '|'.join(scripts)})
 	except Exception,x:
 		self.fail(unicode(x))
@@ -2670,17 +2670,23 @@ class MainPage(webapp.RequestHandler):
 			xmldecl = '<?xml version="1.0" ?>' # strip off this
 			if text.startswith(xmldecl):
 				text = text[len(xmldecl):]
-			globalPatch = 'config.defaultCustomFields["server.host"] = "' + self.request.url + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n'
-			eoS = '</script>'
+
+			eoS = '<!--- injection point A --->'
 			psPos = twdtext.rfind(eoS)
-			twdparts = [ twdtext[0:psPos], globalPatch, eoS ]
-			psPos += len(eoS)
+			globalPatch = [ twdtext[0:psPos],'<!--- injected text: --->']
+			if not page is None:
+				if hasattr(page,'scripts') and page.scripts != None:
+					for sn in page.scripts.split('|'):
+						if len(sn) > 0:
+							globalPatch.append('\n<script src="/scripts/' + javascriptDict[sn] + '" type="text/javascript"></script>')
+			globalPatch.append('\n<script type="text/javascript">\nconfig.defaultCustomFields["server.host"] = "' + self.request.url + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
 			if metaData:
 				for k in scripts:
-					twdparts.append('\n<script src="/dynamic/js' + self.request.path + "/" + k + '" type="text/javascript"></script>')
-			twdparts.append(twdtext[psPos:])
-			twdtext = ''.join(twdparts)
-			cssa = '<div id="shadowArea">';
+					globalPatch.append('\n<script src="/dynamic/js' + self.request.path + "/" + k + '" type="text/javascript"></script>')
+
+			globalPatch.append(twdtext[psPos:])
+			twdtext = ''.join(globalPatch)
+			cssa = '<div id="shadowArea">'
 			mysa = elShArea.toxml()
 			if len(mysa) > len(cssa) + 6:
 				text = text.replace(cssa,mysa[:-6])
