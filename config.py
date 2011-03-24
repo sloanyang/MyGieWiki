@@ -26,6 +26,7 @@ editTiddler\n\
 unlockTiddler\n\
 lockTiddler\n\
 saveTiddler\n\
+changeTags\n\
 deleteTiddler\n\
 revertTiddler\n\
 deleteVersions\n\

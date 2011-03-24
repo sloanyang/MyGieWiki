@@ -3674,10 +3674,14 @@ TiddlyWiki.prototype.setTiddlerTag = function(title, status, tag) {
             tiddler.tags.splice(t, 1);
         if (status)
             tiddler.tags.push(tag);
+		http.changeTags({
+			tiddlerId: tiddler.id,
+			version: tiddler.version,
+			tags: tiddler.tags });
+
         tiddler.changed();
         tiddler.incChangeCount(title);
         this.notify(title, true);
-        this.setDirty(true);
     }
 };
 

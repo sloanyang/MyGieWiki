@@ -724,6 +724,18 @@ class MainPage(webapp.RequestHandler):
 			esr.appendChild(getTiddlerVersions(xd,unicode(tlr.id),eval(fromVer)))
 		self.response.out.write(xd.toxml())
 	
+  def changeTags(self):
+	id = self.request.get('tiddlerId')
+	version = self.request.get('version')
+	tlr = Tiddler.all().filter('id', id).filter('current',True).get()
+	if tlr == None:
+		return self.fail("Tiddler not found")
+	if tlr.version != int(version):
+		return self.fail(tlr.title + " v# " + str(tlr.version) + " is the current version")
+	tlr.tags = self.request.get('tags')
+	tlr.put()
+	self.reply()
+
   def tiddlerHistory(self):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
