@@ -86,6 +86,18 @@ def Filetype(filename):
 def AttrValueOrBlank(o,a):
 	return unicode(getattr(o,a)) if o != None and hasattr(o,a) and getattr(o,a) != None else ''
 
+def AddTagsToList(slist,tags):
+	list = slist.split(' ') # TODO: proper parsing of [[such tags]]
+	changes = False
+	for t in tags:
+		if not t in list:
+			list.append(t)
+			changes = True
+	if changes:
+		return ' '.join(list)
+	else:
+		return slist
+
 def MimetypeFromFiletype(ft):
 	if ft == "txt":
 		return "text/plain"
@@ -2463,6 +2475,7 @@ class MainPage(webapp.RequestHandler):
 			tds = self.TiddlersFromXml(xd.documentElement,page.template.page)
 			if tds != None:
 				for tdo in tds:
+					tdo.tags = AddTagsToList(tdo.tags,['excludeLists','excludeSearch'])
 					tiddict[tdo.title] = tdo
 
 		if readAccess and page.systemInclude != None:
