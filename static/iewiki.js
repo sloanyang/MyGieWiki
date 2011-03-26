@@ -7483,14 +7483,8 @@ PageProperties = {
 	},
 	availableTemplates: function() {
 		var tl = http.getTemplates();
-		if (tl.Success) {
-			var tlts = [];
-			for (var i = 0; i < tl.templates.length; i++)
-				tlts.push(tl.templates[i].title);
-			return tlts.join('|');
-		}
-		else
-			return 'normal';
+		if (tl.Success)
+			return tl.templates.join('|');
 	},
 	MakeFolder: function() {
 		var f = forms[formName(place)];

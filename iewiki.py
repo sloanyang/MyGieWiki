@@ -123,6 +123,7 @@ def AutoGenerateTemplate(source):
 					rqPos = eolPos + 1
 			npt.scripts = '|'.join(scripts)
 			npt.current = True
+			npt.version = 0
 			npt.put()
 			ftwd.close()
 			return npt
@@ -1201,8 +1202,12 @@ class MainPage(webapp.RequestHandler):
 			self.reply({'Success': True })
 	else: # Get
 		tiddlertags = page.tiddlertags if hasattr(page,'tiddlertags') else ''
-		if tiddlertags == '' and page.template != None:
-			tiddlertags = AttrValueOrBlank(page.template,'tiddlertags')
+		try:
+			refTemplate = page.template
+		except:
+			refTemplate = None
+		if tiddlertags == '' and refTemplate != None:
+			tiddlertags = AttrValueOrBlank(refTemplate,'tiddlertags')
 		self.reply({
 			'title': page.title,
 			'subtitle': page.subtitle,
@@ -1215,8 +1220,8 @@ class MainPage(webapp.RequestHandler):
 			'authenticated': Page.access[page.authAccess],
 			'group': Page.access[page.groupAccess],
 			'groups': page.groups,
-			'template': 'normal' if page.template == None else page.template.title,
-			'template_info': {} if page.template == None else { 'page': page.template.page, 'title': page.template.title, 'current': page.template.current },
+			'template': 'normal' if refTemplate == None else refTemplate.title,
+			'template_info': {} if refTemplate == None else { 'page': refTemplate.page, 'title': refTemplate.title, 'current': refTemplate.current },
 			'scripts': page.scripts if hasattr(page,'scripts') else '',
 			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
 			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
@@ -1251,11 +1256,11 @@ class MainPage(webapp.RequestHandler):
 	self.reply({'Success': True })
 
   def getTemplates(self):
-	dt = [ { 'title': 'dummy' }, { 'title': 'normal' } ]
+	dt = [ 'dummy', 'normal' ]
 	for at in library().static():
-		dt.append( { 'title': at[:-4] }) # 4 = len('.xml')
+		dt.append( at[:-4]) # 4 = len('.xml')
 	for at in PageTemplate.all().filter('current',True):
-		dt.append( { 'title': at.title,'path': at.page })
+		dt.append(at.title)
 	self.reply({'Success': True, 'templates': dt})
 
   def getNewAddress(self):
@@ -2513,16 +2518,21 @@ class MainPage(webapp.RequestHandler):
 
   def getText(self, page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
 	if page != None:
-		if readAccess and page.template != None:
-			tl = page.template
+		try:
+			refTemplate = page.template
+		except:
+			refTemplate = None
+
+		if readAccess and refTemplate != None:
+			tl = refTemplate
 			if not tl.current and self.request.get('upgradeTemplate') == 'try':
-				ptc = PageTemplate.all().filter('page',page.template.page).filter('current',True).get()
+				ptc = PageTemplate.all().filter('title',refTemplate.title).filter('current',True).get()
 				if ptc != None:
 					tl = ptc
 			xd = xml.dom.minidom.parseString(tl.text.encode('utf-8'))
 			if AttrValueOrBlank(page,'tiddlertags') == '':
 				page.tiddlertags = AttrValueOrBlank(tl,'tiddlertags')
-			tds = self.TiddlersFromXml(xd.documentElement,page.template.page)
+			tds = self.TiddlersFromXml(xd.documentElement,refTemplate.page)
 			if tds != None:
 				for tdo in tds:
 					tdo.tags = AddTagsToList(tdo.tags,['excludeLists','excludeSearch','fromTemplate'])
@@ -2759,8 +2769,8 @@ class MainPage(webapp.RequestHandler):
 					for sn in page.scripts.split('|'):
 						if len(sn) > 0:
 							scrdict[sn] = javascriptDict[sn]
-				if hasattr(page,'template') and page.template != None:
-					tpl = page.template
+				if refTemplate != None:
+					tpl = refTemplate
 					if hasattr(tpl,'scripts') and tpl.scripts != None:
 						for sn in tpl.scripts.split('|'):
 							if len(sn) > 0:
