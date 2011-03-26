@@ -1175,6 +1175,7 @@ class MainPage(webapp.RequestHandler):
 		ptn.page = page.path
 		ptn.version = 1
 		ptn.current = True
+		ptn.scripts = page.scripts
 		update = True
 	else:
 		ptn = None
@@ -1278,6 +1279,9 @@ class MainPage(webapp.RequestHandler):
 		page.anonAccess = Page.access[self.request.get("anonymous")]
 		page.authAccess = Page.access[self.request.get("authenticated")]
 		page.groupAccess = Page.access[self.request.get("group")]
+		for at in PageTemplate.all().filter('current',True):
+			if at.title == self.request.get('template'):
+				page.template = at
 		page.viewbutton = pad.viewbutton
 		page.viewprior = pad.viewprior
 		page.put()
@@ -2687,10 +2691,19 @@ class MainPage(webapp.RequestHandler):
 			psPos = twdtext.rfind(eoS)
 			globalPatch = [ twdtext[0:psPos],'<!--- injected text: --->']
 			if not page is None:
+				scrdict = dict()
 				if hasattr(page,'scripts') and page.scripts != None:
 					for sn in page.scripts.split('|'):
 						if len(sn) > 0:
-							globalPatch.append('\n<script src="/scripts/' + javascriptDict[sn] + '" type="text/javascript"></script>')
+							scrdict[sn] = javascriptDict[sn]
+				if hasattr(page,'template') and page.template != None:
+					tpl = page.template
+					if hasattr(tpl,'scripts') and tpl.scripts != None:
+						for sn in tpl.scripts.split('|'):
+							if len(sn) > 0:
+								scrdict[sn] = javascriptDict[sn]
+				for k in scrdict.keys():
+					globalPatch.append('\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
 			globalPatch.append('\n<script type="text/javascript">\nconfig.defaultCustomFields["server.host"] = "' + self.request.url + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
 			if metaData:
 				for k in scripts:

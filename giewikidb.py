@@ -85,6 +85,7 @@ class PageTemplate(db.Model):
   updated = db.DateTimeProperty(auto_now_add=True)
   version = db.IntegerProperty()
   current = db.BooleanProperty()
+  scripts = db.StringProperty()
 
 class Page(db.Model):
   NoAccess = 0

@@ -6289,6 +6289,10 @@ String.prototype.startsWith = function(prefix) {
     return !prefix || this.substring(0, prefix.length) == prefix;
 };
 
+String.prototype.endsWith = function(as) {
+	return this.length >= as.length && this.substr(0-as.length) == as;
+};
+
 // Returns the first value of the given named parameter.
 function getParam(params, name, defaultValue) {
     if (!params)
@@ -7489,6 +7493,17 @@ PageProperties = {
 			displayMessage("This page has now been deleted");
 		}
 	},
+	availableTemplates: function() {
+		var tl = http.getTemplates();
+		if (tl.Success) {
+			var tlts = ["normal"];
+			for (var i = 0; i < tl.templates.length; i++)
+				tlts.push(tl.templates[i].title);
+			return tlts.join('|');
+		}
+		else
+			return 'normal';
+	},
 	listTemplates: function () {
 		var tl = http.getTemplates();
 		if (tl.Success) {
@@ -7520,8 +7535,15 @@ PageProperties = {
 				ste.onclick = handler;
 			}
 		}
+	},
+	MakeFolder: function() {
+		var f = forms[formName(place)];
+		av = f.address;
+		if(typeof av === 'string' && !av.endsWith('/'))
+			setFormFieldValue(f,'address', av + '/');
 	}
 }
+
 
 function onUploadTiddlers(url) {
 	var delc = document.getElementById('libraryCatalog');
