@@ -413,6 +413,7 @@ store.addNotification(&quot;MptwCollapsePluginStyles&quot;,refreshStyles);
 |Name:|MptwConfigPlugin|
 |Description:|Miscellaneous tweaks used by MPTW|
 |Version:|1.0 ($Rev: 3646 $)|
+|Requires script:|jQuery|
 |Date:|$Date: 2008-02-27 02:34:38 +1000 (Wed, 27 Feb 2008) $|
 |Source:|http://mptw.tiddlyspot.com/#MptwConfigPlugin|
 |Author:|Simon Baird &lt;simon.baird@gmail.com&gt;|

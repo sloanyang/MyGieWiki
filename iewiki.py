@@ -98,6 +98,36 @@ def AddTagsToList(slist,tags):
 	else:
 		return slist
 
+def AutoGenerateTemplate(source):
+	# Generates a template from a file in /library
+	statics = library().static()
+	for asl in statics:
+		if asl.split('.')[0] == source:
+			npt = PageTemplate()
+			sfpath = 'library/' + asl
+			ftwd = codecs.open(sfpath,'r','utf-8')
+			npt.page = 'static:' + asl
+			npt.title = source
+			npt.text = ftwd.read()
+			rqPos = 0
+			scripts = []
+			while rqPos >= 0:
+				rqPos = npt.text.find('Requires script',rqPos)
+				if rqPos >= 0:
+					eolPos = npt.text.find('\n',rqPos)
+					rqsparts = npt.text[rqPos:eolPos].split('|')
+					if len(rqsparts) > 2:
+						what = rqsparts[-2]
+						if javascriptDict.has_key(what):
+							scripts.append(what)
+					rqPos = eolPos + 1
+			npt.scripts = '|'.join(scripts)
+			npt.current = True
+			npt.put()
+			ftwd.close()
+			return npt
+	return None
+
 def MimetypeFromFiletype(ft):
 	if ft == "txt":
 		return "text/plain"
@@ -1145,12 +1175,24 @@ class MainPage(webapp.RequestHandler):
 			page.scripts = self.request.get('scripts')
 			page.viewbutton = True if self.request.get('viewbutton') == 'true' else False
 			page.viewprior = self.request.get('viewprior') == 'true'
-			if self.request.get('template') != '':
-				pt = PageTemplate.all().filter('page',self.request.get('template')).filter('current',True).get()
+			reqTemplate = self.request.get('template')
+			if reqTemplate != '' and reqTemplate != "normal":
+				pt = PageTemplate.all().filter('title',reqTemplate).filter('current',True).get()
+				if pt == None:
+					pt = AutoGenerateTemplate(reqTemplate)
 				if pt == None:
 					return self.fail("No such template: " + self.request.get('template'))
 				else:
 					page.template = pt
+					if hasattr(page,'scripts') and page.scripts != None:
+						ppts = page.scripts.split('|')
+					else:
+						ppts = []
+					if hasattr(pt,'scripts') and pt.scripts != None:
+						for ats in pt.scripts.split('|'):
+							if len(ats) and not ats in ppts:
+								ppts.append(ats)
+					page.scripts = '|'.join(ppts)
 			else:
 				page.template = None
 			page.put()
@@ -1173,18 +1215,18 @@ class MainPage(webapp.RequestHandler):
 			'authenticated': Page.access[page.authAccess],
 			'group': Page.access[page.groupAccess],
 			'groups': page.groups,
-			'template': {} if page.template == None else { 'page': page.template.page, 'title': page.template.title, 'current': page.template.current },
+			'template': 'normal' if page.template == None else page.template.title,
+			'template_info': {} if page.template == None else { 'page': page.template.page, 'title': page.template.title, 'current': page.template.current },
 			'scripts': page.scripts if hasattr(page,'scripts') else '',
 			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
 			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
 
   def saveTemplate(self,page,update=False,tags=''):
-	pt = PageTemplate.all().filter('page',page.path).filter('current',True).get()
+	pt = PageTemplate.all().filter('title',page.title).filter('current',True).get()
 	newVersion = 'version' in page.tags.split() or 'version' in tags.split()
 	if pt == None or newVersion:
 		ptn = PageTemplate()
-		ptn.page = page.path
 		ptn.version = 1
 		ptn.current = True
 		ptn.scripts = page.scripts
@@ -1200,6 +1242,7 @@ class MainPage(webapp.RequestHandler):
 	if update:
 		pt.text = self.getText(page)
 	pt.title = page.title
+	ptn.page = page.path
 	pt.tiddlertags = page.tiddlertags
 	pt.put()
 
@@ -1208,7 +1251,9 @@ class MainPage(webapp.RequestHandler):
 	self.reply({'Success': True })
 
   def getTemplates(self):
-	dt = list()
+	dt = [ { 'title': 'dummy' }, { 'title': 'normal' } ]
+	for at in library().static():
+		dt.append( { 'title': at[:-4] }) # 4 = len('.xml')
 	for at in PageTemplate.all().filter('current',True):
 		dt.append( { 'title': at.title,'path': at.page })
 	self.reply({'Success': True, 'templates': dt})
@@ -1275,7 +1320,7 @@ class MainPage(webapp.RequestHandler):
 			'authenticated': Page.access[pad.authAccess],
 			'group': Page.access[pad.groupAccess],
 			'updateaccess': True })
-	      
+
 	url = parent + self.request.get("address")
 	page = Page.all().filter('path =',url).get()
 	if page == None:
@@ -1291,9 +1336,14 @@ class MainPage(webapp.RequestHandler):
 		page.anonAccess = Page.access[self.request.get("anonymous")]
 		page.authAccess = Page.access[self.request.get("authenticated")]
 		page.groupAccess = Page.access[self.request.get("group")]
-		for at in PageTemplate.all().filter('current',True):
-			if at.title == self.request.get('template'):
-				page.template = at
+		reqTemplate = self.request.get('template')
+		if reqTemplate != '':
+			for at in PageTemplate.all().filter('current',True):
+				if at.title == reqTemplate:
+					page.template = at
+			if page.template == None:
+				page.template = AutoGenerateTemplate(reqTemplate)
+
 		page.viewbutton = pad.viewbutton
 		page.viewprior = pad.viewprior
 		page.put()
@@ -2475,7 +2525,7 @@ class MainPage(webapp.RequestHandler):
 			tds = self.TiddlersFromXml(xd.documentElement,page.template.page)
 			if tds != None:
 				for tdo in tds:
-					tdo.tags = AddTagsToList(tdo.tags,['excludeLists','excludeSearch'])
+					tdo.tags = AddTagsToList(tdo.tags,['excludeLists','excludeSearch','fromTemplate'])
 					tiddict[tdo.title] = tdo
 
 		if readAccess and page.systemInclude != None:

@@ -6,7 +6,7 @@ Page templates also include the Predefined tiddler tags of the source page. Page
 * Templates are //created// from pages by adding the tag template (just click //template//). You will typically create the page specifically to be used for creating a template. The content of the page may consist entirely of [[Library includes|LibraryUsageHelp]].
 * Templates are //applied// by selecting from the list which is presented when you click Use ''template..''
 * Templates are //not// updated automatically when you edit the pages that have the template tag; click //template// again to update the template. You may not always want the updated template to be applied to pages that already use the previous template version of the template. If you do //not//, you should add the additional tag //version// - this causes the previous version to be preserved.
-Template content is included with the addition of the attribute tags excludeLists and excludeSearch. If the content is intended to be visible on pages that use the template, facilitators such as other tags should be applied to the source page.
+Template content is included with the addition of the attribute tags excludeLists, excludeSearch and fromTemplate.
 	</pre>
 </tiddler>
 

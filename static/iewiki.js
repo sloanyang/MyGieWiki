@@ -7317,7 +7317,7 @@ config.macros.submitButton = {
 };
 
 PageProperties = {
-	selectedTemplate: '',
+	//selectedTemplate: '',
 	init: function () {
 		accessTypes = "admin|all|edit|add|comment|view|none|";
 		if (config.isLoggedIn()) {
@@ -7326,19 +7326,6 @@ PageProperties = {
 			var scripts = forms.PageProperties.scripts;
 			for (var i = 0; i < scripts.length; i++)
 				forms.PageProperties[scripts[i]] = true;
-			forms.PageProperties.template.handler = function (place, me) {
-				PageProperties.selectedTemplate = me.page || "";
-				var atd = {
-					style: 'display: none'
-				}
-				if (me.page)
-					atd.style = 'display: block';
-				var ediv = createTiddlyElement(place, 'div', 'PagePropertiesTemplateDiv', null, null, atd);
-				if (me.page) {
-					createTiddlyElement(ediv, 'a', 'pageTemplate', 'pageTemplate', me.title, { title: "template: " + me.page });
-				}
-				createTiddlyElement(ediv, 'br');
-			};
 		}
 		else {
 			forms.PageProperties = { scripts: [] };
@@ -7390,12 +7377,12 @@ PageProperties = {
 	activated: function () {
 		if (!config.isLoggedIn()) {
 			forms.PageProperties.controls['title'].setAttribute("readOnly", "readOnly");
-			forms.PageProperties.controls['subtitle'].setAttribute("readOnly", "readOnly");						
+			forms.PageProperties.controls['subtitle'].setAttribute("readOnly", "readOnly");
 		}
 		if (!forms.PageProperties || !forms.PageProperties.owner)
 			return;
 		forms.PageProperties.controls['title'].focus();
-		if (forms.PageProperties.template.page && !forms.PageProperties.template.current) {
+		if (forms.PageProperties.template_info.page && !forms.PageProperties.template_info.current) {
 			if (window.location.search == "?upgradeTemplate=try") {
 				displayMessage("Save PageProperties to switch this version of the template");
 				forms.PageProperties.upgradeTemplate = true;
@@ -7422,13 +7409,14 @@ PageProperties = {
 			return displayMessage("You are not logged in");
 		if (!forms.PageProperties.title)
 			return displayMessage("You need to set the Title");
-		forms.PageProperties.template = PageProperties.selectedTemplate;
+		//forms.PageProperties.template = PageProperties.selectedTemplate;
 		var scripts = forms.PageProperties.scripts;
 		var news = [];
 		for (var i = 0; i < scripts.length; i++)
 			if (forms.PageProperties[scripts[i]])
 				news.push(scripts[i]);
 		forms.PageProperties.scripts = news.join('|');
+
 		var resp = http.pageProperties(forms.PageProperties);
 		if (resp.Success &&
 			config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties')))
@@ -7496,45 +7484,13 @@ PageProperties = {
 	availableTemplates: function() {
 		var tl = http.getTemplates();
 		if (tl.Success) {
-			var tlts = ["normal"];
+			var tlts = [];
 			for (var i = 0; i < tl.templates.length; i++)
 				tlts.push(tl.templates[i].title);
 			return tlts.join('|');
 		}
 		else
 			return 'normal';
-	},
-	listTemplates: function () {
-		var tl = http.getTemplates();
-		if (tl.Success) {
-			var atl = []
-			var delc = document.getElementById('PagePropertiesTemplateDiv');
-			removeChildren(delc);
-			delc.style.display = 'block';
-			var currTemplate = typeof (forms.PageProperties.template) == 'object' ? forms.PageProperties.template.page : "";
-			var handler = function (ev) {
-				var htc = resolveTarget(ev);
-				var others = [];
-				for (var c = delc.firstChild; c != null; c = c.nextSibling)
-					if (c === htc)
-						PageProperties.selectedTemplate = c.id.substring(8);
-					else
-						others.push(c);
-				while (others.length)
-					delc.removeChild(others.pop());
-			}
-			for (var i = 0; i < tl.templates.length; i++) {
-				var path = tl.templates[i].path;
-				var ste = createTiddlyElement(delc, 'a', 'selPgTpl' + path, null, tl.templates[i].title,
-					{ href: 'javascript:;', style: 'font-weight: ' + (path == currTemplate ? 'bold' : 'normal'), title: "template: " + path });
-				ste.onclick = handler;
-				createTiddlyElement(delc, 'br');
-			}
-			if (currTemplate) {
-				var ste = createTiddlyElement(delc, 'a', 'selPgTpl', null, "(none)", { href: 'javascript:;' });
-				ste.onclick = handler;
-			}
-		}
 	},
 	MakeFolder: function() {
 		var f = forms[formName(place)];
