@@ -7374,6 +7374,9 @@ PageProperties = {
 				arr.push( '<<input checkbox ' + scripts[i] + ' true>>' + scripts[i]);
 		return arr.length > 0 ? arr.join('<br>') : "(none)";
 	},
+	tryingUpgrade: function() {
+		return window.location.search == "?upgradeTemplate=try";
+	},
 	activated: function () {
 		if (!config.isLoggedIn()) {
 			forms.PageProperties.controls['title'].setAttribute("readOnly", "readOnly");
@@ -7382,13 +7385,9 @@ PageProperties = {
 		if (!forms.PageProperties || !forms.PageProperties.owner)
 			return;
 		forms.PageProperties.controls['title'].focus();
-		if (forms.PageProperties.template_info.page && !forms.PageProperties.template_info.current) {
-			if (window.location.search == "?upgradeTemplate=try") {
-				displayMessage("Save PageProperties to switch this version of the template");
-				forms.PageProperties.upgradeTemplate = true;
-			}
-			else if (window.confirm("Try using the most recent version of the template?"))
-				window.location.search = "upgradeTemplate=try";
+		if (!forms.PageProperties.template_info.current && PageProperties.tryingUpgrade()) {
+			displayMessage("Save PageProperties to switch this version of the template");
+			forms.PageProperties.upgradeTemplate = true;
 		}
 	},
 	addTag: function (tag) {
@@ -7418,9 +7417,12 @@ PageProperties = {
 		forms.PageProperties.scripts = news.join('|');
 
 		var resp = http.pageProperties(forms.PageProperties);
-		if (resp.Success &&
-			config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties')))
-			window.location.reload();
+		if (resp.Success && config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties'))) {
+			if (PageProperties.tryingUpgrade())
+				window.location.search = "";
+			else
+				window.location.reload();
+		}
 	},
 	listLibrary: function (url, lines) {
 		var liblistId = 'libList' + url;
@@ -7485,6 +7487,15 @@ PageProperties = {
 		var tl = http.getTemplates();
 		if (tl.Success)
 			return tl.templates.join('|');
+	},
+	TemplateUpgrade: function() {
+		return forms.PageProperties.template_info.page && !forms.PageProperties.template_info.current;
+	},
+	UpgradeTemplate: function() {
+		if (window.confirm("This requires reloading the page (you will lose unsaved changes) - proceed?")) {
+			window.location.hash = "PageSetup";
+			window.location.search = "upgradeTemplate=try";
+		}
 	},
 	MakeFolder: function() {
 		var f = forms[formName(place)];
@@ -8652,6 +8663,7 @@ comparisonLoop:
 /***
 Name:	InlineJavascriptPlugin  (static/inlinescript.htm)
 Source:	http://www.TiddlyTools.com/#InlineJavascriptPlugin
+Changes:'if' attribute added, 'src' attribute dropped
 Author:	Eric Shulman - ELS Design Studios (http://www.elsdesign.com)
 License:Creative Commons Attribution-ShareAlike 2.5 License (http://creativecommons.org/licenses/by-sa/2.5/)
  ***/

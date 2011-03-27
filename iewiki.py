@@ -1153,6 +1153,10 @@ class MainPage(webapp.RequestHandler):
 			page.viewprior = False
 		else:
 			return self.fail("Page does not exist")
+	try:
+		refTemplate = page.template
+	except:
+		refTemplate = None
 	if self.request.get('title') != '': # Put
 		if user != page.owner and users.is_current_user_admin() == False:
 			self.fail("You cannot change the properties of this pages")
@@ -1165,7 +1169,7 @@ class MainPage(webapp.RequestHandler):
 				saveTemplate = True
 			page.tags = self.request.get('tags')
 			page.tiddlertags = self.request.get('tiddlertags')
-			tttags = AttrValueOrBlank(page.template,'tiddlertags')
+			tttags = AttrValueOrBlank(refTemplate,'tiddlertags')
 			if page.tiddlertags == tttags:
 				page.tiddlertags = ''
 			page.locked = self.request.get('locked') == 'true'
@@ -1202,10 +1206,6 @@ class MainPage(webapp.RequestHandler):
 			self.reply({'Success': True })
 	else: # Get
 		tiddlertags = page.tiddlertags if hasattr(page,'tiddlertags') else ''
-		try:
-			refTemplate = page.template
-		except:
-			refTemplate = None
 		if tiddlertags == '' and refTemplate != None:
 			tiddlertags = AttrValueOrBlank(refTemplate,'tiddlertags')
 		self.reply({
