@@ -145,7 +145,7 @@ class ConfigJs(webapp.RequestHandler):
 	else:
 		upr = UserProfile(txtUserName='IP \t' + self.request.remote_addr) # anon null profile
 		
-	optlist = [ 'isLoggedIn: ' + ('true' if isLoggedIn else 'false') ]
+	optlist = []
 	for (fn,ft) in upr._properties.iteritems():
 		fv = getattr(upr,fn)
 		if fv != None:

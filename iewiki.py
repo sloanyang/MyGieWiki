@@ -1151,6 +1151,8 @@ class MainPage(webapp.RequestHandler):
 			page.groups = ''
 			page.viewbutton = False
 			page.viewprior = False
+		elif path == '/_templates':
+			return self.reply({'template': self.request.get('view'), 'message': "Template content is normally found only under the 'fromTemplate' tag."})
 		else:
 			return self.fail("Page does not exist")
 	try:
@@ -2535,7 +2537,7 @@ class MainPage(webapp.RequestHandler):
 			tds = self.TiddlersFromXml(xd.documentElement,refTemplate.page)
 			if tds != None:
 				for tdo in tds:
-					tdo.tags = AddTagsToList(tdo.tags,['excludeLists','excludeSearch','fromTemplate'])
+					tdo.tags = AddTagsToList(tdo.tags,self.template_tags)
 					tiddict[tdo.title] = tdo
 
 		if readAccess and page.systemInclude != None:
@@ -2777,7 +2779,11 @@ class MainPage(webapp.RequestHandler):
 								scrdict[sn] = javascriptDict[sn]
 				for k in scrdict.keys():
 					globalPatch.append('\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
-			globalPatch.append('\n<script type="text/javascript">\nconfig.defaultCustomFields["server.host"] = "' + self.request.url + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
+			globalPatch.append('\n<script type="text/javascript">' \
+							 + '\nconfig.options.isLoggedIn = ' + ('true' if users.get_current_user() != None and self.path != '/_templates' else 'false') \
+							 + ';\nconfig.defaultCustomFields["server.host"] = "' \
+							 + self.request.url \
+							 + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
 			if metaData:
 				for k in scripts:
 					globalPatch.append('\n<script src="/dynamic/js' + self.request.path + "/" + k + '" type="text/javascript"></script>')
@@ -2844,7 +2850,26 @@ class MainPage(webapp.RequestHandler):
 		message = None
 
 	defaultTiddlers = None
-	page = self.CurrentPage()
+	self.template_tags = ['fromTemplate']
+	if self.path == '/_templates':
+		page = Page()
+		tpln = self.request.get('view')
+		if tpln != 'normal':
+			page.template = PageTemplate.all().filter('title',tpln).get()
+			if page.template == None:
+				page.template = AutoGenerateTemplate(tpln)
+			if page.template == None:
+				self.response.set_status(404)
+				return
+		page.title = tpln
+		page.subtitle = "Template"
+		page.anonAccess = page.authAccess = page.groupAccess = Page.ViewAccess
+		page.owner = users.get_current_user()
+		self.user = None # read-only!
+	else:
+		page = self.CurrentPage()
+		self.template_tags.append('excludeLists')
+		self.template_tags.append('excludeSearch')
 	if page == None:
 		if twd != None and self.path.endswith('.html'):
 			self.path = self.path[0:-5]

@@ -1907,6 +1907,15 @@ config.macros.closeAll.handler = function(place) {
     createTiddlyButton(place, this.label, this.prompt, this.onClick);
 };
 
+config.macros.button = {
+	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
+		attrs = {};
+		if (params[3] && params[3].indexOf('externalLink') >= 0)
+			attrs.target = '_blank';
+		createTiddlyButton(place, params[0], params[1], params[2], params[3], params[4], params[5],attrs);
+	}
+};
+
 config.macros.closeAll.onClick = function(e) {
     story.closeAllTiddlers();
     return false;
@@ -6998,12 +7007,19 @@ function HttpGet(args, method) {
 	var fields = [];
 	if (method)
 		fields.push("method=" + method);
-	for (var a in args) {
-		var v = args[a];
-		if (!(v == undefined || typeof(v) == "function"))
-			fields.push(a + "=" + encodeURIComponent(v));
+	if (typeof args == 'string') {
+		if (args.startsWith('?'))
+			args = args.substring(1);
+		var rs = HttpRequest(args + '&method=' + method);
 	}
-	var rs = HttpRequest(fields.join("&"));
+	else {
+		for (var a in args) {
+			var v = args[a];
+			if (!(v == undefined || typeof(v) == "function"))
+				fields.push(a + "=" + encodeURIComponent(v));
+		}
+		var rs = HttpRequest(fields.join("&"));
+	}
 	while (true) {
 		try {
 			var rp = HttpReply(rs);
@@ -7319,7 +7335,13 @@ config.macros.submitButton = {
 PageProperties = {
 	init: function () {
 		accessTypes = "admin|all|edit|add|comment|view|none|";
-		forms.PageProperties = http.pageProperties();
+		forms.PageProperties = http.pageProperties( window.location.search );
+		forms.PageProperties.template_changed = function(f,id,val) {
+			if (f)
+				f[id] = val;
+			var btn = document.getElementById('ExamineTemplate');
+			btn.setAttribute('href','/_templates?view=' + encodeURIComponent(val));
+		};
 		if (config.isLoggedIn()) {
 			forms.PageProperties.scripts = forms.PageProperties.scripts.split('|');
 			var scripts = forms.PageProperties.scripts;
@@ -7384,6 +7406,9 @@ PageProperties = {
 			forms.PageProperties.controls['title'].setAttribute("readOnly", "readOnly");
 			forms.PageProperties.controls['subtitle'].setAttribute("readOnly", "readOnly");
 		}
+		forms.PageProperties.template_changed(null,null,forms.PageProperties.template);
+		if (forms.PageProperties.message)
+			displayMessage(forms.PageProperties.message);
 		if (!forms.PageProperties || !forms.PageProperties.owner)
 			return;
 		forms.PageProperties.controls['title'].focus();
