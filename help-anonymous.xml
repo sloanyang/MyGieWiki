@@ -1,4 +1,4 @@
-<?xml version="1.0" ?><document><storeArea><div comments="0" id="78d7a7cd-89eb-4f8e-b047-b5036eac1f8f" modified="20100731100819" modifier="Poul Staugaard" tags="help" title="Welcome" vercnt="1" version="1"><pre>Before you can start editing your new giewiki, you need to &lt;&lt;login LoginOnly&gt;&gt; and set various data for the root page. This is done via the ''page properties'' dialog which looks a lot like this:&lt;br&gt;
+<?xml version="1.0" ?><document><storeArea><div comments="0" id="78d7a7cd-89eb-4f8e-b047-b5036eac1f8f" modified="20100731100819" modifier="Poul Staugaard" tags="help" title="Welcome" vercnt="1" version="1"><pre>Before you can start editing your new giewiki, you need to &lt;&lt;login LoginOnly&gt;&gt; and set various data for the root page (making you the owner of it). This is done via the ''page properties'' dialog which looks a lot like this:&lt;br&gt;
 &lt;&lt;tiddler PageProperties&gt;&gt;
 The data is:
 * ''Title &amp; Subtitle''&lt;br&gt;What is displayed at the top of the page and in the SiteMap, etc.

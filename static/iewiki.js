@@ -7317,20 +7317,22 @@ config.macros.submitButton = {
 };
 
 PageProperties = {
-	//selectedTemplate: '',
 	init: function () {
 		accessTypes = "admin|all|edit|add|comment|view|none|";
+		forms.PageProperties = http.pageProperties();
 		if (config.isLoggedIn()) {
-			forms.PageProperties = http.pageProperties();
 			forms.PageProperties.scripts = forms.PageProperties.scripts.split('|');
 			var scripts = forms.PageProperties.scripts;
 			for (var i = 0; i < scripts.length; i++)
 				forms.PageProperties[scripts[i]] = true;
 		}
 		else {
-			forms.PageProperties = { scripts: [] };
+			forms.PageProperties.scripts = [];
 			return "''[As you are not logged in, this dialog is not functional]''";
 		}
+	},
+	DeleteAccess: function() {
+		return window.location.pathname.length > 1 && forms.PageProperties.updateaccess;
 	},
 	listScripts: function() {
 		var e = window.event;
@@ -7408,7 +7410,6 @@ PageProperties = {
 			return displayMessage("You are not logged in");
 		if (!forms.PageProperties.title)
 			return displayMessage("You need to set the Title");
-		//forms.PageProperties.template = PageProperties.selectedTemplate;
 		var scripts = forms.PageProperties.scripts;
 		var news = [];
 		for (var i = 0; i < scripts.length; i++)
@@ -7489,7 +7490,8 @@ PageProperties = {
 			return tl.templates.join('|');
 	},
 	TemplateUpgrade: function() {
-		return forms.PageProperties.template_info.page && !forms.PageProperties.template_info.current;
+		var ti = forms.PageProperties.template_info;
+		return ti ? (forms.PageProperties.template_info.page && !forms.PageProperties.template_info.current) : false;
 	},
 	UpgradeTemplate: function() {
 		if (window.confirm("This requires reloading the page (you will lose unsaved changes) - proceed?")) {

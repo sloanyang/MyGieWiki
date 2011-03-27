@@ -69,7 +69,9 @@
     <Content Include="config.py" />
     <Content Include="GiewikiAdaptor.xml" />
     <Content Include="giewikidb.py" />
-    <Content Include="help-anonymous.xml" />
+    <Content Include="help-anonymous.xml">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="help-authenticated.xml" />
     <Content Include="iewiki.py" />
     <Content Include="iewiki.xsl">
