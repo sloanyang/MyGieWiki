@@ -86,6 +86,18 @@ def Filetype(filename):
 def AttrValueOrBlank(o,a):
 	return unicode(getattr(o,a)) if o != None and hasattr(o,a) and getattr(o,a) != None else ''
 
+def templateAttribute(page, default_rv, attr = None):
+	try:
+		tpl = page.template
+		if attr == None:
+			return tpl
+		elif hasattr(tpl,attr) and getattr(tpl,attr) != None:
+			return getattr(tpl,attr)
+		else:
+			return default_rv
+	except:
+		return default_rv
+		
 def AddTagsToList(slist,tags):
 	list = slist.split(' ') # TODO: proper parsing of [[such tags]]
 	changes = False
@@ -1127,7 +1139,7 @@ class MainPage(webapp.RequestHandler):
 		ftwm.close()
 	except Exception,x:
 		self.fail(unicode(x))
-	
+
   def pageProperties(self):
 	user = users.get_current_user()
 	if user == None:
@@ -1249,8 +1261,9 @@ class MainPage(webapp.RequestHandler):
 	if update:
 		pt.text = self.getText(page)
 	pt.title = page.title
-	ptn.page = page.path
+	pt.page = page.path
 	pt.tiddlertags = page.tiddlertags
+	pt.include = 'include' in page.tags
 	pt.put()
 
   def updateTemplate(self):
@@ -2868,8 +2881,10 @@ class MainPage(webapp.RequestHandler):
 		self.user = None # read-only!
 	else:
 		page = self.CurrentPage()
-		self.template_tags.append('excludeLists')
-		self.template_tags.append('excludeSearch')
+		if page != None:
+			if not templateAttribute(page,False,'include'):
+				self.template_tags.append('excludeLists')
+				self.template_tags.append('excludeSearch')
 	if page == None:
 		if twd != None and self.path.endswith('.html'):
 			self.path = self.path[0:-5]
@@ -2929,7 +2944,8 @@ class MainPage(webapp.RequestHandler):
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
 		
 	# last, but no least
-	self.response.headers.add_header('Access-Control-Allow-Origin','*')
+	self.response.headers['Cache-Control'] = 'no-cache'
+	self.response.headers['Access-Control-Allow-Origin'] = '*'
 	self.response.out.write(text)
 	if self.trace != False:
 		LogEvent("get " + self.request.url,'\n'.join(self.trace))

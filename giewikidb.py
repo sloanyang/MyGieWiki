@@ -86,6 +86,7 @@ class PageTemplate(db.Model):
   version = db.IntegerProperty()
   current = db.BooleanProperty()
   scripts = db.StringProperty()
+  include = db.BooleanProperty()
 
 class Page(db.Model):
   NoAccess = 0
