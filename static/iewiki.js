@@ -1909,10 +1909,14 @@ config.macros.closeAll.handler = function(place) {
 
 config.macros.button = {
 	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
-		attrs = {};
-		if (params[3] && params[3].indexOf('externalLink') >= 0)
-			attrs.target = '_blank';
-		createTiddlyButton(place, params[0], params[1], params[2], params[3], params[4], params[5],attrs);
+		if (eval(params[0]) == false)
+			return;
+		var attrs = false;
+		if (params.length > 7)
+			attrs = eval(params[7]);
+		else if (params[4] && params[4].indexOf('externalLink') >= 0)
+			attrs = { target: '_blank' };
+		createTiddlyButton(place, params[1], params[2], params[3], params[4], params[5], params[6], attrs);
 	}
 };
 

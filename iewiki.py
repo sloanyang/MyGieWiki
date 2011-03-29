@@ -737,6 +737,8 @@ class MainPage(webapp.RequestHandler):
 		tlr.text = '\n'.join(tlf)
 	
 	if tlr.version != -1:
+		if tlr.text is None:
+			tlr.text = ''
 		tlr.public = page.anonAccess > page.NoAccess
 		tlr.put()
 	if page != None:
@@ -750,7 +752,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			st.delete()
 		
-	if isShared and st == None:
+	if isShared and st == None and tlr.version > 0:
 		s = ShadowTiddler(tiddler = tlr, path = tlr.page, id = tlr.id)
 		s.put()
 	if reply:
@@ -1142,12 +1144,14 @@ class MainPage(webapp.RequestHandler):
 
   def pageProperties(self):
 	user = users.get_current_user()
+	if self.path == '/_templates':
+		tln = self.request.get('view')
+		return self.reply({'template': tln, 'Message': "The 'normal' template is empty" if tln == "normal" else "Template content is normally found only under the 'fromTemplate' tag."})
 	if user == None:
 		return self.fail("You are not logged in");
-	path = self.path
 	page = self.CurrentPage()
 	if page == None:
-		if path == '/' and user != None: # Root page
+		if self.path == '/' and user != None: # Root page
 			page = Page()
 			page.gwversion = giewikiVersion
 			page.path = '/'
@@ -1163,8 +1167,6 @@ class MainPage(webapp.RequestHandler):
 			page.groups = ''
 			page.viewbutton = False
 			page.viewprior = False
-		elif path == '/_templates':
-			return self.reply({'template': self.request.get('view'), 'message': "Template content is normally found only under the 'fromTemplate' tag."})
 		else:
 			return self.fail("Page does not exist")
 	try:
@@ -2406,7 +2408,8 @@ class MainPage(webapp.RequestHandler):
 			logging.warn("X: " + unicode(x))
 
 	pre = xd.createElement('pre')
-	pre.appendChild(xd.createTextNode(t.text))
+	if t.text != None:
+		pre.appendChild(xd.createTextNode(t.text))
 	div.appendChild(pre)
 	return div
 
@@ -2782,7 +2785,7 @@ class MainPage(webapp.RequestHandler):
 				scrdict = dict()
 				if hasattr(page,'scripts') and page.scripts != None:
 					for sn in page.scripts.split('|'):
-						if len(sn) > 0:
+						if len(sn) > 0 and javascriptDict.has_key(sn):
 							scrdict[sn] = javascriptDict[sn]
 				if refTemplate != None:
 					tpl = refTemplate
@@ -2877,7 +2880,7 @@ class MainPage(webapp.RequestHandler):
 		page.title = tpln
 		page.subtitle = "Template"
 		page.anonAccess = page.authAccess = page.groupAccess = Page.ViewAccess
-		page.owner = users.get_current_user()
+		page.owner = users.User("system")
 		self.user = None # read-only!
 	else:
 		page = self.CurrentPage()
