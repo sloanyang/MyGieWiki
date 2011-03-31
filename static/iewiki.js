@@ -3690,7 +3690,7 @@ TiddlyWiki.prototype.setTiddlerTag = function(title, status, tag) {
 		http.changeTags({
 			tiddlerId: tiddler.id,
 			version: tiddler.version,
-			tags: tiddler.tags });
+			tags: String.encodeTiddlyLinkList(tiddler.tags) });
 
         tiddler.changed();
         tiddler.incChangeCount(title);
