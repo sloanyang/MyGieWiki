@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.10.2
+   version:	1.11
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -3711,6 +3711,7 @@ TiddlyWiki.prototype.addTiddlerFields = function(title, fields) {
 
 TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, modified, tags, fields) {
 	var tiddler = this.fetchTiddler(title);
+	tags = (typeof(tags) == "string") ? tags : String.encodeTiddlyLinkList(tags);
 	if (tiddler) {
 		var et = tiddler;
 		var created = tiddler.created; // Preserve created date
@@ -7339,12 +7340,14 @@ config.macros.submitButton = {
 PageProperties = {
 	init: function () {
 		accessTypes = "admin|all|edit|add|comment|view|none|";
-		forms.PageProperties = http.pageProperties( window.location.search );
+		if (!forms.PageProperties)
+			forms.PageProperties = http.pageProperties();
 		forms.PageProperties.template_changed = function(f,id,val) {
 			if (f)
 				f[id] = val;
 			var btn = document.getElementById('ExamineTemplate');
-			btn.setAttribute('href','/_templates?view=' + encodeURIComponent(val));
+			if (btn)
+				btn.setAttribute('href','/_templates/' + encodeURIComponent(val));
 		};
 		if (config.isLoggedIn()) {
 			forms.PageProperties.scripts = forms.PageProperties.scripts.split('|');
@@ -7356,6 +7359,9 @@ PageProperties = {
 			forms.PageProperties.scripts = [];
 			return "''[As you are not logged in, this dialog is not functional]''";
 		}
+	},
+	isTemplate: function() {
+		return window.location.pathname.startsWith('/_templates/');
 	},
 	DeleteAccess: function() {
 		return window.location.pathname.length > 1 && forms.PageProperties.updateaccess;
@@ -7514,7 +7520,7 @@ PageProperties = {
 		}
 	},
 	availableTemplates: function() {
-		var tl = http.getTemplates();
+		var tl = http.getTemplates({ template: forms.PageProperties.tags && forms.PageProperties.tags.indexOf('template') >= 0 ? forms.PageProperties.title : "" } );
 		if (tl.Success)
 			return tl.templates.join('|');
 	},

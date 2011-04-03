@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.10.0
+# ver.:	1.11.0
 
 import cgi
 import codecs
@@ -33,7 +33,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '2.10'
+giewikiVersion = '2.11'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -110,7 +110,7 @@ def AddTagsToList(slist,tags):
 	else:
 		return slist
 
-def AutoGenerateTemplate(source):
+def AutoGenerateTemplate(source,page=None):
 	# Generates a template from a file in /library
 	statics = library().static()
 	for asl in statics:
@@ -198,7 +198,16 @@ def userNameOrAddress(u,a):
 		return u.nickname()
 	else:
 		return a
-		
+
+def rootPageOwner(self):
+	rp = Page.all().filter('path','/').get()
+	if rp == None:
+		if self.path == '/' or self.path.startswith('/_templates/'):
+			return users.get_current_user()
+		return None
+	else:
+		return rp.owner
+
 def NoneIsFalse(v):
 	return False if v == None else v
 
@@ -1144,12 +1153,9 @@ class MainPage(webapp.RequestHandler):
 
   def pageProperties(self):
 	user = users.get_current_user()
-	if self.path == '/_templates':
-		tln = self.request.get('view')
-		return self.reply({'template': tln, 'Message': "The 'normal' template is empty" if tln == "normal" else "Template content is normally found only under the 'fromTemplate' tag."})
-	if user == None:
-		return self.fail("You are not logged in");
 	page = self.CurrentPage()
+	if user == None:
+		return self.fail("You are not logged in", { 'template': templateAttribute(page,"normal",'title') })
 	if page == None:
 		if self.path == '/' and user != None: # Root page
 			page = Page()
@@ -1224,7 +1230,7 @@ class MainPage(webapp.RequestHandler):
 		tiddlertags = page.tiddlertags if hasattr(page,'tiddlertags') else ''
 		if tiddlertags == '' and refTemplate != None:
 			tiddlertags = AttrValueOrBlank(refTemplate,'tiddlertags')
-		self.reply({
+		reply = {
 			'title': page.title,
 			'subtitle': page.subtitle,
 			'tags': page.tags,
@@ -1241,7 +1247,12 @@ class MainPage(webapp.RequestHandler):
 			'scripts': page.scripts if hasattr(page,'scripts') else '',
 			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
 			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
-			'systeminclude': '' if page.systemInclude == None else page.systemInclude })
+			'systeminclude': '' if page.systemInclude == None else page.systemInclude }
+		if self.path == '/_templates/normal':
+			reply['message'] = "The 'normal' template is empty"
+		elif self.path.startswith('/_templates/'):
+			reply['message'] = "NB: In use, template content is normally found only under the 'fromTemplate' tag.<br>Except if you apply the page tag 'include'."
+		self.reply(reply)
 
   def saveTemplate(self,page,update=False,tags=''):
 	pt = PageTemplate.all().filter('title',page.title).filter('current',True).get()
@@ -1273,11 +1284,16 @@ class MainPage(webapp.RequestHandler):
 	self.reply({'Success': True })
 
   def getTemplates(self):
-	dt = [ 'dummy', 'normal' ]
-	for at in library().static():
-		dt.append( at[:-4]) # 4 = len('.xml')
-	for at in PageTemplate.all().filter('current',True):
-		dt.append(at.title)
+	this_template = self.request.get('template')
+	if len(this_template) > 0:
+		dt = [ this_template ]
+	else:
+		dt = [ 'dummy', 'normal' ]
+		for at in library().static():
+			dt.append( at[:-4]) # 4 = len('.xml')
+		for at in PageTemplate.all().filter('current',True):
+			if not at.title in dt:
+				dt.append(at.title)
 	self.reply({'Success': True, 'templates': dt})
 
   def getNewAddress(self):
@@ -2534,6 +2550,21 @@ class MainPage(webapp.RequestHandler):
 			raise x
 	return tiddict
 
+  def getTiddlersFromTemplate(self, refTemplate, tiddict, update=False):
+	tl = refTemplate
+	if not tl.current and update:
+		ptc = PageTemplate.all().filter('title',refTemplate.title).filter('current',True).get()
+		if ptc != None:
+			tl = ptc
+	xd = xml.dom.minidom.parseString(tl.text.encode('utf-8'))
+	tds = self.TiddlersFromXml(xd.documentElement,refTemplate.page)
+	if tds != None:
+		for tdo in tds:
+			if hasattr(self,'template_tags'):
+				tdo.tags = AddTagsToList(tdo.tags,self.template_tags)
+			tiddict[tdo.title] = tdo
+	return tl
+
   def getText(self, page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
 	if page != None:
 		try:
@@ -2542,19 +2573,9 @@ class MainPage(webapp.RequestHandler):
 			refTemplate = None
 
 		if readAccess and refTemplate != None:
-			tl = refTemplate
-			if not tl.current and self.request.get('upgradeTemplate') == 'try':
-				ptc = PageTemplate.all().filter('title',refTemplate.title).filter('current',True).get()
-				if ptc != None:
-					tl = ptc
-			xd = xml.dom.minidom.parseString(tl.text.encode('utf-8'))
+			tl = self.getTiddlersFromTemplate(refTemplate,tiddict,self.request.get('upgradeTemplate') == 'try')
 			if AttrValueOrBlank(page,'tiddlertags') == '':
 				page.tiddlertags = AttrValueOrBlank(tl,'tiddlertags')
-			tds = self.TiddlersFromXml(xd.documentElement,refTemplate.page)
-			if tds != None:
-				for tdo in tds:
-					tdo.tags = AddTagsToList(tdo.tags,self.template_tags)
-					tiddict[tdo.title] = tdo
 
 		if readAccess and page.systemInclude != None:
 			includeDisabled = self.request.get('disable')
@@ -2796,7 +2817,7 @@ class MainPage(webapp.RequestHandler):
 				for k in scrdict.keys():
 					globalPatch.append('\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
 			globalPatch.append('\n<script type="text/javascript">' \
-							 + '\nconfig.options.isLoggedIn = ' + ('true' if users.get_current_user() != None and self.path != '/_templates' else 'false') \
+							 + '\nconfig.options.isLoggedIn = ' + ('true' if users.get_current_user() != None else 'false') \
 							 + ';\nconfig.defaultCustomFields["server.host"] = "' \
 							 + self.request.url \
 							 + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
@@ -2817,7 +2838,7 @@ class MainPage(webapp.RequestHandler):
 				saePos = twdtext.find('</div>',sasPos)
 				text = ''.join([twdtext[0:sasPos],elStArea.toxml(),twdtext[saePos + len('</div>'):]]) # insert text into body
 	return text
-
+	
   def get(self): # this is where it all starts
 	self.user = users.get_current_user()
 	self.path = self.request.path
@@ -2867,9 +2888,15 @@ class MainPage(webapp.RequestHandler):
 
 	defaultTiddlers = None
 	self.template_tags = ['fromTemplate']
-	if self.path == '/_templates':
+
+	page = self.CurrentPage()
+	if page != None:
+		if not templateAttribute(page,False,'include'):
+			self.template_tags.append('excludeLists')
+			self.template_tags.append('excludeSearch')
+	elif self.path.startswith('/_templates/'):
 		page = Page()
-		tpln = self.request.get('view')
+		tpln = self.path[len('/_templates/'):]
 		if tpln != 'normal':
 			page.template = PageTemplate.all().filter('title',tpln).get()
 			if page.template == None:
@@ -2877,17 +2904,18 @@ class MainPage(webapp.RequestHandler):
 			if page.template == None:
 				self.response.set_status(404)
 				return
+			ttd = dict()
+			self.getTiddlersFromTemplate(page.template,ttd)
+			page.systemInclude = 'static:' + tpln + '.xml#' + '||'.join(ttd.keys())
 		page.title = tpln
 		page.subtitle = "Template"
 		page.anonAccess = page.authAccess = page.groupAccess = Page.ViewAccess
-		page.owner = users.User("system")
-		self.user = None # read-only!
-	else:
-		page = self.CurrentPage()
-		if page != None:
-			if not templateAttribute(page,False,'include'):
-				self.template_tags.append('excludeLists')
-				self.template_tags.append('excludeSearch')
+		page.owner = rootPageOwner(self)
+		page.path = self.path
+		page.tags = 'template'
+		page.put()
+		# self.user = None # read-only!
+
 	if page == None:
 		if twd != None and self.path.endswith('.html'):
 			self.path = self.path[0:-5]
