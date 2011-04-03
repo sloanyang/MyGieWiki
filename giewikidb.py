@@ -1,7 +1,7 @@
 # this:	giewikidb.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.10.2
+# ver.:	1.11
 
 import logging
 import datetime
