@@ -7350,7 +7350,8 @@ PageProperties = {
 				btn.setAttribute('href','/_templates/' + encodeURIComponent(val));
 		};
 		if (config.isLoggedIn()) {
-			forms.PageProperties.scripts = forms.PageProperties.scripts.split('|');
+			if (typeof forms.PageProperties.scripts === "string")
+				forms.PageProperties.scripts = forms.PageProperties.scripts.split('|');
 			var scripts = forms.PageProperties.scripts;
 			for (var i = 0; i < scripts.length; i++)
 				forms.PageProperties[scripts[i]] = true;
@@ -7520,7 +7521,7 @@ PageProperties = {
 		}
 	},
 	availableTemplates: function() {
-		var tl = http.getTemplates({ template: forms.PageProperties.tags && forms.PageProperties.tags.indexOf('template') >= 0 ? forms.PageProperties.title : "" } );
+		var tl = http.getTemplates({ template: forms.PageProperties && forms.PageProperties.tags && forms.PageProperties.tags.indexOf('template') >= 0 ? forms.PageProperties.title : "" } );
 		if (tl.Success)
 			return tl.templates.join('|');
 	},
