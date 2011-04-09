@@ -753,7 +753,7 @@ class MainPage(webapp.RequestHandler):
 	if page != None:
 		page.Update(tlr)
 
-	isShared = True if ("shadowTiddler" in taglist or "sharedTiddler" in taglist) else False
+	isShared = True if ('shadowTiddler' in taglist or 'sharedTiddler' in taglist) else False
 	st = ShadowTiddler.all().filter('id',tlr.id).get()
 	if st != None:
 		if isShared:
@@ -2702,20 +2702,23 @@ class MainPage(webapp.RequestHandler):
 					except Exception, x:
 						t.text = unicode(x)
 
-			if t.tags != None and "shadowTiddler" in t.tags.split():
-				if t.page != self.path: # remove tag if not the source page
+			antd = self.BuildTiddlerDiv(xd,id,t,self.user)
+			if t.tags != None and 'shadowTiddler' in t.tags.split():
+				if t.page != self.path: # remove tag and make it a shadowTiddler if not the source page
 					tags = t.tags.split()
-					tags.remove("shadowTiddler")
+					tags.remove('shadowTiddler')
 					t.tags = ' '.join(tags)
-				elShArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
+					elShArea.appendChild(antd)
+				else:
+					elStArea.appendChild(antd)
 			elif t.tags != None and "systemScript" in t.tags.split():
 				if xsl == "/static/iewiki.xsl":
 					xsl = "/dynamic/iewiki-xsl?path=" + self.path
 				scripts[t.title] = t.text
 				memcache.set(self.path,scripts,5);
-				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
+				elStArea.appendChild(antd)
 			else:
-				elStArea.appendChild(self.BuildTiddlerDiv(xd,id,t,self.user))
+				elStArea.appendChild(antd)
 
 		if httpMethods != None:
 			httpMethodTiddler.text = '\n'.join(httpMethods)
@@ -2826,12 +2829,17 @@ class MainPage(webapp.RequestHandler):
 				for k in scripts:
 					globalPatch.append('\n<script src="/dynamic/js' + self.request.path + "/" + k + '" type="text/javascript"></script>')
 
-			globalPatch.append(twdtext[psPos:])
-			twdtext = ''.join(globalPatch)
 			cssa = '<div id="shadowArea">'
 			mysa = elShArea.toxml()
 			if len(mysa) > len(cssa) + 6:
-				text = text.replace(cssa,mysa[:-6])
+				iBPos = twdtext.rfind('<!--- injection point B --->')
+				globalPatch.append(twdtext[psPos:iBPos])
+				globalPatch.append(mysa[len(cssa):-6])
+				globalPatch.append(twdtext[iBPos:])
+			else:
+				globalPatch.append(twdtext[psPos:])
+			twdtext = ''.join(globalPatch)
+
 			sasPos = twdtext.find(u'<div id="storeArea">')
 			if sasPos == -1:
 				text = '<div id="storeArea">) not found in ' + twd
