@@ -481,6 +481,7 @@ Error: #f88
 <div title="MptwTheme" modifier="MPTW" modified="201009151231" created="201005122154" tags="systemTheme">
 <pre>|Name|MptwTheme|
 |Description|Mptw Theme including custom PageLayout|
+|Modified|Added comments div|
 |PageTemplate|##PageTemplate|
 |ViewTemplate|##ViewTemplate|
 |EditTemplate|##EditTemplate|
@@ -540,6 +541,7 @@ http://mptw.tiddlyspot.com/#MptwTheme ($Rev: 1829 $)
 &lt;/div&gt;
 
 &lt;div class=&quot;tagglyTagging&quot; macro=&quot;tagglyTagging&quot;&gt;&lt;/div&gt;
+&lt;div class=&quot;comments&quot; macro=&quot;comments&quot;&gt;&lt;/div&gt;
 &lt;/div&gt;
 &lt;div class=&quot;collapsedView&quot;&gt;
 	&lt;span class='toolbar'&gt;
