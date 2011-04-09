@@ -2591,6 +2591,7 @@ class MainPage(webapp.RequestHandler):
 								if urlPicks == None or urlPicks.count(tdo.title) > 0:
 									if tdo.id == None or tdo.id == '':
 										tdo.id = 'include-' + urlPath + '#' + tdo.title
+									tdo.page = urlPath
 									tiddict[tdo.title] = tdo
 
 	if readAccess:
