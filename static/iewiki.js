@@ -3081,6 +3081,7 @@ config.commands.attributes.handlePopup = function(popup, title) {
 	add("exclude from search",'excludeSearch');
 	add("treat as script",'systemConfig');
 	add("disable as script",'systemConfigDisable');
+	add("include as special tiddler", 'shadowTiddler');
 };
 
 config.commands.preview.handler = function(e, src, title) {
@@ -4197,7 +4198,12 @@ Story.prototype.forEachTiddler = function(fn) {
 };
 
 Story.prototype.displayDefaultTiddlers = function() {
-    this.displayTiddlers(null, store.filterTiddlers(store.getTiddlerText("DefaultTiddlers")));
+	var dts = store.filterTiddlers(store.getTiddlerText("DefaultTiddlers"));
+	if (dts.length > 0 && dts[0].title == 'PageSetup' && config.access != 'admin')
+		dts.pop();
+	if (dts.length == 0)
+		dts.push(store.getTiddler('NoAccessMessage'));
+    this.displayTiddlers(null, dts);
 };
 
 Story.prototype.displayTiddlers = function(srcElement, titles, template, animate, unused, customFields, toggle) {
@@ -7805,14 +7811,26 @@ config.macros.menu = {
 	}
 };
 
-config.macros.loginDialog = {
-    handler: function(place,macroName,params,wikifier,paramString,tiddler) 
-    {
-        config.macros.iFrame.handler(place,macroName,
-            [http.getLoginUrl({path: window.location.pathname}), 600],
-            wikifier,"",tiddler)
-    }
+function insideTiddler(e,tn) {
+	var id = 'tiddler' + tn;
+	for (var pe = e.parentElement; pe != null; pe = pe.parentElement)
+		if (pe.id == id)
+			return pe;
+	return null;
 }
+
+config.macros.loginDialog = {
+	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
+	{
+		if (insideTiddler(place,'PageSetup'))
+			return;
+		var fse = createTiddlyElement(place,'fieldset')
+		createTiddlyElement(fse,'legend',null,null,"Login");
+		config.macros.iFrame.handler(fse,macroName,
+			[http.getLoginUrl({path: window.location.pathname}), 600],
+			wikifier,"",tiddler)
+	}
+};
 
 config.macros.login = {
 	displayLoginDialog: function()	{
@@ -8743,4 +8761,4 @@ config.formatters.push( {
 			w.nextMatch = lookaheadMatch.index + lookaheadMatch[0].length;
 		}
 	}
-} )
+} );

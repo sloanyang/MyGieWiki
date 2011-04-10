@@ -2497,6 +2497,15 @@ class MainPage(webapp.RequestHandler):
 
   def getIncludeFiles(self,rootpath,page,defaultTiddlers,twd):
 	tiddict = dict()
+#	tiNAM = Tiddler()
+#	tiNAM.title = 'NoAccessMessage'
+#	tiNAM.author_ip = 'giewiki'
+#	tiNAM.version = 0
+#	tiNAM.modified = datetime.datetime(2010,1,1,0,0)
+#	tiNAM.text = 'This page requires <<login>>'
+#	setattr(tiNAM,'ViewTemplate','ViewOnlyTemplate')
+#	tiddict[tiNAM.title] = tiNAM
+
 	includefiles = self.request.get('include').split()
 	if twd != None and twd != TWComp:
 		includefiles.append('GiewikiAdaptor.xml')
@@ -2594,26 +2603,36 @@ class MainPage(webapp.RequestHandler):
 									tdo.page = urlPath
 									tiddict[tdo.title] = tdo
 
-	if readAccess:
-		for st in ShadowTiddler.all():
-			if self.path.startswith(st.path):
+	for st in ShadowTiddler.all():
+		if self.path.startswith(st.path):
+			if readAccess or st.tiddler.title == 'NoAccessMessage':
 				try:
 					tiddict[st.tiddler.title] = st.tiddler
 				except Exception, x:
 					self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
 						' has been deleted! <a href="', self.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
 
-		tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
+	tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
+	if page == None:
+		def filter(t):
+			return False
+	else:
 		own = users.get_current_user() == page.owner
 		def filter(t):
-			priv = hasattr(t,'private')
-			if own:
-				if priv:
-					delattr(t,'private')
+			if readAccess:
+				priv = hasattr(t,'private')
+				if own:
+					if priv:
+						delattr(t,'private')
+					return True
+				else:
+					return not priv
+			elif t.title == 'NoAccessMessage':
 				return True
 			else:
-				return not priv
-		mergeDict(tiddict, tiddlers, filter)
+				return False
+
+	mergeDict(tiddict, tiddlers, filter)
 	
 	if page != None:
 		includes = Include.all().filter("page", self.path)
