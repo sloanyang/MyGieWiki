@@ -1075,35 +1075,78 @@ class MainPage(webapp.RequestHandler):
 		return self.reply({"Success": False, "Message": "No such tiddler!"})
 	t = self.request.get("type")
 	if t == "N":
-		comment = Note()
+		ani = Note()
 	elif t == "M":
-		comment = Message()
+		ani = Message()
 		receiver = self.request.get("receiver")
 		pn = PenName.all().filter('penname',receiver).get()
-		comment.receiver = pn.user.user if pn != None else users.User(receiver)
+		ani.receiver = pn.user.user if pn != None else users.User(receiver)
 	else:
-		comment = Comment()
-	comment.tiddler = self.request.get("tiddler")
-	comment.version = int(self.request.get("version"))
-	comment.text = self.request.get("text")
-	comment.author = users.get_current_user()
-	comment.ref = self.request.get("ref")
-	comment.save()
+		ani = Comment()
+	ani.tiddler = self.request.get("tiddler")
+	ani.version = int(self.request.get("version"))
+	ani.text = self.request.get("text")
+	ani.author = users.get_current_user()
+	ani.ref = self.request.get("ref")
+	ani.save()
 	ms = False
-	if t == "C" and comment.ref == "":
+	if t == "C" and ani.ref == "":
 		tls.comments = tls.comments + 1
 	elif t == "M":
-		ms = SendEmailNotification(comment,tls)
+		ms = SendEmailNotification(ani,tls)
 		if tls.messages == None:
 			tls.messages = '|'
-		tls.messages = tls.messages + comment.receiver.nickname() + '|'
+		tls.messages = tls.messages + ani.receiver.nickname() + '|'
 	elif t == "N":
-		tls.notes = tls.notes + '|' + comment.author.nickname() if tls.notes != None else comment.author.nickname()
+		tls.notes = tls.notes + '|' + ani.author.nickname() if tls.notes != None else ani.author.nickname()
 		
 	tls.save()
-	self.reply({"Success": True, "Comments": tls.comments, "author": users.get_current_user(), "text": comment.text,"created": datetime.datetime.now(), "mail": ms })
-		
+	self.reply({'Success': True, 
+		'id': ani.key().id(), 'Comments': tls.comments, 'author': users.get_current_user(), 'text': ani.text,'created': datetime.datetime.now(), 'mail': ms })
+
+  def deleteComment(self):
+	try:
+		dc = Comment.get_by_id(int(self.request.get('comment')))
+		page = self.CurrentPage()
+		if dc.author != users.get_current_user():
+			if page != None and page.owner == users.get_current_user():
+				pass
+			elif users.get_current_user() != None and users.is_current_user_admin():
+				pass
+			else:
+				return self.fail("You are not privileged to do so")
+		t = Tiddler.all().filter('id',dc.tiddler).filter('version',dc.version).get()
+		if t != None:
+			t.comments = t.comments - 1
+			t.put()
+		dc.delete()
+		self.sendXmlResponse(self.getCommentList())
+		# self.reply()
+	except Exception,x:
+		self.fail("No such comment: " + self.request.get('id') + " (" + str(x) + ")")
+
+  def alterComment(self):
+	try:
+		dc = Comment.get_by_id(int(self.request.get('comment')))
+		page = self.CurrentPage()
+		if dc.author != users.get_current_user():
+			if page != None and page.owner == users.get_current_user():
+				pass
+			elif users.get_current_user() != None and users.is_current_user_admin():
+				pass
+			else:
+				return self.fail("You are not privileged to do so")
+		dc.text = self.request.get('text')
+		dc.put()
+		self.sendXmlResponse(self.getCommentList())
+		# self.reply()
+	except Exception,x:
+		self.fail("No such comment: " + self.request.get('id') + " (" + str(x) + ")")
+
   def getComments(self):
+	self.sendXmlResponse(self.getCommentList())
+
+  def getCommentList(self):
 	cs = Comment.all().filter("tiddler = ",self.request.get('tiddlerId'))
 	ref = self.request.get("ref")
 	if ref != "":
@@ -1112,13 +1155,14 @@ class MainPage(webapp.RequestHandler):
 	tce = xd.add(xd,'TiddlerComments', attrs={'type':'object[]'})
 	for ac in cs:
 		ace = xd.add(tce,"Comment")
-		xd.add(ace, "author","anonymous" if ac.author == None else ac.author.nickname())
+		xd.add(ace, "author","anonymous" if ac.author == None else getUserPenName(ac.author))
 		xd.add(ace, "text",ac.text)
 		xd.add(ace, "created", ac.created)
 		xd.add(ace, "version", ac.version)
+		xd.add(ace, "id", ac.key().id())
 		if ref == "":
-			xd.add(ace, "ref", ac.ref);
-	self.sendXmlResponse(xd)
+			xd.add(ace, "ref", ac.ref)
+	return xd
 
   def getNotes(self):
 	ns = Note.all().filter("tiddler =",self.request.get('tiddlerId')).filter("author =",users.get_current_user())
@@ -2497,15 +2541,6 @@ class MainPage(webapp.RequestHandler):
 
   def getIncludeFiles(self,rootpath,page,defaultTiddlers,twd):
 	tiddict = dict()
-#	tiNAM = Tiddler()
-#	tiNAM.title = 'NoAccessMessage'
-#	tiNAM.author_ip = 'giewiki'
-#	tiNAM.version = 0
-#	tiNAM.modified = datetime.datetime(2010,1,1,0,0)
-#	tiNAM.text = 'This page requires <<login>>'
-#	setattr(tiNAM,'ViewTemplate','ViewOnlyTemplate')
-#	tiddict[tiNAM.title] = tiNAM
-
 	includefiles = self.request.get('include').split()
 	if twd != None and twd != TWComp:
 		includefiles.append('GiewikiAdaptor.xml')
@@ -2750,7 +2785,7 @@ class MainPage(webapp.RequestHandler):
 		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
 		metaDiv.setAttribute('clientip', self.request.remote_addr)
 		if page == None:
-			metaDiv.setAttribute('access','all' if users.is_current_user_admin() else 'none')
+			metaDiv.setAttribute('access','admin' if users.is_current_user_admin() else 'none')
 			metaDiv.setAttribute('sitetitle',"giewiki");
 			metaDiv.setAttribute('subtitle',message);
 		else:

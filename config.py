@@ -1,7 +1,7 @@
 # this:	Config.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.11.1
+# ver.:	1.12.0
 
 import cgi
 import codecs
@@ -41,6 +41,8 @@ addProject\n\
 deletePage\n\
 getNewAddress\n\
 submitComment\n\
+deleteComment\n\
+alterComment\n\
 getComments\n\
 getNotes\n\
 getMessages\n\

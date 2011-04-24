@@ -1,7 +1,7 @@
-# this:	giewikidb.py
-# by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
-# URL:	http://code.google.com/p/giewiki
-# ver.:	1.11
+# this: giewikidb.py
+# by:   Poul Staugaard (poul(dot)staugaard(at)gmail...)
+# URL:  http://code.google.com/p/giewiki
+# ver.: 1.11
 
 import logging
 import datetime
@@ -201,7 +201,7 @@ class Include(db.Model):
 	if ev == None:
 		return Include(page = apage, id = aid)
 	return ev
-  
+
 class Note(Comment):
   revision = db.IntegerProperty()
   def todict(s,d):
