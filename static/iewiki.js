@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.11
+   version:	1.12
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -1979,7 +1979,8 @@ function PreNextCommentRow(tre) {
 
 config.macros.comments.showReplies = function(ev) {
     var target = resolveTarget(ev || window.event);
-    var tr = target.parentNode.parentNode;
+	var tde = target.parentNode;
+    var tr = tde.parentNode;
     var rowClass = tr.className;
     var ndt = tr.firstChild.firstChild.firstChild.nodeValue;
     var tidlr = story.findContainingTiddler(target);
@@ -1988,6 +1989,7 @@ config.macros.comments.showReplies = function(ev) {
 		function() { return rowClass },
 		function(c) { return c.ref == ndt },
 		PreNextCommentRow(tr));
+	tde.removeChild(target);
 }
 
 config.macros.comments.CclassPicker = function(r) { return r & 1 ? "oddRowComment":"evenRowComment" };
@@ -2063,24 +2065,24 @@ config.macros.comments.addCommentTableRow = function(tbe,className,after,when,wh
 			replies > 1 ? replies + " replies" : "1 reply",
 			"Show replies",config.macros.comments.showReplies,"btnReplies");
 		}
-	var tde = createTiddlyElement(tr,"td",null,null);
+	var tde = createTiddlyElement(tr,'td',null,'commentText');
 	if (pie)
 		tde.style.paddingLeft = pie + "em";
-	if (allowToolbar) {
-		var trtb = createTiddlyElement(null,"tr",null, trc);
-		insertAfter(tr,trtb);
-		var tdtb = createTiddlyElement(trtb,"td",null,'toolbar',null,{colspan: 3});
-		var tidlr = story.findContainingTiddler(tbe);
-		var tna = tidlr.getAttribute("tiddler");
-		var t = store.getTiddler(tna);
-		wikify("<<toolbar editComment deleteComment>>",tdtb,null,t);
-	}
+	if (allowToolbar)
+		config.macros.comments.addCommentToolbar(tr,trc,pie);
 	return tde;
-}
+};
 
-config.commands.editComment.handler = function(t) {
-	debugger;
-}
+config.macros.comments.addCommentToolbar = function(tr,trc,pie) {
+	var trtb = createTiddlyElement(null,"tr",null, trc);
+	trtb.setAttribute("sub",pie);
+	insertAfter(tr,trtb);
+	var tdtb = createTiddlyElement(trtb,"td",null,'toolbar',null,{colspan: 3});
+	var tidlr = story.findContainingTiddler(tr);
+	var tna = tidlr.getAttribute("tiddler");
+	var t = store.getTiddler(tna);
+	wikify("<<toolbar editComment deleteComment>>",tdtb,null,t);
+};
 
 CommentList = [];
 
@@ -2131,6 +2133,7 @@ config.macros.comments.createInputBox = function(where, caption, onSave, onCance
     addClass(ccbtn,"button");
     //where.appendChild(wrapper1);
     e.focus();
+	return e;
 }
 
 config.macros.comments.onAddCommentClick = function(ev) {
@@ -2218,10 +2221,53 @@ config.commands.deleteComment.handler = function(ev,tiddler) {
 			var tn = ct.getAttribute('tiddler');
 			var t = store.fetchTiddler(tn);
 			var dcr = http.deleteComment({comment: tre.id, tiddlerId: t.id });
-				debugger;
 			if (dcr.Success) {
 				t.comments--;
 				config.macros.comments.listComments(ct,t.getComments(false,dcr),false,config.macros.comments.CclassPicker,function(t) { return t.ref == "" });
+			}
+			break;
+		}
+	}
+}
+
+config.commands.editComment.handler = function(ev,tiddler) {
+	var tae = resolveTarget(ev || window.event);
+	for (var tre = tae.parentElement.parentElement; tre; tre = tre.previousSibling) {
+		var ccn = tre.firstChild.className;
+		var cn = tre.className;
+		if (tre.firstChild.className == "dateColumn") {
+			var cid = tre.getAttribute('id');
+			var ct = story.findContainingTiddler(tre);
+			var tn = ct.getAttribute('tiddler');
+			var cca = CommentList[tn];
+			var cx = cca[cid];
+			var ate = [];
+			if (getElementsByClassName('commentText','*',tre,ate))
+			{
+				var twe = ate[0];
+				var ctx = { tco: cx, cls: twe.className };
+				var onSave = function(ev) {
+					displayMessage('save ' + ctx.tco.id);
+					http.alterComment({ comment: ctx.tco.id, text: ctx.ee.value });
+					var awn = [];
+					if (getElementsByClassName('commentText','*',ctx.pe,awn)) {
+						var pe = awn[0].parentElement;
+						pe.removeChild(awn[0]);
+						var tde = createTiddlyElement(pe,'td',null,'commentText');
+						wikify(ctx.ee.value,tde);
+						var ne = pe.nextElementSibling;
+						removeChildren(ne);
+						config.macros.comments.addCommentToolbar(pe,ctx.cls,0);
+					}
+				};
+				var twp = twe.parentElement;
+				var twn = twp.nextElementSibling;
+				removeChildren(twn.firstChild);
+				removeChildren(twe);
+				var ee = config.macros.comments.createInputBox(twe,"Edit comment",onSave, onSave);
+				ee.value = cx.text;
+				ctx.ee = ee;
+				ctx.pe = twp;
 			}
 			break;
 		}
