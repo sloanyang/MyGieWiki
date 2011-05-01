@@ -1972,7 +1972,7 @@ config.macros.comments.handler = function(place, macroName, params, wikifier, pa
 };
 
 function PreNextCommentRow(tre) {
-	for (var nxs = tre.nextElementSibling; nxs && nxs.firstChild.className != 'dateColumn'; nxs = nxs.nextElementSibling)
+	for (var nxs = tre.nextSibling; nxs && nxs.firstChild.className != 'dateColumn'; nxs = nxs.nextSibling)
 		tre = nxs;
 	return tre;
 }
@@ -2042,7 +2042,7 @@ config.macros.comments.addCommentTableRow = function(tbe,className,after,when,wh
 	var allowToolbar = config.options.txtUserName == who && row > 0;
 	var tda = {};
 	if (allowToolbar)
-		tda.rowspan = 2;
+		tda.rowSpan = 2;
 	var tr = createTiddlyElement(null,"tr",id, trc);
 	if (after) {
 		insertAfter(after,tr);
@@ -2213,12 +2213,6 @@ config.macros.comments.onSaveReplyClick = function(ev) {
 	}
 };
 
-config.macros.comments.onCancelReplyClick = function(ev) {
-    var t = resolveTarget(ev || window.event);
-    var trow = t.parentNode.parentNode.parentNode.parentNode;
-    trow.parentNode.removeChild(trow);
-};
-
 config.macros.comments.replyClick = function(ev) {
     var t = resolveTarget(ev || window.event);
     var tre = t.parentNode.parentNode;
@@ -2228,7 +2222,14 @@ config.macros.comments.replyClick = function(ev) {
 		PreNextCommentRow(tre),
 		new Date(),config.options.txtUserName,0,0);
 	tdc.id = ref;
-	config.macros.comments.createInputBox(tdc, "Your reply",config.macros.comments.onSaveReplyClick,config.macros.comments.onCancelReplyClick);
+	var cah = function(ev) {
+	var t = resolveTarget(ev || window.event);
+		for (var pe = t.parentNode; pe.tagName != 'TBODY'; pe = npe) {
+			var npe = pe.parentNode;
+			npe.removeChild(pe);
+		}
+	};
+	config.macros.comments.createInputBox(tdc, "Your reply",config.macros.comments.onSaveReplyClick,cah);
 };
 
 config.commands.deleteComment.handler = function(ev,tiddler) {
