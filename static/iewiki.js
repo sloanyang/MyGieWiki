@@ -1980,7 +1980,7 @@ function PreNextCommentRow(tre) {
 config.macros.comments.showReplies = function(ev) {
     var target = resolveTarget(ev || window.event);
 	var tde = target.parentNode;
-    var tr = tde.parentNode;
+    var tr = tde.parentNode.parentNode;
     var rowClass = tr.className;
     var ndt = tr.firstChild.firstChild.firstChild.nodeValue;
     var tidlr = story.findContainingTiddler(target);
@@ -1989,7 +1989,6 @@ config.macros.comments.showReplies = function(ev) {
 		function() { return rowClass },
 		function(c) { return c.ref == ndt },
 		PreNextCommentRow(tr));
-	tde.removeChild(target);
 }
 
 config.macros.comments.CclassPicker = function(r) { return r & 1 ? "oddRowComment":"evenRowComment" };
@@ -2048,10 +2047,8 @@ config.macros.comments.repliesMessage = function(n)
 config.macros.comments.addCommentTableRow = function(tbe,className,after,when,who,replies,row,id)
 {
 	var trc = className ? className(row) : (row & 1 ? "oddRow" : "evenRow");
-	var allowToolbar = config.options.txtUserName == who && row > 0;
+	var allowEdit = config.options.txtUserName == who && row > 0;
 	var tda = {};
-	if (allowToolbar)
-		tda.rowSpan = 2;
 	var tr = createTiddlyElement(null,"tr",id, trc);
 	if (after) {
 		insertAfter(after,tr);
@@ -2069,26 +2066,18 @@ config.macros.comments.addCommentTableRow = function(tbe,className,after,when,wh
 	if (pie)
 		aue.style.paddingLeft = pie + "em";
 		createTiddlyElement(aue,"br");
-		createTiddlyButton(aue,
+		var nobr = createTiddlyElement(aue,'nobr');
+		createTiddlyButton(nobr,
 			config.macros.comments.repliesMessage(replies),
-			"Show replies",config.macros.comments.showReplies,"btnReplies");
+			"Show replies",config.macros.comments.showReplies,'btnReplies');
+		if (allowEdit) {
+			createTiddlyButton(nobr, "edit", "edit comment", config.commands.editComment.handler, 'btnCommentTool');
+			createTiddlyButton(nobr, "delete", "delete this", config.commands.deleteComment.handler, 'btnCommentTool');
+		}
 	var tde = createTiddlyElement(tr,'td',null,'commentText');
 	if (pie)
 		tde.style.paddingLeft = pie + "em";
-	if (allowToolbar)
-		config.macros.comments.addCommentToolbar(tr,trc,pie);
 	return tde;
-};
-
-config.macros.comments.addCommentToolbar = function(tr,trc,pie) {
-	var trtb = createTiddlyElement(null,"tr",null, trc);
-	trtb.setAttribute("sub",pie);
-	insertAfter(tr,trtb);
-	var tdtb = createTiddlyElement(trtb,"td",null,'toolbar',null,{colspan: 3});
-	var tidlr = story.findContainingTiddler(tr);
-	var tna = tidlr.getAttribute("tiddler");
-	var t = store.getTiddler(tna);
-	wikify("<<toolbar editComment deleteComment>>",tdtb,null,t);
 };
 
 CommentList = [];
@@ -2252,78 +2241,74 @@ config.macros.comments.replyClick = function(ev) {
 };
 
 config.commands.deleteComment.handler = function(ev,tiddler) {
-	for (var tre = resolveTarget(ev || window.event).parentElement.parentElement; tre; tre = tre.previousSibling) {
-		if (tre.firstChild.className == "dateColumn") {
-			var ct = story.findContainingTiddler(tre);
-			var tn = ct.getAttribute('tiddler');
-			var t = store.fetchTiddler(tn);
-			var dcr = http.deleteComment({comment: tre.id, tiddlerId: t.id });
-			if (dcr.Success) {
-				t.comments--;
-				config.macros.comments.listComments(ct,t.getComments(false,dcr),false,config.macros.comments.CclassPicker,function(t) { return t.ref == "" });
-			}
-			break;
+	var tae = resolveTarget(ev || window.event);
+	var tse = tae.parentElement.parentElement.previousSibling;
+	var tre = tse.parentElement;
+	if (tse.className == "dateColumn") {
+		var ct = story.findContainingTiddler(tre);
+		var tn = ct.getAttribute('tiddler');
+		var t = store.fetchTiddler(tn);
+		var dcr = http.deleteComment({comment: tre.id, tiddlerId: t.id });
+		if (dcr.Success) {
+			t.comments--;
+			config.macros.comments.listComments(ct,t.getComments(false,dcr),false,config.macros.comments.CclassPicker,function(t) { return t.ref == "" });
 		}
 	}
 };
 
 config.commands.editComment.handler = function(ev,tiddler) {
 	var tae = resolveTarget(ev || window.event);
-	for (var tre = tae.parentElement.parentElement; tre; tre = tre.previousSibling) {
-		var ccn = tre.firstChild.className;
-		var cn = tre.className;
-		if (tre.firstChild.className == "dateColumn") {
-			var cid = tre.getAttribute('id');
-			var ct = story.findContainingTiddler(tre);
-			var tn = ct.getAttribute('tiddler');
-			var cca = CommentList[tn];
-			var cx = cca[cid];
-			var ate = [];
-			if (getElementsByClassName('commentText','*',tre,ate))
-			{
-				var twe = ate[0];
-				var ctx = { tco: cx, cls: twe.className };
-				var rest = function(ev,text) {
-					var awn = [];
-					if (getElementsByClassName('commentText','*',ctx.pe,awn)) {
-						var pe = awn[0].parentElement;
-						pe.removeChild(awn[0]);
-						var tde = createTiddlyElement(pe,'td',null,'commentText');
-						wikify(text,tde);
-						var ne = pe.nextSibling;
-						removeChildren(ne);
-						config.macros.comments.addCommentToolbar(pe,ctx.cls,0);
+	var tte = tae.parentElement.parentElement;
+	var tse = tte.previousSibling;
+	var tre = tse.parentElement;
+	if (tse.className == "dateColumn") {
+		var cid = tre.getAttribute('id');
+		var ct = story.findContainingTiddler(tre);
+		var tn = ct.getAttribute('tiddler');
+		var cca = CommentList[tn];
+		var cx = cca[cid];
+		var ate = [];
+		if (getElementsByClassName('commentText','*',tre,ate))
+		{
+			var twe = ate[0];
+			var ctx = { tco: cx, cls: twe.className };
+			var rest = function(ev,text) {
+				var awn = [];
+				if (getElementsByClassName('commentText','*',ctx.pe,awn)) {
+					var pe = awn[0].parentElement;
+					pe.removeChild(awn[0]);
+					var tde = createTiddlyElement(pe,'td',null,'commentText');
+					wikify(text,tde);
+					var ne = pe.nextSibling;
+					removeChildren(ne);
+				}
+			};
+			var onSave = function(ev) {
+				displayMessage('save ' + ctx.tco.id);
+				http.alterComment({ comment: ctx.tco.id, text: ctx.ee.value });
+				var ct = story.findContainingTiddler(resolveTarget(ev || window.event));
+				var tn = ct.getAttribute('tiddler');
+				var tcl = store.getTiddler(tn).commentList;
+				for (var i = 0; i < tcl.length; i++) {
+					if (tcl[i].id == ctx.tco.id) {
+						tcl[i].text = ctx.ee.value; break;
 					}
-				};
-				var onSave = function(ev) {
-					displayMessage('save ' + ctx.tco.id);
-					http.alterComment({ comment: ctx.tco.id, text: ctx.ee.value });
-					var ct = story.findContainingTiddler(resolveTarget(ev || window.event));
-					var tn = ct.getAttribute('tiddler');
-					var tcl = store.getTiddler(tn).commentList;
-					for (var i = 0; i < tcl.length; i++) {
-						if (tcl[i].id == ctx.tco.id) {
-							tcl[i].text = ctx.ee.value; break;
-						}
-					}
-					rest(ev,ctx.ee.value);
-				};
-				var onCancel = function(ev) {
-					if (ctx.ee.value != ctx.tco.text)
-						if (!window.confirm("Cancel..?"))
-							return;
-					rest(ev,ctx.tco.text);
-				};
-				var twp = twe.parentElement;
-				var twn = twp.nextSibling;
-				removeChildren(twn.firstChild);
-				removeChildren(twe);
-				var ee = config.macros.comments.createInputBox(twe,"Edit comment",onSave, onCancel);
-				ee.value = cx.text;
-				ctx.ee = ee;
-				ctx.pe = twp;
-			}
-			break;
+				}
+				rest(ev,ctx.ee.value);
+			};
+			var onCancel = function(ev) {
+				if (ctx.ee.value != ctx.tco.text)
+					if (!window.confirm("Cancel..?"))
+						return;
+				rest(ev,ctx.tco.text);
+			};
+			var twn = tte.nextSibling;
+			removeChildren(twn.firstChild);
+			removeChildren(twe);
+			var ee = config.macros.comments.createInputBox(twe,"Edit comment",onSave, onCancel);
+			ee.value = cx.text;
+			ctx.ee = ee;
+			ctx.pe = twp;
 		}
 	}
 };
