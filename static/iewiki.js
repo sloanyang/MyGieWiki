@@ -412,14 +412,6 @@ config.commands = {
 		text: "attributes",
 		tooltip: "Toggle special tags"
 	},
-	deleteComment: {
-		text: "delete",
-		tooltip: "delete this comment"
-	},
-	editComment: {
-		text: "edit",
-		tooltip: "edit this comment"
-	},
     help: {
         text: "help",
         tooltip: "Display formatting help"
@@ -1953,8 +1945,10 @@ config.macros.comments.handler = function(place, macroName, params, wikifier, pa
 	if (tiddler.from && !tiddler.from.startsWith('/')) // cannot comment on foreign tiddlers	
 		return;
 	var ced = createTiddlyElement(place,"div",null,"commentToolbar");
-	if (tiddler.comments > 0)
-		createTiddlyButton(ced, this.listLabel.format([tiddler.comments]), this.listPrompt, this.onListClick);
+	var ccnt = tiddler.comments = tiddler.comments ? tiddler.comments : 0
+	var ccb = createTiddlyButton(ced, this.listLabel.format([ccnt]), this.listPrompt, this.onListClick);
+	if (ccnt == 0)
+		ccb.setAttribute('style', 'display: none');
 	if (tiddler.Notes())
 		createTiddlyButton(ced, this.notesLabel.format([tiddler.Notes()]), this.notesPrompt, this.onNotesClick);
 	if (tiddler.messages)
@@ -2071,8 +2065,8 @@ config.macros.comments.addCommentTableRow = function(tbe,className,after,when,wh
 			config.macros.comments.repliesMessage(replies),
 			"Show replies",config.macros.comments.showReplies,'btnReplies');
 		if (allowEdit) {
-			createTiddlyButton(nobr, "edit", "edit comment", config.commands.editComment.handler, 'btnCommentTool');
-			createTiddlyButton(nobr, "delete", "delete this", config.commands.deleteComment.handler, 'btnCommentTool');
+			createTiddlyButton(nobr, "edit", "edit comment", config.macros.comments.editHandler, 'btnCommentTool');
+			createTiddlyButton(nobr, "delete", "delete this", config.macros.comments.purgeHandler, 'btnCommentTool');
 		}
 	var tde = createTiddlyElement(tr,'td',null,'commentText');
 	if (pie)
@@ -2175,6 +2169,12 @@ config.macros.comments.onSaveClick = function (ev, type, cp) {
 	var t = store.getTiddler(tna);
 	var sr = t.addComment(tnv, type);
 	if (sr && sr.Success) {
+		var sarr = [];
+		if (getElementsByClassName('commentToolbar',null,tidlr,sarr) == 1) {
+			var ccb = sarr[0].childNodes[0];
+			ccb.innerText = t.comments + " comments";
+			ccb.setAttribute('style', 'display: inline');
+		}
 		config.macros.comments.onCancelCommentClick(ev);
 		config.macros.comments.listComments(tidlr, [sr], true, cp, function (c) { return true; });
 	}
@@ -2240,7 +2240,7 @@ config.macros.comments.replyClick = function(ev) {
 	config.macros.comments.createInputBox(tdc, "Your reply",config.macros.comments.onSaveReplyClick,cah,tre.id);
 };
 
-config.commands.deleteComment.handler = function(ev,tiddler) {
+config.macros.comments.purgeHandler = function(ev,tiddler) {
 	var tae = resolveTarget(ev || window.event);
 	var tse = tae.parentElement.parentElement.previousSibling;
 	var tre = tse.parentElement;
@@ -2251,12 +2251,15 @@ config.commands.deleteComment.handler = function(ev,tiddler) {
 		var dcr = http.deleteComment({comment: tre.id, tiddlerId: t.id });
 		if (dcr.Success) {
 			t.comments--;
+			var sarr = [];
+			if (getElementsByClassName('commentToolbar',null,ct,sarr) == 1)
+				sarr[0].childNodes[0].innerText = t.comments + " comments";
 			config.macros.comments.listComments(ct,t.getComments(false,dcr),false,config.macros.comments.CclassPicker,function(t) { return t.ref == "" });
 		}
 	}
 };
 
-config.commands.editComment.handler = function(ev,tiddler) {
+config.macros.comments.editHandler = function(ev,tiddler) {
 	var tae = resolveTarget(ev || window.event);
 	var tte = tae.parentElement.parentElement;
 	var tse = tte.previousSibling;
