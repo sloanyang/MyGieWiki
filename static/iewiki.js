@@ -2102,7 +2102,7 @@ config.macros.comments.formatDateTime = function(dt) {
 	if (typeof dt == 'string')
 		return dt.substr(0,19);
 	else
-		return dt.formatString("YYYY-0MM-0DD hh:mm:0ss");
+		return dt.formatString("YYYY-0MM-0DD 0hh:0mm:0ss");
 }
 
 config.macros.comments.onShowClick = function(e) {
@@ -2205,6 +2205,7 @@ config.macros.comments.onSaveReplyClick = function(ev) {
 	var tr = td.parentNode;
     var sr = http.submitComment({ text:tnv, tiddler:t.id, version:t.currentVer, ref: td.id });
     if (sr.Success) {
+		tr.firstChild.firstChild.innerText = config.macros.comments.formatDateTime(sr.created);
 		tr.removeChild(td);
 		var cel = document.getElementById(cid);
 		createTiddlyElement(tr,"td",null,"replyTD",tnv);
