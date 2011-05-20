@@ -1941,24 +1941,24 @@ config.macros.pageProperties.onClick = function(e) {
     story.displayTiddler(null,'PageProperties');
 };
 
+config.macros.comments.addToolbar = function(cmc,ced,tiddler) {
+	if (tiddler.comments)
+		var ccb = createTiddlyButton(ced, cmc.listLabel.format([tiddler.comments]), cmc.listPrompt, cmc.onListClick);
+	if (tiddler.messages)
+		createTiddlyButton(ced, cmc.messagesLabel.format([tiddler.messages]), cmc.notesPrompt, cmc.onMessagesClick);
+	if (tiddler.Notes())
+		createTiddlyButton(ced, cmc.notesLabel.format([tiddler.Notes()]), cmc.notesPrompt, cmc.onNotesClick);
+
+	if (config.access == "view") return;
+	createTiddlyButton(ced, cmc.addCommentLabel, cmc.addCommentPrompt, cmc.onAddCommentClick);
+	createTiddlyButton(ced, cmc.addMessageLabel, cmc.addMessagePrompt, cmc.onAddMessageClick);
+	createTiddlyButton(ced, cmc.addNoteLabel, cmc.addNotePrompt, cmc.onAddNoteClick);
+};
+
 config.macros.comments.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
 	if (tiddler.from && !tiddler.from.startsWith('/')) // cannot comment on foreign tiddlers	
 		return;
-	var ced = createTiddlyElement(place,"div",null,"commentToolbar");
-	var ccnt = tiddler.comments = tiddler.comments ? tiddler.comments : 0
-	var ccb = createTiddlyButton(ced, this.listLabel.format([ccnt]), this.listPrompt, this.onListClick);
-	if (ccnt == 0)
-		ccb.setAttribute('style', 'display: none');
-	if (tiddler.Notes())
-		createTiddlyButton(ced, this.notesLabel.format([tiddler.Notes()]), this.notesPrompt, this.onNotesClick);
-	if (tiddler.messages)
-		createTiddlyButton(ced, this.messagesLabel.format([tiddler.messages]), this.notesPrompt, this.onMessagesClick);
-
-	if (config.access == "view") return;
-	createTiddlyButton(ced, this.addCommentLabel, this.addCommentPrompt, this.onAddCommentClick);
-	createTiddlyButton(ced, this.addMessageLabel, this.addMessagePrompt, this.onAddMessageClick);
-	createTiddlyButton(ced, this.addNoteLabel, this.addNotePrompt, this.onAddNoteClick);
-
+	this.addToolbar(this,createTiddlyElement(place,"div",null,"commentToolbar"),tiddler);
 	var cl = CommentList[tiddler.title];
 	if (cl) {
 		config.macros.comments.onListClick(null,place,cl);
@@ -2041,7 +2041,7 @@ config.macros.comments.repliesMessage = function(n)
 config.macros.comments.addCommentTableRow = function(tbe,className,after,when,who,replies,row,id)
 {
 	var trc = className ? className(row) : (row & 1 ? "oddRow" : "evenRow");
-	var allowEdit = config.options.txtUserName == who && row > 0;
+	var allowEdit = config.options.txtUserName == who && row > 0 && className == config.macros.comments.CclassPicker;
 	var tda = {};
 	var tr = createTiddlyElement(null,"tr",id, trc);
 	if (after) {
@@ -2088,14 +2088,18 @@ config.macros.comments.listComments = function(where,list,preserve,className,fil
 	if (!CommentList[title])
 		CommentList[title] = []
 
-    for (var i in list) {
-        var aco = list[i];
-		CommentList[title][aco.id] = aco;
-        if (filter(aco)) {
-        	var tde = config.macros.comments.addCommentTableRow(tbe, className, after, aco.created, aco.author, aco.refs, ++rc, aco.id);
-            wikify(aco.text,tde);
-        }
-    }
+	var lister = function(aco) {
+		if (aco === undefined) 
+			return;
+		CommentList[title][aco.id] = aco; // TODO: fix so it renders newly added comments, too
+		if (filter(aco)) {
+			var tde = config.macros.comments.addCommentTableRow(tbe, className, after, aco.created, aco.author, aco.refs, ++rc, aco.id);
+			wikify(aco.text,tde);
+		}
+	};
+
+	for (var i in list)
+		lister(list[i]);
 }
 
 config.macros.comments.formatDateTime = function(dt) {
@@ -2157,9 +2161,9 @@ config.macros.comments.onAddNoteClick = function(ev) {
     return false;
 };
 
-config.macros.comments.onSaveCommentClick = function(ev) { return config.macros.comments.onSaveClick(ev,"C",config.macros.comments.CclassPicker); }
-config.macros.comments.onSaveMessageClick = function(ev) { return config.macros.comments.onSaveClick(ev, "M",config.macros.comments.MclassPicker); }
-config.macros.comments.onSaveNoteClick = function(ev) { return config.macros.comments.onSaveClick(ev, "N",config.macros.comments.NclassPicker); }
+config.macros.comments.onSaveCommentClick = function(ev) { return config.macros.comments.onSaveClick(ev,'C',config.macros.comments.CclassPicker); }
+config.macros.comments.onSaveMessageClick = function(ev) { return config.macros.comments.onSaveClick(ev, 'M',config.macros.comments.MclassPicker); }
+config.macros.comments.onSaveNoteClick = function(ev) { return config.macros.comments.onSaveClick(ev, 'N',config.macros.comments.NclassPicker); }
 
 config.macros.comments.onSaveClick = function (ev, type, cp) {
 	var target = resolveTarget(ev || window.event);
@@ -2171,9 +2175,9 @@ config.macros.comments.onSaveClick = function (ev, type, cp) {
 	if (sr && sr.Success) {
 		var sarr = [];
 		if (getElementsByClassName('commentToolbar',null,tidlr,sarr) == 1) {
-			var ccb = sarr[0].childNodes[0];
-			ccb.innerText = t.comments + " comments";
-			ccb.setAttribute('style', 'display: inline');
+			var cte = sarr[0];
+			removeChildren(cte);
+			config.macros.comments.addToolbar(this,cte,t);
 		}
 		config.macros.comments.onCancelCommentClick(ev);
 		config.macros.comments.listComments(tidlr, [sr], true, cp, function (c) { return true; });
@@ -2288,7 +2292,6 @@ config.macros.comments.editHandler = function(ev,tiddler) {
 				}
 			};
 			var onSave = function(ev) {
-				displayMessage('save ' + ctx.tco.id);
 				http.alterComment({ comment: ctx.tco.id, text: ctx.ee.value });
 				var ct = story.findContainingTiddler(resolveTarget(ev || window.event));
 				var tn = ct.getAttribute('tiddler');
@@ -2312,7 +2315,7 @@ config.macros.comments.editHandler = function(ev,tiddler) {
 			var ee = config.macros.comments.createInputBox(twe,"Edit comment",onSave, onCancel);
 			ee.value = cx.text;
 			ctx.ee = ee;
-			ctx.pe = twp;
+			ctx.pe = twe.parentElement;
 		}
 	}
 };
@@ -3366,7 +3369,12 @@ Tiddler.prototype.addComment = function(text,type) {
     if (sr && sr.Success) {
 		if (this.commentList)
 			this.commentList.push(sr);
-		this.comments++;
+		var inc = function(a) { return a === undefined ? 1 : a + 1; };
+		switch (type) {
+			case 'C': this.comments = inc(this.comments); break;
+			case 'M': this.messages = inc(this.messages); break;
+			case 'N': this.notes = inc(this.notes); break;
+		}
 		if (sr.mail)
 			displayMessage("Mail sent");
 		else if (type == 'M')
@@ -3378,7 +3386,7 @@ Tiddler.prototype.addComment = function(text,type) {
 Tiddler.prototype.Notes = function() {
 	if (!this.notes)
 		return false;
-	if (typeof(this.notes) != "array")
+	if (typeof(this.notes) != 'object')
 		this.notes = http.getNotes({ tiddlerId:this.id });
 	return this.notes.length;
 }

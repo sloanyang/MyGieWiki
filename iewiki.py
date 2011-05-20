@@ -1102,7 +1102,7 @@ class MainPage(webapp.RequestHandler):
 		
 	tls.save()
 	self.reply({'Success': True, 
-		'id': ani.key().id(), 'Comments': tls.comments, 'author': users.get_current_user(), 'text': ani.text,'created': datetime.datetime.now(), 'mail': ms })
+		'id': ani.key().id(), 'Comments': tls.comments, 'author': users.get_current_user(), 'text': ani.text,'created': str(ani.created), 'mail': ms })
 
   def deleteComment(self):
 	try:
