@@ -1992,7 +1992,7 @@ config.macros.comments.onListClick = function(ev,tg,comments) {
     var target = tg || resolveTarget(ev || window.event);
     var tidlr = story.findContainingTiddler(target);
     var t = store.getTiddler(tidlr.getAttribute("tiddler"));
-    config.macros.comments.listComments(tidlr,comments || t.getComments(),false,config.macros.comments.CclassPicker,function(t) { return t.ref == "" });
+    config.macros.comments.listComments(tidlr,comments || t.getComments(),false,config.macros.comments.CclassPicker,function(t) { return t.ref == "" || t.ref === undefined; });
 };
 
 config.macros.comments.onNotesClick = function(ev) {
@@ -2077,24 +2077,24 @@ config.macros.comments.addCommentTableRow = function(tbe,className,after,when,wh
 CommentList = [];
 
 config.macros.comments.listComments = function(where,list,preserve,className,filter,after) {
-    var twe = findOrCreateChildElement(where, "div",null,"tableWrapper",null,null,preserve);
+    var twe = findOrCreateChildElement(where, 'div',null,'tableWrapper',null,null,preserve);
     if (!twe.firstChild)
         twe.innerHTML = "<table class='commentTable'><col style='width:5.3em'/><col style='width: 4.5em'/></table>"; // IE fix
     var tae = twe.firstChild;
 
-    var tbe = findOrCreateChildElement(tae,"tbody",null,"commentTableBody",null,null,true);
+    var tbe = findOrCreateChildElement(tae,'tbody',null,'commentTableBody',null,null,true);
     var rc = 0;
-	var title = where.getAttribute("tiddler");
+	var title = where.getAttribute('tiddler');
 	if (!CommentList[title])
 		CommentList[title] = []
 
 	var lister = function(aco) {
-		if (aco === undefined) 
-			return;
-		CommentList[title][aco.id] = aco; // TODO: fix so it renders newly added comments, too
-		if (filter(aco)) {
-			var tde = config.macros.comments.addCommentTableRow(tbe, className, after, aco.created, aco.author, aco.refs, ++rc, aco.id);
-			wikify(aco.text,tde);
+		if (typeof(aco) == 'object') {
+			CommentList[title][aco.id] = aco;
+			if (filter(aco)) {
+				var tde = config.macros.comments.addCommentTableRow(tbe, className, after, aco.created, aco.author, aco.refs, ++rc, aco.id);
+				wikify(aco.text,tde);
+			}
 		}
 	};
 
