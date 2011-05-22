@@ -395,44 +395,47 @@ config.commands = {
 		text: "history",
 		tooltip: "Show history"
 	},
-    preview: {
-        text: "preview",
-        tooltip: "Preview formattet text"
-    },
-    reload: {
-        text: "reload",
-        tooltip: "Reload this tiddler to execute any macros again"
-    },
-    tag: {
-        text: "tag",
-        tooltip: "Add tags"
-    },
+	preview: {
+		text: "preview",
+		tooltip: "Preview formattet text"
+	},
+	reload: {
+		text: "reload",
+		tooltip: "Reload this tiddler to execute any macros again"
+	},
+	tag: {
+		text: "tag",
+		tooltip: "Add tags"
+	},
 	attributes: {
 		type: "popup",
 		text: "attributes",
 		tooltip: "Toggle special tags"
 	},
-    help: {
-        text: "help",
-        tooltip: "Display formatting help"
-    },
-    syncing: { type: "popup" },
-    fields: {
-        type: "popup",
-        text: "fields",
-        tooltip: "Show the extended fields of this tiddler",
-        emptyText: "There are no extended fields for this tiddler",
-        listViewTemplate: {
-            columns: [
-                { name: 'Field', field: 'field', title: "Field", type: 'String' },
-                { name: 'Value', field: 'value', title: "Value", type: 'String' }
-                ],
-            rowClasses: [
-                ],
-            buttons: [
-                ]
-        }
-    }
+	help: {
+		type: "popup",
+		text: "help",
+		tooltip: "Display formatting help",
+		topics: [
+			"Font Styles", "Markup", "CSS Formatting", "Tables", "Macros"]
+	},
+	syncing: { type: "popup" },
+	fields: {
+		type: "popup",
+		text: "fields",
+		tooltip: "Show the extended fields of this tiddler",
+		emptyText: "There are no extended fields for this tiddler",
+		listViewTemplate: {
+			columns: [
+				{ name: 'Field', field: 'field', title: "Field", type: 'String' },
+				{ name: 'Value', field: 'value', title: "Value", type: 'String' }
+				],
+			rowClasses: [
+				],
+			buttons: [
+				]
+		}
+	}
 };
 
 // Browser detection... In a very few places, there's nothing else for it but to know what browser we're using.
@@ -3196,6 +3199,17 @@ config.commands.jump.handlePopup = function(popup, title) {
     story.forEachTiddler(function(title, element) {
         createTiddlyLink(createTiddlyElement(popup, "li"), title, true, null, false, null, true);
     });
+};
+
+config.commands.help.handlePopup = function(popup, title) {
+	for (var i = 0; i < this.topics.length; i++) {
+		var pme = createTiddlyElement(createTiddlyElement(popup, "li"), "a",null,null,this.topics[i],{'href':'javascript:;'} );
+		pme.onclick = function(ev) {
+			debugger;
+			var t = resolveTarget(ev || window.event);
+			story.displayTiddler(null,"Help On " + t.innerText);
+		};
+	}
 };
 
 config.commands.tag.handler = function(event, src, title) {

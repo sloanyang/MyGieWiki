@@ -1640,8 +1640,8 @@ class MainPage(webapp.RequestHandler):
 				t.public = True
 			else:
 				return self.reply({'success': False })
-		except Exception:
-			return self.reply({'success': False })
+		except Exception, x:
+			return self.fail(x)
 
 	self.deliverTiddler(t)
 
