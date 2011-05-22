@@ -7104,6 +7104,25 @@ function RetryInDebugger(e,m) {
 		return false; 
 }
 
+function ListMyNotes(ar) {
+	var nca = document.getElementById('myNotesArea');
+	if (ar.Success && nca) {
+		listViewTemplate = {
+			columns: [
+				{ name: 'Created', field: 'created', title: "Created", type: 'Date', dateFormat: 'YYYY-0MM-0DD' },
+				{ name: 'Page', field: 'page', title: "page", type: 'String' },
+				{ name: 'Tiddler', field: 'tiddler', title: "Tiddler", type: 'String' },
+				{ name: 'Text', field: 'text', title: "Text", type: 'String' }
+				],
+			rowClasses: [
+				],
+			buttons: [
+				]
+		};
+		var listview = ListView.create(nca,ar,listViewTemplate);
+	}
+}
+
 function ConfirmIfMessage(status)
 {
 	if (!status.Success)
@@ -7129,7 +7148,12 @@ function JsoFromXml(rce) {
 			break;
 		case 'datetime':
 			try {
-				v = Date.convertFromYYYYMMDDHHMM(v);
+				if (v.indexOf('-') == -1)
+					v = Date.convertFromYYYYMMDDHHMM(v);
+				else {
+					var adp = v.split('-');
+					v = new Date(parseInt(adp[0],10),parseInt(adp[1],10)-1,parseInt(adp[2].substr(0,2),10),0,0)
+				}
 			}
 			catch (e) {
 				alert("bad datetime: " + v);

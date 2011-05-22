@@ -188,7 +188,7 @@ def leafOfPath(path):
 
 def userWho():
 	u = users.get_current_user()
-	if (u):
+	if u:
 		return u.nickname()
 	else:
 		return ""
@@ -1147,44 +1147,57 @@ class MainPage(webapp.RequestHandler):
 	self.sendXmlResponse(self.getCommentList())
 
   def getCommentList(self):
-	cs = Comment.all().filter("tiddler = ",self.request.get('tiddlerId'))
-	ref = self.request.get("ref")
-	if ref != "":
-		cs = cs.filter("ref = ", ref)
+	cs = Comment.all().filter('tiddler',self.request.get('tiddlerId'))
+	ref = self.request.get('ref')
+	if ref != '':
+		cs = cs.filter('ref', ref)
 	xd = XmlDocument()
 	tce = xd.add(xd,'TiddlerComments', attrs={'type':'object[]'})
 	for ac in cs:
-		ace = xd.add(tce,"Comment")
-		xd.add(ace, "author","anonymous" if ac.author == None else getUserPenName(ac.author))
-		xd.add(ace, "text",ac.text)
-		xd.add(ace, "created", ac.created)
-		xd.add(ace, "version", ac.version)
-		xd.add(ace, "id", ac.key().id())
-		if ref == "":
-			xd.add(ace, "ref", ac.ref)
+		ace = xd.add(tce,'Comment')
+		xd.add(ace, 'author','anonymous' if ac.author == None else getUserPenName(ac.author))
+		xd.add(ace, 'text',ac.text)
+		xd.add(ace, 'created', ac.created)
+		xd.add(ace, 'version', ac.version)
+		xd.add(ace, 'id', ac.key().id())
+		if ref == '':
+			xd.add(ace, 'ref', ac.ref)
 	return xd
 
   def getNotes(self):
-	ns = Note.all().filter("tiddler =",self.request.get('tiddlerId')).filter("author =",users.get_current_user())
+	tid = self.request.get('tiddlerId')
+	if tid != '':
+		ns = Note.all().filter('tiddler',tid).filter('author',users.get_current_user())
+	elif users.get_current_user() != None:
+		ns = Note.all().filter('author',users.get_current_user())
+	else:
+		return self.fail("Not logged in")
+
 	xd = XmlDocument()
 	tce = xd.add(xd,'TiddlerNotes', attrs={'type':'object[]'})
 	for ac in ns:
-		ace = xd.add(tce,"Note")
-		xd.add(ace, "text",ac.text)
-		xd.add(ace, "created", ac.created)
-		xd.add(ace, "version", ac.version)
+		ace = xd.add(tce,'Note')
+		xd.add(ace, 'text',ac.text)
+		cde = xd.add(ace, 'created', ac.created)
+		if tid == '':
+			cde.setAttribute('type','datetime')
+			tlr = Tiddler.all().filter('id',ac.tiddler).filter('current',True).get()
+			if tlr != None:
+				xd.add(ace,'page',tlr.page)
+				xd.add(ace,'tiddler',tlr.title)
+		xd.add(ace, 'version', ac.version)
 	self.sendXmlResponse(xd)
 	
   def getMessages(self):
-	ms = Message.all().filter("tiddler =",self.request.get('tiddlerId')).filter("receiver =", users.get_current_user())
+	ms = Message.all().filter('tiddler',self.request.get('tiddlerId')).filter('receiver', users.get_current_user())
 	xd = XmlDocument()
 	tce = xd.add(xd,'TiddlerMessages', attrs={'type':'object[]'})
 	for ac in ms:
-		ace = xd.add(tce,"Note")
-		xd.add(ace, "author","anonymous" if ac.author == None else ac.author.nickname())
-		xd.add(ace, "text",ac.text)
-		xd.add(ace, "created", ac.created)
-		xd.add(ace, "version", ac.version)
+		ace = xd.add(tce,'Note')
+		xd.add(ace, 'author','anonymous' if ac.author == None else ac.author.nickname())
+		xd.add(ace, 'text',ac.text)
+		xd.add(ace, 'created', ac.created)
+		xd.add(ace, 'version', ac.version)
 	self.sendXmlResponse(xd)
 
   def getMacro(self):
