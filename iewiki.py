@@ -263,6 +263,25 @@ def replyWithObjectList(cl,re,se,sl):
 	xmlArrayOfObjects(xd,tv,sl,se)
 	cl.response.out.write(xd.toxml())
 
+def presentTiddler(t,withKey):
+	rp = { \
+		'success': True, \
+		'id': t.id, \
+		'title': t.title, \
+		'text': t.text, \
+		'tags': t.tags, \
+		'created': t.created.strftime('%Y%m%d%H%M%S'),
+		'modifier': userNameOrAddress(t.author,t.author_ip),
+		'modified': t.modified.strftime('%Y%m%d%H%M%S'),
+		'version': t.version
+		}
+	if hasattr(t,'viewTemplate'):
+		rp['viewTemplate'] = t.viewTemplate
+	if withKey:
+		rp['key'] = t.key()
+		rp['path'] = t.page
+	return rp
+
 def initHist(shadowTitle):
 	versions = '|When|Who|V#|Title|\n'
 	if shadowTitle != None: # self.request.get("shadow") == '1':
@@ -1479,10 +1498,11 @@ class MainPage(webapp.RequestHandler):
 	xd.appendChild(tv)
 	self.response.out.write(xd.toxml())
 
-  def fail(self, msg, aux = None):
+  def fail(self, msg = None, aux = None):
 	if aux == None:
 		aux = {}
-	aux["Message"] = msg
+	if msg != None:
+		aux["Message"] = msg
 	aux["Success"] = False
 	self.reply(aux)
 	return False
@@ -1638,37 +1658,27 @@ class MainPage(webapp.RequestHandler):
 				if t is None:
 					return self.fail(title + " not found")
 				t.public = True
+			elif de.tagName == 'tiddlers': # Allow piggybacking other tiddlers on which it depends
+				ts = []
+				for ce in de.childNodes:
+					if ce.nodeType == xml.dom.Node.ELEMENT_NODE:
+						ts.append(presentTiddler(TiddlerFromXml(ce,self.path),False))
+				return self.reply({'tiddlers': ts})
 			else:
-				return self.reply({'success': False })
+				return self.fail()
 		except Exception, x:
-			return self.fail(x)
+			return self.fail()
 
 	self.deliverTiddler(t)
 
   def deliverTiddler(self,t,withKey=False):
 	if t.public or ReadAccessToPage(t.page):
-		rp = { \
-		'success': True, \
-		'id': t.id, \
-		'title': t.title, \
-		'text': t.text, \
-		'tags': t.tags, \
-		'created': t.created.strftime('%Y%m%d%H%M%S'),
-		'modifier': userNameOrAddress(t.author,t.author_ip),
-		'modified': t.modified.strftime('%Y%m%d%H%M%S'),
-		'version': t.version
-		}
-		if hasattr(t,'viewTemplate'):
-			rp['viewTemplate'] = t.viewTemplate
-		if withKey:
-			rp['key'] = t.key()
-			rp['path'] = t.page
-		self.reply(rp)
+		self.reply(presentTiddler(t,withKey))
 		return True
 	else:
-		self.reply({"success": False, "Message": "No access" })
+		self.reply({"Success": False, "Message": "No access" })
 		return False
-		
+
   def getGroups(self):
 	groups = Group.all().filter("admin =", users.get_current_user())
 	self.initXmlResponse()

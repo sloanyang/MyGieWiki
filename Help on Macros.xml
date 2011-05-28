@@ -1,0 +1,85 @@
+<?xml version="1.0" ?>
+<tiddlers>
+<tiddler tags="help" title="Help On Macros" modified="20101201100819" modifier="giewiki" version="0"><pre>
+Macros are a general extensibility mechanism. In general, they are applied using the syntax
+{{{
+	&lt;&lt;macroName parameters&gt;&gt;
+}}}
+where the relevant parameters are defined by each macro. Multiple parameters are separated by spaces. If a parameter value includes spaces, enclose it in quotes.
+In addition to the macros defined by TiddlyWiki, giewiki adds a set of it's own, for various purposes.
+Documentation for the macros are still under way, but you may be able to find what you need to know through the links to giewiki below. 
+This list of macros may not be complete, as plug-ins (like giewiki's youtube plugin) tend to define macros of their own.
+
+|!macro name|!purpose|
+|today|Formats and renders today's date using an optional format string parameters|
+|version|Shows the version of TiddlyWiki being used|
+|giewikiversion|Shows the version of giewiki that you are using|
+|search|Displays a search box|
+|[[tiddler|Help on tiddler macro]]|Renders the text of a specified tiddler at the point where is is applied|
+|[[gradient|Help on gradient macro]]|Renders text on a background of a gradient range of colors|
+|tag|Creates a button that lists all the tiddlers with a specific tag|
+|tags|Part of the tagging facility|
+|tagging|Part of the tagging facility|
+|timeline|Defines the button in the edit menu|
+|allTags|Produces the list of tagged tiddlers in the index area on the right|
+|list|Produces the top-level wrapper of of the index lists|
+|closeAll|Makes a button for closing all tiddlers in the story column|
+|permaview|Produces a button for representing the currently displayed tiddlers into the browser address bar|
+|comments|Produces a toolbar for comment access and creation relative to the tiddler that contains it|
+|slider|Produces a panel that slides open/closed when clicked&lt;br&gt;http://tiddlywiki.com/#%5B%5Bslider%20macro%5D%5D|
+|option|Part of the options panel implementation|
+|options|Part of the advanced options dialog implementation|
+|newTiddler|Produces a button to allow creatin a new tiddler|
+|newJournal|Similar to newTiddler, but inserting today's date for the title|
+|tabs|Create as set of tabs (such as the SideBarTabs)|
+|message|Renders text retrieved from a named global variable|
+|view|Renders a named field of the containing tiddler (used as part of the ViewTemplate)|
+|edit|Creates an input box initialized with the contents of as specific tiddler (used as part of the EditTemplate)|
+|tagChooser|Lets you pick existing tags to apply to a tiddler (used as part of the EditTemplate)|
+|toolbar|Builds a row of command buttons such as the one above each tiddler|
+
+!!!giewiki specific macros
+|!macro name|!purpose|
+|importTiddlers|The importTiddlers macro lets you easily import from ~TiddlyWiki or giewiki documents on the web or on this web site. Usage:&lt;br&gt;    {{{&lt;&lt;importTiddlers URL&gt;&gt;}}}&lt;br&gt;substituting URL with the web address or filename of the library you want to use.|
+
+</pre>
+</tiddler>
+<tiddler tags="help" title="Help on gradient macro" modified="20101201100819" modifier="giewiki" version="0"><pre>The Gradient macro allows simple horizontal and vertical coloured gradient backgrounds. They are constructed from coloured HTML elements, and don't require any images to work.
+The Gradient macro is an extended macro that processes the text after it up until the next '&gt;&gt;' sequence. For example,
+{{{&lt;&lt;gradient vert #4400ff #44ff44 #ff0044&gt;&gt;gradient fill&gt;&gt;}}}
+produces this:
+&lt;&lt;gradient vert #4400ff #44ff44 #ff0044&gt;&gt;gradient fill&gt;&gt;
+The first parameter can be ''vert'' or ''horiz'' to indicate the direction of the gradient. The following parameters are two or more colours (CSS RGB(r,g,b) format is also acceptable). The macro constructs a smooth linear gradient between each of the colours in turn.
+
+Inline CSS definitions can be added to gradient fills like so:
+{{{&lt;&lt;gradient horiz #000000 #660000 #aa2222&gt;&gt;color:#ffffff;font-size:14pt;text-align: center;Shadows And Light&lt;br&gt;Joni Mitchell, Jaco Pastorius, Don Alias, Pat Metheny, Michael Brecker (1979) 
+&gt;&gt;}}}
+which produces:
+&lt;&lt;gradient horiz #000000 #660000 #aa2222&gt;&gt;color:#ffffff;font-size:14pt;text-align: center;Shadows And Light&lt;br&gt;Joni Mitchell, Jaco Pastorius, Don Alias, Pat Metheny, Michael Brecker (1979) 
+&gt;&gt;
+</pre>
+</tiddler>
+<tiddler tags="help" title="Help on tiddler macro" modified="20101201100819" modifier="giewiki" version="0"><pre>The tidder macro will insert the contents of another tiddler into the current tiddler; so typing &quot;&lt;&lt;tiddler TiddlerTitle&gt;&gt;&quot; will insert the contents of TiddlerTitle, into the current Tiddler.  This is called [[transclusion]].  It is also sometimes called a &quot;template&quot; (not to be confused with TiddlyWiki's [[HTML Templates]] for page layout), especially if used with variables.
+!!!Example
+You have a tiddler called TiddlerOne, with the contents:
+ {{{This is Tiddler One!}}}
+
+You create a second tiddler with the contents:
+{{{This is Tiddler Two!  Here's what it says on Tiddler One:  &quot;&lt;&lt;tiddler TiddlerOne&gt;&gt;&quot;}}}
+
+When you're done editing, this new tiddler will read:
+
+This is Tiddler Two!  Here's what it says on Tiddler One:  &quot;&lt;&lt;tiddler TiddlerOne&gt;&gt;&quot;
+!!!Example with variable
+You can also add custom content to a transcluded tiddler with one or more variables (called $1, $2, $3, etc.).
+
+In this example, TiddlerThree has the contents:
+ Hello!  My name is $1.
+You create a second tiddler, adding &quot;with:&quot;, followed by the value of the variable.  (If there's more than one variable, each value is separated by a space; values with spaces should be enclosed in quotes or double square brackets):
+ {{{&lt;&lt;tiddler TiddlerThree with:&quot;Poul Staugaard&quot;&gt;&gt;}}}
+
+When you're done editing, this new tiddler will read (//edit this tiddler to check that this is indeed what is happening here//):
+ &lt;&lt;tiddler TiddlerThree with:&quot;Poul Staugaard&quot;&gt;&gt;
+</pre></tiddler>
+<tiddler tags="help" title="TiddlerThree" modified="20101201100819" modifier="giewiki" version="0"><pre> Hello!  My name is $1.</pre></tiddler>
+</tiddlers>

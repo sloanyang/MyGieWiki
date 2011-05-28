@@ -230,10 +230,6 @@ config.macros = {
 		label: "permaview",
 		prompt: "Link to an URL that retrieves all the currently displayed tiddlers"
 	},
-    pageProperties: {
-		label: "page properties",
-		prompt: "Edit page properties"
-    },
     comments: {
         listLabel: "%0 comments",
         listPrompt: "List comments",
@@ -246,10 +242,6 @@ config.macros = {
         addMessagePrompt: "message to author",
         addNoteLabel: "add note",
         addNotePrompt: "add personal note"
-    },
-    deletePage: {
-		label:  "Delete",
-		prompt: "Delete this page"
     },
     slider: {},
     option: {},
@@ -526,7 +518,7 @@ config.shadowTiddlers = {
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
-    SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<pageProperties>><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
+    SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~More" "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
@@ -1935,15 +1927,6 @@ config.macros.permaview.onClick = function(e)
 	return false;
 };
 
-config.macros.pageProperties.handler = function(place) {
-	if (config.access == 'admin' && readOnly) // if !readOnly, it's in the editing menu
-		createTiddlyButton(place, this.label, this.prompt, this.onClick);
-};
-
-config.macros.pageProperties.onClick = function(e) {
-    story.displayTiddler(null,'PageProperties');
-};
-
 config.macros.comments.addToolbar = function(cmc,ced,tiddler) {
 	if (tiddler.comments)
 		var ccb = createTiddlyButton(ced, cmc.listLabel.format([tiddler.comments]), cmc.listPrompt, cmc.onListClick);
@@ -2969,15 +2952,31 @@ function TryGetTiddler(title) {
 	if (config.NoSuchTiddlers.contains(title))
 		return null;
 	st = http.getTiddler({'title': title});
-	if (st && st.success) {
-		var t = new Tiddler();
-		t.assign(st.title, st.text, st.modifier,
-			Date.convertFromYYYYMMDDHHMM(st.modified), st.tags,
-			Date.convertFromYYYYMMDDHHMM(st.created),
-			null, parseInt(st.version));
-		t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewTemplate;
-		store.addTiddler(t);
-		return t;
+	if (st && st.Success) {
+		var keeper = function(st) {
+			var t = new Tiddler();
+			t.assign(st.title, st.text, st.modifier,
+				Date.convertFromYYYYMMDDHHMM(st.modified), st.tags,
+				Date.convertFromYYYYMMDDHHMM(st.created),
+				null, parseInt(st.version));
+			t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewTemplate;
+			store.addTiddler(t);
+			if (config.NoSuchTiddlers.contains(st.title))
+				delete config.NoSuchTiddlers[st.title];
+			return t;
+		};
+		if (st.tiddlers) {
+			var rt = null;
+			for (var i = 0; i < st.tiddlers.length; i++)
+			{
+				var nt = keeper(st.tiddlers[i]);
+				if (nt.title == title)
+					rt = nt;
+			}
+			return rt;
+		}
+		else
+			return keeper(st);
 	}
 	else
 		config.NoSuchTiddlers.push(title);
@@ -3205,7 +3204,6 @@ config.commands.help.handlePopup = function(popup, title) {
 	for (var i = 0; i < this.topics.length; i++) {
 		var pme = createTiddlyElement(createTiddlyElement(popup, "li"), "a",null,null,this.topics[i],{'href':'javascript:;'} );
 		pme.onclick = function(ev) {
-			debugger;
 			var t = resolveTarget(ev || window.event);
 			story.displayTiddler(null,"Help On " + t.innerText);
 		};
@@ -5350,7 +5348,7 @@ function getTiddlyLinkInfo(title, currClasses) {
     classes.pushUnique("tiddlyLink");
     var tiddler = store.fetchTiddler(title);
     var subTitle;
-    if (tiddler && tiddler.id) {
+    if (tiddler) { //  && tiddler.id ???
         subTitle = tiddler.getSubtitle();
         classes.pushUnique("tiddlyLinkExisting");
         classes.remove("tiddlyLinkNonExisting");
@@ -8835,6 +8833,13 @@ config.macros.importTiddlerStatus = {
 			if (n == 0)
 				wikify(' (none)', place);
 		}
+	}
+};
+
+config.macros.giewiki = {
+	handler: function(place, macroName, params) {
+		var a = createExternalLink(place, "http://giewiki.appspot.com", true);
+		createTiddlyText(a, params[1] || "giewiki");
 	}
 };
 
