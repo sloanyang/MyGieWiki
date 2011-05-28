@@ -26,7 +26,7 @@ This list of macros may not be complete, as plug-ins (like giewiki's youtube plu
 |closeAll|Makes a button for closing all tiddlers in the story column|
 |permaview|Produces a button for representing the currently displayed tiddlers into the browser address bar|
 |comments|Produces a toolbar for comment access and creation relative to the tiddler that contains it|
-|slider|Produces a panel that slides open/closed when clicked&lt;br&gt;http://tiddlywiki.com/#%5B%5Bslider%20macro%5D%5D|
+|[[slider|Help on slider macro]]|Produces a panel that slides open/closed when clicked|
 |option|Part of the options panel implementation|
 |options|Part of the advanced options dialog implementation|
 |newTiddler|Produces a button to allow creatin a new tiddler|
@@ -82,4 +82,21 @@ When you're done editing, this new tiddler will read (//edit this tiddler to che
  &lt;&lt;tiddler TiddlerThree with:&quot;Poul Staugaard&quot;&gt;&gt;
 </pre></tiddler>
 <tiddler tags="help" title="TiddlerThree" modified="20101201100819" modifier="giewiki" version="0"><pre> Hello!  My name is $1.</pre></tiddler>
+<tiddler tags="help" title="Help on slider macro" modified="20101201100819" modifier="giewiki" version="0"><pre>The slider macro allows embedding tiddlers within another tiddler, with the option to toggle the visibility of the [[transclusion|transcluded]] content:
+{{{
+&lt;&lt;slider cookie tiddler label tooltip&gt;&gt;
+}}}
+* {{{cookie}}}: variable to save the state of the slider (e.g. {{{chkFooSlider}}})
+* {{{tiddler}}}: name of the tiddler to include in the slider
+* {{{label}}}: title text of the slider
+* {{{tooltip}}}: tooltip text of the slider
+
+For example: 
+{{{
+&lt;&lt;slider chkTestSlider [[OptionsPanel]] &quot;Options&quot; &quot;Options panel&quot;&gt;&gt;
+}}}
+which produces this:
+
+&lt;&lt;slider chkTestSlider [[OptionsPanel]] &quot;Options&quot; &quot;Options panel&quot;&gt;&gt;
+</pre></tiddler>
 </tiddlers>
