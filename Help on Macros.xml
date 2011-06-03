@@ -1,22 +1,25 @@
 <?xml version="1.0" ?>
 <tiddlers>
 <tiddler tags="help" title="Help On Macros" modified="20101201100819" modifier="giewiki" version="0"><pre>
-Macros are a general extensibility mechanism. In general, they are applied using the syntax
+Macros let you insert special content. In general, they are applied using the syntax
 {{{
 	&lt;&lt;macroName parameters&gt;&gt;
 }}}
-where the relevant parameters are defined by each macro. Multiple parameters are separated by spaces. If a parameter value includes spaces, enclose it in quotes.
+where the relevant parameters are defined by each macro. Multiple parameters are separated by spaces. If a parameter value includes spaces, &quot;enclose it in quotes&quot;.
 In addition to the macros defined by TiddlyWiki, giewiki adds a set of it's own, for various purposes.
-Documentation for the macros are still under way, but you may be able to find what you need to know through the links to giewiki below. 
 This list of macros may not be complete, as plug-ins (like giewiki's youtube plugin) tend to define macros of their own.
-
+!!!General purpose macros
+|!macro name|!purpose|
+|[[tiddler|Help on tiddler macro]]|Renders the text of a specified tiddler at the point where is is applied|
+|[[gradient|Help on gradient macro]]|Renders text on a background of a gradient range of colors|
+|[[slider|Help on slider macro]]|Produces a panel that slides open/closed when clicked|
+|tabs|Create as set of tabs (such as the SideBarTabs)|
+!!!Special purpose macros
 |!macro name|!purpose|
 |today|Formats and renders today's date using an optional format string parameters|
 |version|Shows the version of TiddlyWiki being used|
 |giewikiversion|Shows the version of giewiki that you are using|
 |search|Displays a search box|
-|[[tiddler|Help on tiddler macro]]|Renders the text of a specified tiddler at the point where is is applied|
-|[[gradient|Help on gradient macro]]|Renders text on a background of a gradient range of colors|
 |tag|Creates a button that lists all the tiddlers with a specific tag|
 |tags|Part of the tagging facility|
 |tagging|Part of the tagging facility|
@@ -26,12 +29,10 @@ This list of macros may not be complete, as plug-ins (like giewiki's youtube plu
 |closeAll|Makes a button for closing all tiddlers in the story column|
 |permaview|Produces a button for representing the currently displayed tiddlers into the browser address bar|
 |comments|Produces a toolbar for comment access and creation relative to the tiddler that contains it|
-|[[slider|Help on slider macro]]|Produces a panel that slides open/closed when clicked|
 |option|Part of the options panel implementation|
 |options|Part of the advanced options dialog implementation|
 |newTiddler|Produces a button to allow creatin a new tiddler|
 |newJournal|Similar to newTiddler, but inserting today's date for the title|
-|tabs|Create as set of tabs (such as the SideBarTabs)|
 |message|Renders text retrieved from a named global variable|
 |view|Renders a named field of the containing tiddler (used as part of the ViewTemplate)|
 |edit|Creates an input box initialized with the contents of as specific tiddler (used as part of the EditTemplate)|

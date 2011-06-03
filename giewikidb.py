@@ -245,6 +245,9 @@ class UserProfile(db.Expando):
   tiddler = db.StringProperty("")
   projects = db.StringProperty("")
   txtUserName = db.StringProperty() # penname, using TW's term
+  clipTiddler = db.ReferenceProperty(Tiddler)
+  clipDomain = db.StringProperty("")
+
   def Projects(self,sub):
 	if sub != None:
 		namespace_manager.set_namespace(None)

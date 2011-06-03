@@ -333,6 +333,10 @@ config.commands = {
         readOnlyText: "unlock",
         readOnlyTooltip: "Allow editing tiddler"
     },
+	cutTiddler: {
+		text: "cut",
+		tooltip: "Move to clipboard"
+	},
     copyTiddler: { 
         text: "copy",
         tooltip: "Copy this tiddler"
@@ -409,7 +413,7 @@ config.commands = {
 		text: "help",
 		tooltip: "Display formatting help",
 		topics: [
-			"Font Styles", "Markup", "CSS Formatting", "Tables", "Macros"]
+			"Font Styles", "Links", "Markup", "CSS Formatting", "Tables", "Macros"]
 	},
 	syncing: { type: "popup" },
 	fields: {
@@ -514,7 +518,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler copyTiddler cutTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes help|',
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -2948,36 +2952,44 @@ config.commands.editTiddler.copy = function(tsource, title) {
 	t.readOnly = true;
 }
 
+function KeepTiddlers(st) {
+	var keeper = function(st) {
+		var t = new Tiddler();
+		t.assign(st.title, st.text, st.modifier,
+			Date.convertFromYYYYMMDDHHMM(st.modified), st.tags,
+			Date.convertFromYYYYMMDDHHMM(st.created),
+			null, parseInt(st.version));
+		t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewTemplate;
+		t.id = st.id;
+		for (a in st) {
+			if (t[a] === undefined && t.fields[a] === undefined)
+				t.fields[a] = st[a];
+		}
+		store.addTiddler(t);
+		if (config.NoSuchTiddlers.contains(st.title))
+			delete config.NoSuchTiddlers[st.title];
+		return t;
+	};
+	if (st.tiddlers) {
+		var rt = null;
+		for (var i = 0; i < st.tiddlers.length; i++)
+		{
+			var nt = keeper(st.tiddlers[i]);
+			if (nt.title == title)
+				rt = nt;
+		}
+		return rt;
+	}
+	else
+		return keeper(st);
+}
+
 function TryGetTiddler(title) {
 	if (config.NoSuchTiddlers.contains(title))
 		return null;
 	st = http.getTiddler({'title': title});
-	if (st && st.Success) {
-		var keeper = function(st) {
-			var t = new Tiddler();
-			t.assign(st.title, st.text, st.modifier,
-				Date.convertFromYYYYMMDDHHMM(st.modified), st.tags,
-				Date.convertFromYYYYMMDDHHMM(st.created),
-				null, parseInt(st.version));
-			t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewTemplate;
-			store.addTiddler(t);
-			if (config.NoSuchTiddlers.contains(st.title))
-				delete config.NoSuchTiddlers[st.title];
-			return t;
-		};
-		if (st.tiddlers) {
-			var rt = null;
-			for (var i = 0; i < st.tiddlers.length; i++)
-			{
-				var nt = keeper(st.tiddlers[i]);
-				if (nt.title == title)
-					rt = nt;
-			}
-			return rt;
-		}
-		else
-			return keeper(st);
-	}
+	if (st && st.Success)
+		return KeepTiddlers(st);
 	else
 		config.NoSuchTiddlers.push(title);
 	return null;
@@ -3059,17 +3071,34 @@ config.commands.lockTiddler.handler = function(event, src, title) {
 	}
 };
 
-config.commands.excludeTiddler.isEnabled = config.commands.copyTiddler.isEnabled = function(tdlr) {
+config.commands.excludeTiddler.isEnabled = function(tdlr) {
 	return tdlr.from;
 };
 
-config.commands.copyTiddler.handler = function(event, src, title) {
+config.commands.cutTiddler.handler = function(event, src, title, cbaction) {
 	var t = store.getTiddler(title);
-	t.from = null;
-	t.id = null;
-	t.readOnly = false;
-    story.displayTiddler(null, title, DEFAULT_EDIT_TEMPLATE, false, null, null);
-    story.focusTiddler(title, config.options.txtEditorFocus || "text");
+	var ctr = http.clipboard({ action: cbaction || 'cut', tiddler: t.id }); // copy or cut
+	if (ctr.Success) {
+		if (ctr.act == 'cut') {
+			delete t.id;
+			store.removeTiddler(title);
+			story.closeTiddler(title, true);
+		}
+		displayMessage("The tiddler '" + title + "'<br>was " + ctr.action + " to your clipboard.");
+		wikify('<script label="Where">wikify("<<tiddler SiteMap>>",place);\n</script> would you like to paste it?',getMessageDiv());
+	}
+};
+
+config.commands.cutTiddler.isEnabled =  function(tlr) {
+	return readOnly == false && tlr.id && tlr.from === undefined;
+};
+
+config.commands.copyTiddler.handler = function(event, src, title) {
+	return config.commands.cutTiddler.handler(event,src,title,'copy');
+};
+
+config.commands.copyTiddler.isEnabled =  function(tlr) {
+	return tlr.id && tlr.from === undefined;
 };
 
 config.commands.cancelTiddler.handler = function(event, src, title) {
@@ -8302,6 +8331,23 @@ config.macros.fileList = {
 		for (var i = 0; i < files.length; i++) {
 			createTiddlyElement(place,"a",null,null,files[i],{ href: files[i] });
 			createTiddlyElement(place,"br");
+		}
+	}
+};
+
+config.macros.pasteTiddler = {
+	handler: function(place)
+	{
+		var btn = createTiddlyButton(place, "paste tiddler", "Insert tiddler from clipboard", this.onClickPaste, null, null, 'v');
+	},
+	onClickPaste: function()
+	{
+		var ptr = http.clipboard({ action: 'paste' });
+		if (ptr.Success) {
+			KeepTiddlers(ptr);
+			store.notify(ptr.title,true);
+			story.displayTiddler(null, ptr.title);
+			story.focusTiddler(ptr.title, "text");
 		}
 	}
 };

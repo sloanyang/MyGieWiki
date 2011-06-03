@@ -3,17 +3,19 @@
 	<storeArea>
 		<div title="PageSetup" viewTemplate="ViewOnlyTemplate" tags="excludeLists">
 			<pre>
-				Before you can start editing your new giewiki, you should examine,  possibly alter, and save various data for the root page. This is done via the Page properties &lt;&lt;pageProperties&gt;&gt; dialog:&lt;br&gt;
+				''Before'' you can start editing your new giewiki, you should examine,  possibly alter, and save various data for the root page. You do this via the Page properties dialog (normally part of the page setup, accessible via the edit menu on the right):&lt;br&gt;
 				&lt;&lt;tabs chkPageSetup
 				'PageProperties' 'Title, access, template/includes' 'js;editTiddlerHere;PageProperties;SpecialViewTemplate'
 				&gt;&gt;
 				The data is:
-* ''Title &amp; Subtitle''&lt;br&gt;What is displayed at the top of the page and in the SiteMap, etc.
+* ''Title &amp; Subtitle''&lt;br&gt;What is displayed at the top of the page and in the ~SiteMap, etc.
 * ''Owner''&lt;br&gt;Who controls the properties of this page. This would be your PenName, which initially is the same as your login name, but you can change it in your [[User Profile]].
 * ''Groups''&lt;br&gt;You may define a group (or multiple groups) of people that should have elevated access to the page.
 * ''Access permissions''&lt;br&gt;The level of access that various user classes should have to this page.
-* ''Template / Library includes''&lt;br&gt;Shows any page template or library resources that you include into this page (defined later).
-* ''Page tags''&lt;br&gt;Optional. When given, these will show up in the SiteMap (except ''hidden'' which will prevent a page from being included in the SiteMap).
+* ''Template''&lt;br&gt;Lets you select a template (other than ''normal'') for how the page should look and behave.
+* ''Tiddler libraries''&lt;br&gt;Library resources that you may include into the page.
+* ''External scripts'':&lt;br&gt;For advanced applications.
+* ''Page tags''&lt;br&gt;Optional. When given, these will show up in the ~SiteMap (except ''hidden'' which will prevent a page from being included in the SiteMap).
 * ''Read-only options''&lt;br&gt;Various aspects of how the page looks to someone who does not have edit access:
 ** ''Prior versions''&lt;br&gt;Allows the reader access to prior versions of a tiddler, if they are preserved.
 ** ''"view" button''&lt;br&gt;Allows the reader to see the "raw" text of a tiddler, including it's markup.

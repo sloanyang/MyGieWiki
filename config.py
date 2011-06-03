@@ -35,6 +35,7 @@ tiddlerVersion\n\
 tiddlerDiff\n\
 getLoginUrl\n\
 pageProperties\n\
+clipboard\n\
 userProfile\n\
 getUserInfo\n\
 addProject\n\

@@ -273,7 +273,8 @@ def presentTiddler(t,withKey):
 		'created': t.created.strftime('%Y%m%d%H%M%S'),
 		'modifier': userNameOrAddress(t.author,t.author_ip),
 		'modified': t.modified.strftime('%Y%m%d%H%M%S'),
-		'version': t.version
+		'version': t.version,
+		'vercnt': t.vercnt
 		}
 	if hasattr(t,'viewTemplate'):
 		rp['viewTemplate'] = t.viewTemplate
@@ -1329,6 +1330,88 @@ class MainPage(webapp.RequestHandler):
 		elif self.path.startswith('/_templates/'):
 			reply['message'] = "NB: In use, template content is normally found only under the 'fromTemplate' tag.<br>Except if you apply the page tag 'include'."
 		self.reply(reply)
+
+  def clipboard(self):
+	cu = users.get_current_user()
+	if cu == None:
+		return self.fail('Not logged in')
+	act = self.request.get('action')
+	page = self.CurrentPage()
+	if act == u'copy' or act == u'cut':
+		if self.subdomain != None:
+			namespace_manager.set_namespace(None)
+		u = UserProfile.all().filter('user', cu).get()
+		if u == None:
+			u = UserProfile(user = cu, txtUserName = cu.nickname()) # new record
+			u.put()
+			
+		if self.subdomain != None:
+			namespace_manager.set_namespace(self.subdomain)
+
+		if not ReadAccessToPage(page,self.user):
+			return self.fail("No access")
+		tlrid = self.request.get('tiddler')
+		at = Tiddler.all().filter('id',tlrid).filter('current',True).get()
+		if at == None:
+			return self.fail("No such tiddler")
+		if act == u'cut' and at.locked:
+			return self.fail("Tiddlers is locked")
+
+		setattr(u,'clipTiddler',at)
+		setattr(u,'clipDomain',self.subdomain)
+		action = "copied"
+		u.put()
+		if act == 'cut':
+			access = AccessToPage(page,self.user)
+			if not access in ['admin', 'all']:
+				pass ## return self.fail("Tiddler was copied (not cut)")
+				act = 'copy'
+			else:
+				at.current = False
+				at.put()
+				action = "moved"
+		self.reply({ 'action' : action, 'act': act } )
+	elif act == u'paste':
+		if self.subdomain != None:
+			namespace_manager.set_namespace(None) # the user profile is shared between (sub-)domains.
+		u = UserProfile.all().filter('user', cu).get()
+		if u == None:
+			return self.fail("No user profile found")
+		if hasattr(u,'clipTiddler'):
+			ct = getattr(u,'clipTiddler')
+			cd = getattr(u,'clipDomain')
+			cxt = Tiddler.all().filter('page', self.path).filter('title',ct.title).filter('current', True).get()
+			if not cxt is None:
+				return self.fail("A tiddler named " + ct.title + "<br>already exists on this page!");
+			if cd != self.subdomain: # we need to copy/move it
+				self.fail("Moving between domains is not yet supported")
+			else:
+				namespace_manager.set_namespace(self.subdomain)
+				if ct.current: # (not cut / already pasted)
+					cpt = Tiddler()
+					for fn,atr in ct.__dict__['_entity'].iteritems():
+						# clone tiddler
+						if fn == 'id':
+							cpt.id = unicode(uuid.uuid4())
+						elif fn == 'vercnt':
+							cpt.vercnt = 1
+						elif fn == 'page':
+							cpt.page = self.path
+						else:
+							setattr(cpt,fn,atr)
+					cpt.put()
+					return self.deliverTiddler(cpt)
+				else:
+					ct.page = self.path
+					ct.current = True
+					ct.put()
+					for t in Tiddler.all().filter('id',ct.id):
+						t.page = self.path
+						t.put()
+					return self.deliverTiddler(ct)
+		self.reply()
+	else:
+		self.fail("invalid action: '" + act + "'")
 
   def saveTemplate(self,page,update=False,tags=''):
 	pt = PageTemplate.all().filter('title',page.title).filter('current',True).get()
