@@ -1338,6 +1338,7 @@ class MainPage(webapp.RequestHandler):
 	act = self.request.get('action')
 	page = self.CurrentPage()
 	if act == u'copy' or act == u'cut':
+		reply = { 'act': act, 'Success': True }
 		if self.subdomain != None:
 			namespace_manager.set_namespace(None)
 		u = UserProfile.all().filter('user', cu).get()
@@ -1356,10 +1357,18 @@ class MainPage(webapp.RequestHandler):
 			return self.fail("No such tiddler")
 		if act == u'cut' and at.locked:
 			return self.fail("Tiddlers is locked")
-
+		try:
+			prct = u.clipTiddler
+			if not prct is None and prct.current == False:
+				setattr(prct,'isRecycled',True)
+				DeletionLog().Log(prct,self.request.remote_addr,"Dropped from clipboard")
+				reply['Message'] = "Tiddler '" + prct.title + "' dropped from the clipboard				 into the recycle bin!"
+				prct.put()
+		except Exception, uhx:
+			pass
 		setattr(u,'clipTiddler',at)
 		setattr(u,'clipDomain',self.subdomain)
-		action = "copied"
+		reply['action'] = "copied"
 		u.put()
 		if act == 'cut':
 			access = AccessToPage(page,self.user)
@@ -1369,8 +1378,11 @@ class MainPage(webapp.RequestHandler):
 			else:
 				at.current = False
 				at.put()
-				action = "moved"
-		self.reply({ 'action' : action, 'act': act } )
+				reply['action'] = "moved"
+				elck = EditLock.all().filter('id',at.id).get()
+				if not elck is None:
+					elck.delete()
+		self.reply(reply)
 	elif act == u'paste':
 		if self.subdomain != None:
 			namespace_manager.set_namespace(None) # the user profile is shared between (sub-)domains.

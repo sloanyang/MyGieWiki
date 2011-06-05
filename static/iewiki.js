@@ -4691,7 +4691,7 @@ Story.prototype.setTiddlerTag = function(title, tag, mode) {
 Story.prototype.closeTiddler = function(title, animate, unused) {
     var tiddlerElem = this.getTiddler(title);
     if (tiddlerElem) {
-        clearMessage();
+        //clearMessage();
         this.scrubTiddler(tiddlerElem);
         if (config.options.chkAnimate && animate && anim && typeof Slider == "function")
             anim.startAnimating(new Slider(tiddlerElem, false, null, "tiddler"));
@@ -7843,8 +7843,12 @@ function SiteMapEntry(place,m,level,dir)
 
 function AddIconPlusLink(place,img,title,url,tags)
 {
-	var li = createTiddlyElement(place,"div");
+	var li = createTiddlyElement(place,"div",null,null,null,{ href: "javascript:;" });
 	li.style.marginLeft = "1.7em";
+	li.onclick = function(ev) {
+		var e = ev || window.event;
+		e.cancelBubble = true;
+	};
 	if (img) {
 		var im = createTiddlyElement(li,"img");
 		li.appendChild(im);
