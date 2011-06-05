@@ -1799,7 +1799,7 @@ class MainPage(webapp.RequestHandler):
 		cnt = 0
 		for t in ts:
 			cnt += 1
-			if t.title in ['DefaultTiddlers','MainMenu','SiteTitle','SiteSubtitle']:
+			if t.title in ['DefaultTiddlers','MainMenu','SiteTitle','SiteSubtitle'] or t.current == False:
 				extra += 1
 			else:
 				rt = xd.add(ta,'tiddler')
