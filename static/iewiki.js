@@ -2031,7 +2031,7 @@ config.macros.comments.repliesMessage = function(n)
 config.macros.comments.addCommentTableRow = function(tbe,className,after,when,who,replies,row,id)
 {
 	var trc = className ? className(row) : (row & 1 ? "oddRow" : "evenRow");
-	var allowEdit = config.options.txtUserName == who && row > 0 && className == config.macros.comments.CclassPicker;
+	var allowEdit = config.options.txtUserName == who && row > 0;
 	var tda = {};
 	var tr = createTiddlyElement(null,"tr",id, trc);
 	if (after) {
@@ -3387,7 +3387,7 @@ Tiddler.prototype.getInheritedFields = function() {
 };
 
 Tiddler.prototype.getComments = function(forceRead,gcr) {
-	if (forceRead || gcr || !this.commentList) {
+	if (forceRead || gcr || !this.commentList || this.commentList.incomplete) {
 		var cs = this.commentList = gcr || http.getComments({tiddlerId: this.id});
 		for (var i = 0; i < cs.length; i++) {
 			if (cs[i].refs === undefined)
@@ -3405,12 +3405,16 @@ Tiddler.prototype.getComments = function(forceRead,gcr) {
 	return this.commentList;
 };
 
-Tiddler.prototype.addComment = function(text,type) {
-    var sr = http.submitComment({ text:text, type:type, tiddler:this.id, version:this.currentVer, receiver: this.modifier });
-    if (sr && sr.Success) {
+Tiddler.prototype.addComment = function (text, type) {
+	var sr = http.submitComment({ text: text, type: type, tiddler: this.id, version: this.currentVer, receiver: this.modifier });
+	if (sr && sr.Success) {
+		if (!this.commentList) {
+			this.commentList = [];
+			this.commentList.incomplete = true;
+		}
 		if (this.commentList)
 			this.commentList.push(sr);
-		var inc = function(a) { return a === undefined ? 1 : a + 1; };
+		var inc = function (a) { return a === undefined ? 1 : a + 1; };
 		switch (type) {
 			case 'C': this.comments = inc(this.comments); break;
 			case 'M': this.messages = inc(this.messages); break;
