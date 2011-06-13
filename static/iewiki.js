@@ -2187,28 +2187,35 @@ config.macros.comments.removeCommentPrompt = function(ev) {
     return p;
 };
 
-config.macros.comments.onSaveReplyClick = function(ev) {
-    var e = ev || window.event;
-    var target = resolveTarget(e);
+config.macros.comments.onSaveReplyClick = function (ev) {
+	var e = ev || window.event;
+	var target = resolveTarget(e);
 	var cid = target.id;
-    var tidlr = story.findContainingTiddler(target);
-    var tna = tidlr.getAttribute("tiddler");
-    var tnv = target.parentNode.parentNode.childNodes[1].value;
-    var t = store.getTiddler(tna);
+	var tidlr = story.findContainingTiddler(target);
+	var tna = tidlr.getAttribute("tiddler");
+	var tnv = target.parentNode.parentNode.childNodes[1].value;
+	var t = store.getTiddler(tna);
 	var td = config.macros.comments.removeCommentPrompt(ev);
 	var tr = td.parentNode;
-    var sr = http.submitComment({ text:tnv, tiddler:t.id, version:t.currentVer, ref: td.id });
-    if (sr.Success) {
+	var sr = http.submitComment({ text: tnv, tiddler: t.id, version: t.currentVer, ref: td.id });
+	if (sr.Success) {
+		CommentList[t.title][sr.id] = sr;
+		tr.setAttribute('id', sr.id);
 		tr.firstChild.firstChild.innerText = config.macros.comments.formatDateTime(sr.created);
+		var rc2 = tr.firstChild.nextSibling;
+		createTiddlyElement(rc2, "br");
+		var nobr = createTiddlyElement(rc2, 'nobr');
+		createTiddlyButton(nobr, "edit", "edit reply", config.macros.comments.editHandler, 'btnCommentTool');
 		tr.removeChild(td);
 		var cel = document.getElementById(cid);
-		createTiddlyElement(tr,"td",null,"replyTD",tnv);
+		createTiddlyElement(tr, "td", null, "commentText", tnv);
+
 		var tcl = t.commentList;
 		for (var i = 0; i < tcl.length; i++) {
 			if (tcl[i].created.startsWith(td.id)) {
 				tcl[i].refs++;
 				var mea = [];
-				if (getElementsByClassName('btnReplies',null,cel,mea))
+				if (getElementsByClassName('btnReplies', null, cel, mea))
 					mea[0].innerText = config.macros.comments.repliesMessage(tcl[i].refs);
 				break;
 			}
