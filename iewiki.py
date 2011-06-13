@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.11.0
+# ver.:	1.12.0
 
 import cgi
 import codecs
@@ -33,7 +33,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '2.11'
+giewikiVersion = '2.12'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:

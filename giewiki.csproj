@@ -69,6 +69,7 @@
     <Content Include="config.py" />
     <Content Include="GiewikiAdaptor.xml" />
     <Content Include="giewikidb.py" />
+    <Content Include="Help On CSS Formatting.xml" />
     <Content Include="Help On Font Styles.xml" />
     <Content Include="Help on Links.xml" />
     <Content Include="Help on Macros.xml" />
