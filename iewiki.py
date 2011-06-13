@@ -1118,7 +1118,8 @@ class MainPage(webapp.RequestHandler):
 			tls.messages = '|'
 		tls.messages = tls.messages + ani.receiver.nickname() + '|'
 	elif t == "N":
-		tls.notes = tls.notes + '|' + ani.author.nickname() if tls.notes != None else ani.author.nickname()
+		au = self.request.remote_addr if ani.author is None else ani.author.nickname()
+		tls.notes = tls.notes + '|' + au if tls.notes != None else au
 		
 	tls.save()
 	self.reply({'Success': True, 
@@ -1561,17 +1562,10 @@ class MainPage(webapp.RequestHandler):
 		self.fail("Page already exists: " + page.path)
 		
   def getLoginUrl(self):
-	# LogEvent("getLoginUrl", self.request.get("path"))
-	self.initXmlResponse()
-	xd = xml.dom.minidom.Document()
-	tv = xd.createElement('LoginUrl')
-	if users.get_current_user():
-		v = users.create_logout_url("/?method=LoginDone")
+	if users.get_current_user() is None:
+		self.reply( {"Url": users.create_login_url(self.request.get("path")), "Success": True })
 	else:
-		v = users.create_login_url("/?method=LoginDone&path=" + self.request.get("path"))
-	tv.appendChild(xd.createTextNode(v))
-	xd.appendChild(tv)
-	self.response.out.write(xd.toxml())
+		self.reply( {"Url": users.create_logout_url(self.request.get("path")), "Success": True })
 
   def deletePage(self):
 	path = self.path

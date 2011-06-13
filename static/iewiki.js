@@ -8079,15 +8079,10 @@ function insideTiddler(e,tn) {
 }
 
 config.macros.loginDialog = {
-	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
-	{
-		if (insideTiddler(place,'PageSetup'))
+	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
+		if (insideTiddler(place, 'PageSetup'))
 			return;
-		var fse = createTiddlyElement(place,'fieldset')
-		createTiddlyElement(fse,'legend',null,null,"Login");
-		config.macros.iFrame.handler(fse,macroName,
-			[http.getLoginUrl({path: window.location.pathname}), 600],
-			wikifier,"",tiddler)
+		window.location = http.getLoginUrl({ path: window.location.pathname }).Url;
 	}
 };
 
@@ -8111,7 +8106,7 @@ config.macros.login = {
 };
 
 config.macros.logout = {
-	handler: function(place,macroName,params,wikifier,paramString,tiddler) {
+	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
 		var label = "logout";
 		createTiddlyButton(place, label, label, config.macros.login.displayLoginDialog);
 	}
@@ -8119,10 +8114,10 @@ config.macros.logout = {
 
 
 config.macros.userName = {
-    handler: function(place,macroName,params,wikifier,paramString,tiddler) 
-    {
-        place.appendChild(document.createTextNode(config.options.txtUserName))
-    }
+	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
+	{
+		place.appendChild(document.createTextNode(config.options.txtUserName))
+	}
 }
 
 function onLogin()
