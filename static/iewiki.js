@@ -1961,18 +1961,30 @@ function PreNextCommentRow(tre) {
 	return tre;
 }
 
-config.macros.comments.showReplies = function(ev) {
-    var target = resolveTarget(ev || window.event);
+config.macros.comments.showReplies = function (ev) {
+	var target = resolveTarget(ev || window.event);
 	var tde = target.parentNode;
-    var tr = tde.parentNode.parentNode;
-    var rowClass = tr.className;
-    var ndt = tr.firstChild.firstChild.firstChild.nodeValue;
-    var tidlr = story.findContainingTiddler(target);
-    var t = store.getTiddler(tidlr.getAttribute("tiddler"));
-    config.macros.comments.listComments(tidlr, t.getComments(), true, 
-		function() { return rowClass },
-		function(c) { return c.ref == ndt },
-		PreNextCommentRow(tr));
+	var tr = tde.parentNode.parentNode;
+	var ndt = tr.firstChild.firstChild.firstChild.nodeValue;
+	if (target.getAttribute('shown') == 'true') {
+		var nri = null;
+		for (var ri = tr.nextSibling; ri; ri = nri) {
+			nri = ri.nextSibling;
+			if (ri.getAttribute('ref') == ndt)
+				ri.parentNode.removeChild(ri);
+		}
+		target.setAttribute('shown', 'false');
+	}
+	else {
+		var rowClass = tr.className;
+		var tidlr = story.findContainingTiddler(target);
+		var t = store.getTiddler(tidlr.getAttribute("tiddler"));
+		config.macros.comments.listComments(tidlr, t.getComments(), true,
+			function () { return rowClass },
+			function (c) { return c.ref == ndt },
+			PreNextCommentRow(tr));
+		target.setAttribute('shown', 'true');
+	}
 }
 
 config.macros.comments.CclassPicker = function(r) { return r & 1 ? "oddRowComment":"evenRowComment" };
@@ -2028,37 +2040,38 @@ config.macros.comments.repliesMessage = function(n)
 	return "";
 };
 
-config.macros.comments.addCommentTableRow = function(tbe,className,after,when,who,replies,row,id)
-{
+config.macros.comments.addCommentTableRow = function (tbe, className, after, when, who, replies, row, id, ref) {
 	var trc = className ? className(row) : (row & 1 ? "oddRow" : "evenRow");
 	var allowEdit = config.options.txtUserName == who && row > 0;
 	var tda = {};
-	var tr = createTiddlyElement(null,"tr",id, trc);
+	var tr = createTiddlyElement(null, "tr", id, trc);
 	if (after) {
-		insertAfter(after,tr);
+		insertAfter(after, tr);
 		var pie = parseInt(after.getAttribute("sub")) + 1;
 	}
 	else {
 		tbe.appendChild(tr);
 		var pie = 0;
 	}
-	tr.setAttribute("sub",pie);
-	var tdd = createTiddlyElement(tr,"td",null,"dateColumn",null,tda);
-	var led = createTiddlyButton(tdd,config.macros.comments.formatDateTime(when),"Click to reply",config.macros.comments.replyClick,"dateOfComment");
-	tdd.setAttribute('timestamp',when);
-	var aue = createTiddlyElement(tr,"td",null,null,who,tda);
+	if (ref)
+		tr.setAttribute('ref', ref);
+	tr.setAttribute('sub', pie);
+	var tdd = createTiddlyElement(tr, "td", null, "dateColumn", null, tda);
+	var led = createTiddlyButton(tdd, config.macros.comments.formatDateTime(when), "Click to reply", config.macros.comments.replyClick, "dateOfComment");
+	tdd.setAttribute('timestamp', when);
+	var aue = createTiddlyElement(tr, "td", null, null, who, tda);
 	if (pie)
 		aue.style.paddingLeft = pie + "em";
-		createTiddlyElement(aue,"br");
-		var nobr = createTiddlyElement(aue,'nobr');
-		createTiddlyButton(nobr,
+	createTiddlyElement(aue, "br");
+	var nobr = createTiddlyElement(aue, 'nobr');
+	createTiddlyButton(nobr,
 			config.macros.comments.repliesMessage(replies),
-			"Show replies",config.macros.comments.showReplies,'btnReplies');
-		if (allowEdit) {
-			createTiddlyButton(nobr, "edit", "edit comment", config.macros.comments.editHandler, 'btnCommentTool');
-			createTiddlyButton(nobr, "delete", "delete this", config.macros.comments.purgeHandler, 'btnCommentTool');
-		}
-	var tde = createTiddlyElement(tr,'td',null,'commentText');
+			"Show replies", config.macros.comments.showReplies, 'btnReplies');
+	if (allowEdit) {
+		createTiddlyButton(nobr, "edit", "edit comment", config.macros.comments.editHandler, 'btnCommentTool');
+		createTiddlyButton(nobr, "delete", "delete this", config.macros.comments.purgeHandler, 'btnCommentTool');
+	}
+	var tde = createTiddlyElement(tr, 'td', null, 'commentText');
 	if (pie)
 		tde.style.paddingLeft = pie + "em";
 	return tde;
@@ -2082,7 +2095,7 @@ config.macros.comments.listComments = function(where,list,preserve,className,fil
 		if (typeof(aco) == 'object') {
 			CommentList[title][aco.id] = aco;
 			if (filter(aco)) {
-				var tde = config.macros.comments.addCommentTableRow(tbe, className, after, aco.created, aco.author, aco.refs, ++rc, aco.id);
+				var tde = config.macros.comments.addCommentTableRow(tbe, className, after, aco.created, aco.author, aco.refs, ++rc, aco.id, aco.ref);
 				wikify(aco.text,tde);
 			}
 		}
