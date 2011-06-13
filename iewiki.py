@@ -287,17 +287,17 @@ def initHist(shadowTitle):
 	versions = '|When|Who|V#|Title|\n'
 	if shadowTitle != None: # self.request.get("shadow") == '1':
 		versions += "|>|Default content|<<diff 0 " + shadowTitle + '>>|<<revision "' + shadowTitle + '" 0>>|\n'
-	return versions;
+	return versions
   
 def getTiddlerVersions(xd,tid,startFrom):
 	text = u""
 	for tlr in Tiddler.all().filter('id', tid).order('version'):
 		if text == "":
-			text = initHist(tlr.title if startFrom == 0 else None);
+			text = initHist(tlr.title if startFrom == 0 else None)
 		if tlr.version >= startFrom:
 			modified = tlr.modified
 			if hasattr(tlr,'reverted') and tlr.reverted != None:
-				modified = tlr.reverted;
+				modified = tlr.reverted
 			text += u'|' + BoldCurrent(tlr) + modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
 				 + u'|<<author "' + getAuthor(tlr) + u'">>' \
 				 + u'|<<diff ' + str(tlr.version) + u' ' + tid + u'>>' \
@@ -325,7 +325,7 @@ def getAuthor(t):
 	if hasattr(t,'author_ip') and t.author_ip != None and re.match('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',t.author_ip) == None:
 		return t.author_ip # It's not an IP address
 	elif t.author != None:
-		return unicode(t.author.nickname());
+		return unicode(t.author.nickname())
 	elif t.author_ip != None:
 		return unicode(t.author_ip)
 	else:
@@ -448,14 +448,14 @@ def TiddlerFromXml(te,path):
 
 class XmlDocument(xml.dom.minidom.Document):
 	def add(self,parent,name,text=None,attrs=None):
-		e = self.createElement(name);
-		parent.appendChild(e);
+		e = self.createElement(name)
+		parent.appendChild(e)
 		if attrs != None:
 			for n,v in attrs.iteritems():
 				e.setAttribute(n,unicode(v))
 		if text != None:
 			e.appendChild(self.createTextNode(unicode(text)))
-		return e;
+		return e
 	def addArrayOfObjects(self,name,parent=None):
 		if parent == None:
 			parent = self
@@ -726,7 +726,7 @@ class MainPage(webapp.RequestHandler):
 	for atl in tls:
 		if atl.version >= tlr.version:
 			tlr.version = atl.version + 1
-			tlr.comments = atl.comments;
+			tlr.comments = atl.comments
 		if atl.current:
 			tlr.vercnt = atl.versionCount() + 1
 			atl.current = False
@@ -1060,13 +1060,13 @@ class MainPage(webapp.RequestHandler):
 		da = []
 		for t in DeletionLog.all():
 			if t.page.startswith(self.request.path):
-				da.append({'title': t.tiddler.title, 'page': t.page, 'key': t.tiddler.key(), 'by': t.deletedByUser, 'at': t.deletedAt, 'comment': t.deletionComment });
+				da.append({'title': t.tiddler.title, 'page': t.page, 'key': t.tiddler.key(), 'by': t.deletedByUser, 'at': t.deletedAt, 'comment': t.deletionComment })
 		return self.reply({ 'tiddlers': da })
 	rescue = self.request.get('rescue')
 	if rescue:
 		ctlr = Tiddler.get(rescue)
 		if ctlr is None:
-			return self.fail("Tiddler not found: " + ctlr);
+			return self.fail("Tiddler not found: " + ctlr)
 		if ctlr.current:
 			return self.fail("Already restored")
 		ctlr.current = True
@@ -1084,7 +1084,7 @@ class MainPage(webapp.RequestHandler):
 				dte.delete()
 			dle.delete()
 		return self.reply()
-	self.fail("Invalid args");
+	self.fail("Invalid args")
 
   def add(self):
 	self.reply({"Success": True, "result": int(self.request.get("a")) + int(self.request.get("b"))})
@@ -1394,7 +1394,7 @@ class MainPage(webapp.RequestHandler):
 			cd = getattr(u,'clipDomain')
 			cxt = Tiddler.all().filter('page', self.path).filter('title',ct.title).filter('current', True).get()
 			if not cxt is None:
-				return self.fail("A tiddler named " + ct.title + "<br>already exists on this page!");
+				return self.fail("A tiddler named " + ct.title + "<br>already exists on this page!")
 			if cd != self.subdomain: # we need to copy/move it
 				self.fail("Moving between domains is not yet supported")
 			else:
@@ -1612,8 +1612,8 @@ class MainPage(webapp.RequestHandler):
 
   def objectToXml(self,xd,pe,values):
 	for k, v in values.iteritems():
-		av = xd.createElement(k);
-		pe.appendChild(av);
+		av = xd.createElement(k)
+		pe.appendChild(av)
 		if type(v) == bool:
 			av.setAttribute("type","bool")
 			v = "true" if v else "false"
@@ -1781,8 +1781,8 @@ class MainPage(webapp.RequestHandler):
 	tr = xd.createElement("groups")
 	tr.setAttribute('type', 'string[]')
 	for g in groups:
-		av = xd.createElement("group");
-		tr.appendChild(av);
+		av = xd.createElement("group")
+		tr.appendChild(av)
 		av.appendChild(xd.createTextNode(unicode(g.name)))
 	xd.appendChild(tr)
 	self.response.out.write(xd.toxml())
@@ -1839,7 +1839,7 @@ class MainPage(webapp.RequestHandler):
 		ti = xd.add(ta,"tiddler")
 		xd.add(ti,"page",tn.page)
 		xd.add(ti,"title",tn.title)
-		xd.add(ti,"id",id);
+		xd.add(ti,"id",id)
 	xd.add(re,"Success",True)
 	self.sendXmlResponse(xd)
 
@@ -1879,7 +1879,7 @@ class MainPage(webapp.RequestHandler):
 		nm.put()
 		self.reply({"Success": True})
 	else:
-		self.reply({"Message": user + " is already a member of " + grp,"Success":False});
+		self.reply({"Message": user + " is already a member of " + grp,"Success":False})
 
   def removeGroupMember(self):
 	user = self.request.get("user")
@@ -1910,9 +1910,9 @@ class MainPage(webapp.RequestHandler):
 		self.response.out.write(error)
 		return
 
-	self.response.out.write("<ul>");
+	self.response.out.write("<ul>")
 	for te in storeArea.childNodes:
-		# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else unicode(te.nodeType)) + "&gt;");
+		# self.response.out.write("<br>&lt;" + (te.tagName if te.nodeType == xml.dom.Node.ELEMENT_NODE else unicode(te.nodeType)) + "&gt;")
 		if te.nodeType == xml.dom.Node.ELEMENT_NODE:
 			nt = TiddlerFromXml(te,self.path)
 			if nt == None:
@@ -1926,7 +1926,7 @@ class MainPage(webapp.RequestHandler):
 				
 			# self.response.out.write("Not found " if et == None else ("Found v# " + unicode(et.version)))
 			if et == None:
-				self.status = ' - added';
+				self.status = ' - added'
 				nt.id = unicode(uuid.uuid4())
 				nt.comments = 0
 			elif et.version > nt.version:
@@ -1943,9 +1943,9 @@ class MainPage(webapp.RequestHandler):
 				self.response.out.write("<li>" + nt.title + " - no changes</li>")
 				continue
 			nt.put()
-			self.response.out.write('<li><a href="' + self.path + "#" + urllib.quote(nt.title) + '">' + nt.title + "<a> " + self.status + "</li>");
+			self.response.out.write('<li><a href="' + self.path + "#" + urllib.quote(nt.title) + '">' + nt.title + "<a> " + self.status + "</li>")
 			page.Update(nt)
-	self.response.out.write("</ul>");
+	self.response.out.write("</ul>")
 
   def uploadTiddlyWikiDoc(self,filename,filedata):
 	try:
@@ -1960,7 +1960,7 @@ class MainPage(webapp.RequestHandler):
 				for bce in ace.childNodes:
 					if bce.nodeType == xml.dom.Node.ELEMENT_NODE:
 						if bce.getAttribute("id") == "storeArea":
-							self.uploadTiddlersFrom(bce);
+							self.uploadTiddlersFrom(bce)
 		
   def ImportDb(self,filedata):
 	try:
@@ -2092,7 +2092,7 @@ class MainPage(webapp.RequestHandler):
 	if result.status_code == 200:
 		xd = self.initXmlResponse()
 		tv = xd.createElement('Content')
-		xd.appendChild(tv);
+		xd.appendChild(tv)
 		tv.appendChild(xd.createTextNode(result.content))
 		self.response.out.write(xd.toxml())
 
@@ -2256,7 +2256,7 @@ class MainPage(webapp.RequestHandler):
   def evaluate(self):
 	xd = self.initXmlResponse()
 	tv = xd.createElement('Result')
-	xd.appendChild(tv);
+	xd.appendChild(tv)
 	if  users.is_current_user_admin():
 		try:
 			result = eval(self.request.get("expression"))
@@ -2273,7 +2273,7 @@ class MainPage(webapp.RequestHandler):
   def saveSiteInfo(self):
 	xd = self.initXmlResponse()
 	tv = xd.createElement('Result')
-	xd.appendChild(tv);
+	xd.appendChild(tv)
 	if  users.is_current_user_admin():
 		try:
 			data = SiteInfo.all().get()
@@ -2568,7 +2568,7 @@ class MainPage(webapp.RequestHandler):
 			div.setAttribute('messages', unicode(msgCnt))
 
 	if t.tags != None:
-		div.setAttribute('tags', unicode(t.tags));
+		div.setAttribute('tags', unicode(t.tags))
 		
 	td = t.dynamic_properties()
 	#logging.info(unicode(len(td)) + " dps")
@@ -2820,7 +2820,7 @@ class MainPage(webapp.RequestHandler):
 	pages = []
 	papalen = self.path.rfind('/')
 	if papalen == -1:
-		paw = "";
+		paw = ""
 	else:
 		paw = self.path[0:papalen + 1]
 	for p in Page.all():
@@ -2887,7 +2887,7 @@ class MainPage(webapp.RequestHandler):
 				if xsl == "/static/iewiki.xsl":
 					xsl = "/dynamic/iewiki-xsl?path=" + self.path
 				scripts[t.title] = t.text
-				memcache.set(self.path,scripts,5);
+				memcache.set(self.path,scripts,5)
 				elStArea.appendChild(antd)
 			else:
 				elStArea.appendChild(antd)
@@ -2904,22 +2904,22 @@ class MainPage(webapp.RequestHandler):
 		metaDiv.setAttribute('clientip', self.request.remote_addr)
 		if page == None:
 			metaDiv.setAttribute('access','admin' if users.is_current_user_admin() else 'none')
-			metaDiv.setAttribute('sitetitle',"giewiki");
-			metaDiv.setAttribute('subtitle',message);
+			metaDiv.setAttribute('sitetitle',"giewiki")
+			metaDiv.setAttribute('subtitle',message)
 		else:
 			username = self.user.nickname() if self.user != None else ""
 			metaDiv.setAttribute('timestamp',unicode(datetime.datetime.now()))
 			metaDiv.setAttribute('username',username)
 			metaDiv.setAttribute('owner', page.owner.nickname())
 			metaDiv.setAttribute('access', AccessToPage(page,self.user))
-			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess]);
-			metaDiv.setAttribute('authaccess',page.access[page.authAccess]);
-			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess]);
-			metaDiv.setAttribute('sitetitle',page.title);
-			metaDiv.setAttribute('subtitle',page.subtitle);
+			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess])
+			metaDiv.setAttribute('authaccess',page.access[page.authAccess])
+			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess])
+			metaDiv.setAttribute('sitetitle',page.title)
+			metaDiv.setAttribute('subtitle',page.subtitle)
 			metaDiv.setAttribute('tiddlertags', AttrValueOrBlank(page,'tiddlertags'))
 			if page.groups != None:
-				metaDiv.setAttribute('groups',page.groups);
+				metaDiv.setAttribute('groups',page.groups)
 				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
 					metaDiv.setAttribute('groupmember','true')
 			metaDiv.setAttribute('viewbutton', 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false')
@@ -2934,13 +2934,13 @@ class MainPage(webapp.RequestHandler):
 			metaDiv.appendChild(metaPre)
 			metaPre.appendChild(xd.createTextNode('\n'.join(self.trace)))
 		pgse = xd.createElement("div")
-		metaDiv.appendChild(pgse);
+		metaDiv.appendChild(pgse)
 		pgse.setAttribute('title',"pages")
 		for p in pages:
 			xpage = xd.createElement("a")
 			pgse.appendChild(xpage)
 			xpage.setAttribute('title',"page")
-			xpage.setAttribute('href', p.path);
+			xpage.setAttribute('href', p.path)
 			xpage.appendChild(xd.createTextNode(p.subtitle))
 		elStArea.appendChild(metaDiv)
 
