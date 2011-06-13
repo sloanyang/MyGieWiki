@@ -14,6 +14,7 @@ This list of macros may not be complete, as plug-ins (like giewiki's youtube plu
 |[[gradient|Help on gradient macro]]|Renders text on a background of a gradient range of colors|
 |[[slider|Help on slider macro]]|Produces a panel that slides open/closed when clicked|
 |tabs|Create as set of tabs (such as the SideBarTabs)|
+|[[image|Help on image macro]]|Lets you add an image left or right, filling a specified percentage of the story column width|
 !!!Special purpose macros
 |!macro name|!purpose|
 |today|Formats and renders today's date using an optional format string parameters|
@@ -43,6 +44,16 @@ This list of macros may not be complete, as plug-ins (like giewiki's youtube plu
 |!macro name|!purpose|
 |importTiddlers|The importTiddlers macro lets you easily import from ~TiddlyWiki or giewiki documents on the web or on this web site. Usage:&lt;br&gt;    {{{&lt;&lt;importTiddlers URL&gt;&gt;}}}&lt;br&gt;substituting URL with the web address or filename of the library you want to use.|
 
+</pre>
+</tiddler>
+<tiddler tags="help" title="Help on image macro" modified="20110613100819" modifier="giewiki" version="0"><pre>The image macro allows inserting images left or right of the surrounding text, or filling the width of the column. The syntax to put an image on the right is
+{{{&lt;&lt;image filename &gt; XX%&gt;&gt;}}}
+whereas, to put an image on the left, you would write
+{{{&lt;&lt;image filename &lt; XX%&gt;&gt;}}}
+Either way, insert the image macro before the text that you want to appear next to it, specify a percentage in place of //XX//, and in place of //filename//, put the name of a file you have previously uploaded. Beware that there is currently a filesize limit somewhat less than 1 MB on what you can upload to giewiki through the 'upload file' facility. The suggested workarounds are:
+* To include large images, put them in the ''static'' subfolder (or a subfolder thereof) of your local giewiki folder prior to deploying the files to appspot.com - then, refer to them using the full path, e.g. /static/images/myimage.jpg
+* Reduce the image size prior to uploading, using whatever software you may have for this purpose. One way is to use dropbox ( a free software/cloud service, that automatically puts your images out on the web and produces suitably reduced filesize versions that you can download).
+To make the image fill the entire width of the story column, include only the filename parameter. Beware that the image macro is specific to giewiki; if you download the page as a TiddlyWiki, you will see an error message where the image macro is applied. If you were to use the [[TiddlyWiki-style|TiddlyWiki-style image markup]] {{{[img[filename]]}}} markup in stead (which is also supported), you would see either a broken link or the actual image, provided that you put it in the right place.
 </pre>
 </tiddler>
 <tiddler tags="help" title="Help on gradient macro" modified="20101201100819" modifier="giewiki" version="0"><pre>The Gradient macro allows simple horizontal and vertical coloured gradient backgrounds. They are constructed from coloured HTML elements, and don't require any images to work.
@@ -100,4 +111,40 @@ which produces this:
 
 &lt;&lt;slider chkTestSlider [[OptionsPanel]] &quot;Options&quot; &quot;Options panel&quot;&gt;&gt;
 </pre></tiddler>
+<tiddler tags="help" title="TiddlyWiki-style image markup" modified="20101201100819" modifier="giewiki" version="0"><pre>!Simple Images
+{{{
+[img[http://wikitext.tiddlyspace.com/fractalveg.jpg]]
+}}}
+Displays as:
+[img[http://wikitext.tiddlyspace.com/fractalveg.jpg]]
+!Tooltips for Images
+{{{
+[img[tooltip|http://wikitext.tiddlyspace.com/fractalveg.jpg]]
+}}}
+Displays as:
+[img[tooltip|http://wikitext.tiddlyspace.com/fractalveg.jpg]]
+!Image Links
+{{{
+[img[http://wikitext.tiddlyspace.com/fractalveg.jpg][http://www.flickr.com/photos/jermy/10134618/]]
+}}}
+Displays as:
+[img[http://wikitext.tiddlyspace.com/fractalveg.jpg][http://www.flickr.com/photos/jermy/10134618/]]
+!Floating Images with Text
+{{{
+[&lt;img[http://wikitext.tiddlyspace.com/fractalveg.jpg]]
+}}}
+[&lt;img[http://wikitext.tiddlyspace.com/fractalveg.jpg]]Displays as.
+{{{
+@@clear:both;display:block; @@
+}}}
+Will then clear the float.
+@@clear:both;display:block;Like this@@
+{{{
+[&gt;img[http://wikitext.tiddlyspace.com/fractalveg.jpg]]
+}}}
+[&gt;img[http://wikitext.tiddlyspace.com/fractalveg.jpg]]Displays as.@@clear:both;display:block; @@
+!See Also
+[[Help on image macro]]
+</pre>
+</tiddler>
 </tiddlers>
