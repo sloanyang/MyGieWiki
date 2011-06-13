@@ -283,6 +283,15 @@ def presentTiddler(t,withKey):
 		rp['path'] = t.page
 	return rp
 
+def KillTiddlerVersion(t):
+	if hasattr(t,'clipOwner'):
+		clown = getattr(t,'clipOwner')
+		u = UserProfile.all().filter('user', clown).get()
+		if u != None:
+			u.clipTiddler = None
+			u.put()
+	t.delete()
+
 def initHist(shadowTitle):
 	versions = '|When|Who|V#|Title|\n'
 	if shadowTitle != None: # self.request.get("shadow") == '1':
@@ -315,7 +324,7 @@ def FixTWSyntaxAndParse(html):
 def deleteTiddlerVersion(tid,ver):
 	tlv = Tiddler.all().filter('id', tid).filter('version',ver).get()
 	if tlv != None:
-		tlv.delete()
+		KillTiddlerVersion(tlv)
 		logging.info("Deleted " + str(tid) + " version " + str(ver))
 		return True
 	else:
@@ -993,7 +1002,8 @@ class MainPage(webapp.RequestHandler):
 	tlrs = Tiddler.all().filter('id',self.request.get('tiddlerId'))
 	for t in tlrs:
 		if t.version < self.request.get('version') and t.current == False and (t.author == users.get_current_user() or users.is_current_user_admin()):
-			t.delete()
+			KillTiddlerVersion(t)
+
 	tlc = Tiddler.all().filter('id', self.request.get('tiddlerId')).filter('current',True).get()
 	if tlc != None:
 		tlc.vercnt = tlrs.count()
@@ -1081,7 +1091,7 @@ class MainPage(webapp.RequestHandler):
 		for dle in DeletionLog.all():
 			id = dle.tiddler.id
 			for dte in Tiddler.all().filter('id',id):
-				dte.delete()
+				KillTiddlerVersion(dte)
 			dle.delete()
 		return self.reply()
 	self.fail("Invalid args")
@@ -1369,6 +1379,8 @@ class MainPage(webapp.RequestHandler):
 			pass
 		setattr(u,'clipTiddler',at)
 		setattr(u,'clipDomain',self.subdomain)
+		setattr(at,'clipOwner',cu)
+
 		reply['action'] = "copied"
 		u.put()
 		if act == 'cut':
@@ -1572,7 +1584,7 @@ class MainPage(webapp.RequestHandler):
 	prex = Page.all().filter("path =",path)
 	tls = Tiddler.all().filter("page=",path)
 	for result in tls:
-		result.delete()
+		KillTiddlerVersion(result)
 	for result in prex:
 		result.delete()
 	self.reply({"Success": True})
