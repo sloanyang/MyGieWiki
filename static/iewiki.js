@@ -8082,7 +8082,8 @@ config.macros.loginDialog = {
 	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
 		if (insideTiddler(place, 'PageSetup'))
 			return;
-		window.location = http.getLoginUrl({ path: window.location.pathname }).Url;
+		if (config.isLoggedIn() == false)
+			window.location = http.getLoginUrl({ path: window.location.pathname }).Url;
 	}
 };
 
@@ -8108,7 +8109,9 @@ config.macros.login = {
 config.macros.logout = {
 	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
 		var label = "logout";
-		createTiddlyButton(place, label, label, config.macros.login.displayLoginDialog);
+		createTiddlyButton(place, label, label, function() {
+				window.location = http.getLoginUrl({ path: window.location.pathname }).Url;
+			});
 	}
 };
 
