@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.12.1
+# ver.:	1.12.2
 
 import cgi
 import codecs
@@ -2036,25 +2036,42 @@ class MainPage(webapp.RequestHandler):
 	filename = self.request.get("filename")
 	filedata = self.request.get("MyFile")
 	filetype = Filetype(filename)
+	mimetype = self.request.get("mimetype")
+	if mimetype == None or mimetype == "":
+		mimetype = MimetypeFromFiletype(filetype)
 	if filename == '_export.xml' and users.is_current_user_admin():
 		self.ImportDb(filedata)
 	elif filetype == 'twd':
 		return self.uploadTiddlyWikiDoc(filename,filedata)
 	else:
+		p = CombinePath(self.path, filename)
 		f = UploadedFile()
 		f.owner = users.get_current_user()
-		f.path = CombinePath(self.path, filename)
-		f.mimetype = self.request.get("mimetype")
-		if f.mimetype == None or f.mimetype == "":
-			f.mimetype = MimetypeFromFiletype(filetype)
+		f.path = p
+		f.mimetype = mimetype
 		f.data = db.Blob(filedata)
-		f.put()
+		if UploadedFile.all().filter('path',p).get():
+			msg = "&lt;br&gt;is an already existing file - &lt;&lt;confirm_replace " + p + "&gt;&gt;";
+			memcache.set(p,f,300)
+		else:
+			msg = ""
+			f.put()
 		u = open('UploadDialog.htm')
-		ut = u.read().replace("UFL",leafOfPath(self.path) + self.request.get("filename")).replace("UFT",f.mimetype).replace("ULR","Uploaded:")
+		ut = u.read().replace("UFL",leafOfPath(self.path) + self.request.get("filename")).replace("UFT",mimetype).replace("ULR","Uploaded:").replace("UFM",msg)
 		self.response.out.write(ut)
 		u.close()
-	
-		
+
+  def replaceExistingFile(self):
+	tuf = memcache.get(self.request.get('filename'))
+	if tuf is None:
+		return self.fail("Upload is no longer in memory - try again!")
+	else:
+		puf = UploadedFile.all().filter('path',tuf.path).get()
+		if puf != None:
+			puf.delete()
+		tuf.put()
+		return self.reply();
+
   def uploadTiddlers(self):
 	filedata = self.request.get("MyFile")
 	filename = self.request.get("filename")

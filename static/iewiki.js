@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.12
+   version:	1.12.2
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -37,9 +37,7 @@ var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new 
 
 // Set tab size to 4 characters for readability.
 
-//--
-//-- Configuration repository constructor removed (constructed server-side as /config.js)
-//--
+//-- Configuration repository is constructed dynamically server-side as /config.js
 
 var Type = {
     System: { Exception: "System.Exception" }
@@ -8622,10 +8620,24 @@ function InsertTiddlerText(title, text, parentId)
 		}
 	}
 	var curtx = store.getTiddlerText(title);
+	while (curtx) {
+		title = title.endsWith('.') ? title + '.' : title + '..';
+		curtx = store.getTiddlerText(title);
+	}
 	if (!curtx)
-		store.saveTiddler(title,title,text,config.options["txtUserName"],new Date(), "");
+		store.saveTiddler(title,title,text.htmlDecode(),config.options["txtUserName"],new Date(), "");
 	story.displayTiddler(null,title);
 }
+
+config.macros.confirm_replace = {
+	handler: function (place, macroName, params) {
+		var doReplace = function () {
+			if (http.replaceExistingFile({ filename: params[0] }).Success)
+				displayMessage("Replaced " + params[0]);
+		};
+		var btn = createTiddlyButton(place, "replace", "replace existing file", doReplace);
+	}
+};
 
 function FindChildTextarea(ac)
 {

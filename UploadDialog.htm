@@ -28,7 +28,7 @@ function init()
 		if (ftype != ('U'+'FT') && fname != ('U'+'FL')) { // cloaked to avoid substitution in uploadFile(self)
 			var fnsp = fname.lastIndexOf(".");
 			var fnxt = fnsp > 0 ? fname.substr(0, fnsp) : fname;
-			var text = ftype == "image/jpeg" ? "<<image '" + fname + "' < 50%>>" : "[[" + fname + "|" + fname + "]]";
+			var text = (ftype == "image/jpeg" ? "<<image '" + fname + "' < 50%>>" : "[[" + fname + "|" + fname + "]]") + document.getElementById("uploadedFileMessage").innerHTML;
 			var action = 'InsertTiddlerText("'.concat(fnxt, '","', text, '","', window.location.search.substr(1), '")');
 			pw.setTimeout(action, 1);
 
@@ -155,5 +155,6 @@ function fileSelected()
 	</form>
 	<div id="uploadedFilename" style="display: none">UFL</div>
 	<div id="uploadedFiletype" style="display: none">UFT</div>
+	<div id="uploadedFileMessage" style="display: none">UFM</div>
 	</body>
 </html>
