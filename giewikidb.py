@@ -238,7 +238,8 @@ class UploadedFile(db.Model):
   mimetype = db.StringProperty()
   data = db.BlobProperty()
   date = db.DateTimeProperty(auto_now_add=True)
-  
+  msg = "" # piggybacked data
+
 class UserProfile(db.Expando):
   user = db.UserProperty()
   aboutme = db.TextProperty("")

@@ -2051,7 +2051,8 @@ class MainPage(webapp.RequestHandler):
 		f.mimetype = mimetype
 		f.data = db.Blob(filedata)
 		if UploadedFile.all().filter('path',p).get():
-			msg = "&lt;br&gt;is an already existing file - &lt;&lt;confirm_replace " + p + "&gt;&gt;";
+			msg = p + "&lt;br&gt;is an already existing file - &lt;&lt;confirm_replace " + p + "&gt;&gt;";
+			f.msg = msg
 			memcache.set(p,f,300)
 		else:
 			msg = ""
@@ -2070,7 +2071,7 @@ class MainPage(webapp.RequestHandler):
 		if puf != None:
 			puf.delete()
 		tuf.put()
-		return self.reply();
+		self.reply()
 
   def uploadTiddlers(self):
 	filedata = self.request.get("MyFile")

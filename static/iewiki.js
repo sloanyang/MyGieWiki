@@ -8598,42 +8598,25 @@ function createUploadFrame(place, qs, id, height, src)
 	place.appendChild(theFrame);
 }
 
-function InsertTiddlerText(title, text, parentId)
-{
-	if (parentId)
-	{
-		var parent = document.getElementById(parentId);
-		if (parent)
-		{
-			var ta = FindChildTextarea(parent);
-			if (ta)
-			{
-				ta.focus();
-				if (document.selection) //IE
-					document.selection.createRange().text = text;
-				else // firefox
-					ta.value = ta.value.substr(0,ta.selectionStart) + text + ta.value.substr(ta.selectionStart);
-				var fid = document.getElementById(parentId + "iFrame");
-				fid.parentNode.removeChild(fid);
-				return;
-			}
-		}
-	}
+function InsertTiddlerText(title, text, message) {
 	var curtx = store.getTiddlerText(title);
-	while (curtx) {
-		title = title.endsWith('.') ? title + '.' : title + '..';
-		curtx = store.getTiddlerText(title);
-	}
 	if (!curtx)
 		store.saveTiddler(title,title,text.htmlDecode(),config.options["txtUserName"],new Date(), "");
-	story.displayTiddler(null,title);
+	story.displayTiddler(null, title);
+	if (message) {
+		clearMessage();
+		wikify(message.htmlDecode(), getMessageDiv());
+	}
 }
 
 config.macros.confirm_replace = {
 	handler: function (place, macroName, params) {
-		var doReplace = function () {
-			if (http.replaceExistingFile({ filename: params[0] }).Success)
+		var doReplace = function() {
+			var rpres = http.replaceExistingFile({ filename: params[0] });
+			if (rpres.Success) {
+				clearMessage();
 				displayMessage("Replaced " + params[0]);
+			}
 		};
 		var btn = createTiddlyButton(place, "replace", "replace existing file", doReplace);
 	}
