@@ -307,11 +307,14 @@ def ReadAccessToPage( page, user = None):
 	if user == None:
 		user = users.get_current_user()
 	if page == None:
+		# logging.info("ReadAccessToPage: page == None")
 		return False
 
 	if page.__class__ in (unicode, str):
 		page = Page.all().filter('path',page).get()
 	if page == None: # Un-cataloged page - restricted access
+		# if not users.is_current_user_admin():
+		#	logging.info("ReadAccessToPage: no such page and not admin")
 		return users.is_current_user_admin()
 	if page.anonAccess >= page.ViewAccess: # anyone can see it
 		return True
@@ -322,6 +325,9 @@ def ReadAccessToPage( page, user = None):
 			return True
 		if page.groupAccess >= page.ViewAccess and HasGroupAccess(page.groups,user.nickname()):
 			return True
+		# logging.info("ReadAccessToPage: User " + user.nickname() + " has only " + str(page.authAccess) + " access")
+	#else:
+	#	logging.info("ReadAccessToPage: No anon access");
 	return False
 
 def AccessToPage( page, user):

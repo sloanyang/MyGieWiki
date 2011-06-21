@@ -1051,7 +1051,7 @@ class MainPage(webapp.RequestHandler):
 	ctlr = Tiddler.all().filter('id', tid).filter('current',True).get()
 	if ctlr != None:
 		ctlr.current = False
-		setattr(ctlr,'isRecycled',True)
+		# setattr(ctlr,'isRecycled',True)
 		DeletionLog().Log(ctlr,self.request.remote_addr,self.request.get('comment'))
 		ctlr.put()
 		self.reply()
@@ -1080,7 +1080,7 @@ class MainPage(webapp.RequestHandler):
 		if ctlr.current:
 			return self.fail("Already restored")
 		ctlr.current = True
-		delattr(ctlr,'isRecycled')
+		# delattr(ctlr,'isRecycled')
 		ctlr.put()
 		for dle in DeletionLog.all():
 			if str(dle.tiddler.key()) == rescue:
@@ -1371,7 +1371,7 @@ class MainPage(webapp.RequestHandler):
 		try:
 			prct = u.clipTiddler
 			if not prct is None and prct.current == False:
-				setattr(prct,'isRecycled',True)
+				# setattr(prct,'isRecycled',True)
 				DeletionLog().Log(prct,self.request.remote_addr,"Dropped from clipboard")
 				reply['Message'] = "Tiddler '" + prct.title + "' dropped from the clipboard				 into the recycle bin!"
 				prct.put()
@@ -1379,6 +1379,7 @@ class MainPage(webapp.RequestHandler):
 			pass
 		setattr(u,'clipTiddler',at)
 		setattr(u,'clipDomain',self.subdomain)
+		setattr(u,'clipAction',act)
 		setattr(at,'clipOwner',cu)
 
 		reply['action'] = "copied"
@@ -1409,7 +1410,24 @@ class MainPage(webapp.RequestHandler):
 			if not cxt is None:
 				return self.fail("A tiddler named " + ct.title + "<br>already exists on this page!")
 			if cd != self.subdomain: # we need to copy/move it
-				self.fail("Moving between domains is not yet supported")
+				logging.info("Moving between domain: " + str(cd) + " -> " + str(self.subdomain))
+				namespace_manager.set_namespace(self.subdomain)
+				cpt = Tiddler()
+				# clone tiddler
+				for fn,atr in ct.__dict__['_entity'].iteritems():
+					setattr(cpt,fn,atr)
+				cpt.id = unicode(uuid.uuid4())
+				cpt.page = self.path
+				cpt.vercnt = 1
+				cpt.current = True
+				cpt.put()
+				logging.info("Created clone as key=" + str(cpt.key()))
+				if getattr(u,'clipAction') == 'cut':
+					namespace_manager.set_namespace(cd)
+					# setattr(cpt,'isRecycled',True)
+					DeletionLog().Log(ct,self.request.remote_addr,"Moved to " + ("top domain" if self.subdomain is None else "subdomain " + self.subdomain))
+					namespace_manager.set_namespace(self.subdomain)
+				return self.deliverTiddler(cpt)
 			else:
 				namespace_manager.set_namespace(self.subdomain)
 				if ct.current: # (not cut / already pasted)
@@ -2054,6 +2072,8 @@ class MainPage(webapp.RequestHandler):
 			msg = p + "&lt;br&gt;is an already existing file - &lt;&lt;confirm_replace " + p + "&gt;&gt;";
 			f.msg = msg
 			memcache.set(p,f,300)
+		elif Page.all().filter("path",self.path).get():
+			msg = p + "&lt;br&gt;is an existing page URL. Pick a different name."
 		else:
 			msg = ""
 			f.put()
