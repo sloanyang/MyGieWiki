@@ -2970,7 +2970,7 @@ config.commands.editTiddler.copy = function(tsource, title) {
 	t.readOnly = true;
 }
 
-function KeepTiddlers(st) {
+function KeepTiddlers(st,title) {
 	var keeper = function(st) {
 		var t = new Tiddler();
 		t.assign(st.title, st.text, st.modifier,
@@ -3007,7 +3007,7 @@ function TryGetTiddler(title) {
 		return null;
 	st = http.getTiddler({'title': title});
 	if (st && st.Success)
-		return KeepTiddlers(st);
+		return KeepTiddlers(st,title);
 	else
 		config.NoSuchTiddlers.push(title);
 	return null;
