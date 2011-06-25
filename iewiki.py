@@ -2428,7 +2428,7 @@ class MainPage(webapp.RequestHandler):
 		prjs = u.Projects(self.subdomain).split(' ')
 		for p in prjs:
 			if len(p) > 0:
-				urls.append(p + host)
+				urls.append(p if p.endswith('appspot.com') else p + host)
 		self.reply({ \
 			'Success': True, \
 			'txtUserName': NoneIsBlank(u.txtUserName),
