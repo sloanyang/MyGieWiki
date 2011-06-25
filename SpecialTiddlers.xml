@@ -1,4 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
+<tiddlers>
 <tiddler title="SpecialTiddlers" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;script&gt;
 config.macros.STETabInsert = {
@@ -32,9 +33,10 @@ config.macros.STETabInsert = {
 |&lt;&lt;STETabInsert LibraryUsageHelp&gt;&gt;|A help file|
 |&lt;&lt;STETabInsert LoginDialog&gt;&gt;|Used the loginDialog macro to present an iFrame that contains the google login dialog|
 |&lt;&lt;STETabInsert MainMenu&gt;&gt;|This shadow tiddler is used as the contents of the main menu in the left-hand column of the screen|
-|&lt;&lt;STETabInsert NoAccessMessage&gt;&gt;|Presented when the user does not have access to any of the DefaultTiddler's|
+|&lt;&lt;STETabInsert NoAccessMessage&gt;&gt;|Presented when the user does not have access to any of the DefaultTiddlers|
 |&lt;&lt;STETabInsert OptionsPanel&gt;&gt;|This shadow tiddler is used as the contents of the options panel slider in the right-hand sidebar|
 |&lt;&lt;STETabInsert PageProperties&gt;&gt;|The dialog for defining page properties (LoD)|
+|&lt;&lt;STETabInsert PagePropertiesScript&gt;&gt;|Script used by the the dialog for defining page properties (LoD)|
 |&lt;&lt;STETabInsert PageSetup&gt;&gt;|The top-level tiddler you see here|
 |&lt;&lt;STETabInsert PageTemplate&gt;&gt;|The HTML template in this shadow tiddler determines the overall ~TiddlyWiki layout.&lt;br&gt;//This is a separate concept from the [[Page template|PageTemplateHelp]] mechanism//|
 |&lt;&lt;STETabInsert PageTemplateHelp&gt;&gt;|A help file describing the Page templating mechanism|
@@ -73,4 +75,8 @@ config.macros.STETabInsert = {
 (*: SiteTitle &amp; SiteSubtitle: use these if you want the changes to be versioned, otherwise set these via the PageProperties)
 </pre>
 </tiddler>
-
+<tiddler title="LoD" viewTemplate="ViewOnlyTemplate">
+	<pre>!LoD (Load-on-demand)
+Certain special tiddlers are loaded only on demand and do not appear in the list of special Tiddlers that's available on the right.</pre>
+</tiddler>
+</tiddlers>

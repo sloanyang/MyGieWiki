@@ -2996,10 +2996,11 @@ function KeepTiddlers(st,title) {
 			if (nt.title == title)
 				rt = nt;
 		}
+		loadPlugins();
 		return rt;
 	}
-	else
-		return keeper(st);
+	loadPlugins();
+	return keeper(st);
 }
 
 function TryGetTiddler(title) {
@@ -7596,219 +7597,6 @@ config.macros.submitButton = {
 	}
 };
 
-PageProperties = {
-	init: function () {
-		accessTypes = "admin|all|edit|add|comment|view|none|";
-		if (!forms.PageProperties)
-			forms.PageProperties = http.pageProperties();
-		forms.PageProperties.template_changed = function(f,id,val) {
-			if (f)
-				f[id] = val;
-			var btn = document.getElementById('ExamineTemplate');
-			if (btn)
-				btn.setAttribute('href','/_templates/' + encodeURIComponent(val));
-		};
-		if (config.isLoggedIn()) {
-			if (typeof forms.PageProperties.scripts === "string")
-				forms.PageProperties.scripts = forms.PageProperties.scripts.split('|');
-			var scripts = forms.PageProperties.scripts;
-			for (var i = 0; i < scripts.length; i++)
-				forms.PageProperties[scripts[i]] = true;
-		}
-		else {
-			forms.PageProperties.scripts = [];
-			return "''[As you are not logged in, this dialog is not functional]''";
-		}
-	},
-	isTemplate: function() {
-		return window.location.pathname.startsWith('/_templates/');
-	},
-	DeleteAccess: function() {
-		return window.location.pathname.length > 1 && forms.PageProperties.updateaccess;
-	},
-	listScripts: function() {
-		var e = window.event;
-		var tg = resolveTarget(e);
-		var scrlr = http.listScripts();
-		var desHandler = function(e) {
-			var ev = e || window.event;
-			var cbc = resolveTarget(ev);
-			var text = cbc.nextSibling.nodeValue;
-			forms.PageProperties[text] = cbc.checked;
-		};
-		var selHandler = function(e) {
-			var ev = e || window.event;
-			var text = resolveTarget(ev).innerText;
-			var bre = document.createElement('br');
-			insertAfter(tg,bre);
-			var cb = document.createElement("input");
-			cb.setAttribute("type", "checkbox");
-			cb.checked = true;
-			cb.onclick = desHandler;
-			insertAfter(bre,cb);
-			insertAfter(cb,document.createTextNode(text));
-			forms.PageProperties.scripts.push(text);
-			forms.PageProperties[text] = true;
-		};
-		if (scrlr.success) {
-			var popup = Popup.create(tg);
-			var values = scrlr.list.split('|');
-			for (var i = 0; i < values.length; i++)
-				createTiddlyButton(createTiddlyElement(popup, "li"), values[i], null, selHandler);
-			Popup.show();
-		}
-		e.cancelBubble = true;
-		if (e.stopPropagation) e.stopPropagation();
-	},
-	usedScripts: function() {
-		var scripts = forms.PageProperties.scripts;
-		var arr = [];
-		for (var i = 0; i < scripts.length; i++)
-			if (scripts[i])
-				arr.push( '<<input checkbox ' + scripts[i] + ' true>>' + scripts[i]);
-		return arr.length > 0 ? arr.join('<br>') : "(none)";
-	},
-	tryingUpgrade: function() {
-		return window.location.search == "?upgradeTemplate=try";
-	},
-	activated: function () {
-		if (!config.isLoggedIn()) {
-			forms.PageProperties.controls['title'].setAttribute("readOnly", "readOnly");
-			forms.PageProperties.controls['subtitle'].setAttribute("readOnly", "readOnly");
-		}
-		forms.PageProperties.template_changed(null,null,forms.PageProperties.template);
-		if (forms.PageProperties.message)
-			displayMessage(forms.PageProperties.message);
-		if (!forms.PageProperties || !forms.PageProperties.owner)
-			return;
-		forms.PageProperties.controls['title'].focus();
-		if (!forms.PageProperties.template_info.current && PageProperties.tryingUpgrade()) {
-			displayMessage("Save PageProperties to switch this version of the template");
-			forms.PageProperties.upgradeTemplate = true;
-		}
-	},
-	addTag: function (tag) {
-		var tl = forms.PageProperties.tags.readBracketedList();
-		if (tl.indexOf(tag) < 0)
-			tl.push(tag)
-		else if (tag == 'template') {
-			if (window.confirm("Update template?")) {
-				if (http.updateTemplate({ 'tags': forms.PageProperties.tags }).Success)
-					displayMessage("Template updated");
-			}
-			return;
-		}
-		setFormFieldValue(forms.PageProperties, 'tags', tl.join(' '))
-	},
-	save: function () {
-		if (!forms.PageProperties || !forms.PageProperties.owner)
-			return displayMessage("You are not logged in");
-		if (!forms.PageProperties.title)
-			return displayMessage("You need to set the Title");
-		var scripts = forms.PageProperties.scripts;
-		var news = [];
-		for (var i = 0; i < scripts.length; i++)
-			if (forms.PageProperties[scripts[i]])
-				news.push(scripts[i]);
-		forms.PageProperties.scripts = news.join('|');
-
-		var resp = http.pageProperties(forms.PageProperties);
-		if (resp.Success && config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties'))) {
-			if (PageProperties.tryingUpgrade())
-				window.location.search = "";
-			else
-				window.location.reload();
-		}
-	},
-	listLibrary: function (url, lines) {
-		var liblistId = 'libList' + url;
-		var ee = document.getElementById(liblistId);
-		if (ee)
-			ee.parentNode.removeChild(ee);
-		
-		var output = [['Library: <html><span id="', liblistId, '">', url, '</span></html> has:'].join('')];
-		var urlParts = url.split('/');
-		var qry = urlParts[urlParts.length-1];
-		if (!qry.startsWith('?'))
-			qry = '';
-		for (var al = lines.shift(); al; al = lines.shift()) {
-			if (urlParts.length > 1) {
-				var ups = urlParts.slice(0, 3).join('/') + al + qry;
-				al = al.split('/').pop();
-			}
-			else
-				var ups = al;
-			output.push(['<script label="', al, '">importFromDialog("', url, '","', ups, '");</script>'].join(''));
-		}
-		if (output.length == 1)
-			output.push('(none)');
-		var delc = document.getElementById('libraryCatalog');
-		if (delc.firstChild && delc.firstChild.nodeValue)
-			createTiddlyElement(delc, 'br');
-		wikify(output.join('<br> '), delc);
-	},
-	openLibrary: function (url) {
-		if (url == 'other') {
-			var opts = config.options.txtExternalLibrary;
-			if (!opts)
-				PageProperties.externalLibrary = opts = window.prompt("URL of tiddlers to use", PageProperties.externalLibrary);
-			if (!opts)
-				return;
-			var urls = opts.split(' ');
-			this.listLibrary(url, urls);
-		}
-		else {
-			var ld = http.openLibrary({ library: url });
-			if (ld) {
-				if (ld.text != null)
-					this.listLibrary(url, ld.text.split('\n'));
-				else
-					this.listLibrary(url, ld.pages);
-			}
-		}
-	},
-	promptForUpload: function() {
-		var delc = document.getElementById('libraryCatalog');
-		createUploadFrame(delc,'tiddlers','upoadTiddlerFrame', 28, '/static/UploadDialog.htm');
-	},
-	promptToDeletePage: function() {
-		if (!confirm("Do you really want to delete this page?")) return;
-		if (http.deletePage(window.location.href).Success) {
-			story.closeAllTiddlers();
-			story.displayTiddler(null, "SiteMap");
-			displayMessage("This page has now been deleted");
-		}
-	},
-	availableTemplates: function() {
-		var tl = http.getTemplates({ template: forms.PageProperties && forms.PageProperties.tags && forms.PageProperties.tags.indexOf('template') >= 0 ? forms.PageProperties.title : "" } );
-		if (tl.Success)
-			return tl.templates.join('|');
-	},
-	TemplateUpgrade: function() {
-		var ti = forms.PageProperties.template_info;
-		return ti ? (forms.PageProperties.template_info.page && !forms.PageProperties.template_info.current) : false;
-	},
-	UpgradeTemplate: function() {
-		if (window.confirm("This requires reloading the page (you will lose unsaved changes) - proceed?")) {
-			window.location.hash = "PageSetup";
-			window.location.search = "upgradeTemplate=try";
-		}
-	},
-	MakeFolder: function() {
-		var f = forms[formName(place)];
-		av = f.address;
-		if(typeof av === 'string' && !av.endsWith('/'))
-			setFormFieldValue(f,'address', av + '/');
-	}
-}
-
-
-function onUploadTiddlers(url) {
-	var delc = document.getElementById('libraryCatalog');
-	removeChildren(delc);
-	importFromDialog(null, url);
-}
-
 config.macros.localDiv = {
 	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
 		createTiddlyElement(place,params[1] || "div",formName(place) + params[0]);
@@ -8294,15 +8082,13 @@ config.macros.recentChanges = {
 }
 
 config.macros.recentComments = {
-	handler: function(place)
-	{
-		var ta = createTiddlyElement(place,"table");
-		var tbody = createTiddlyElement(ta,"tbody");
-		this.fill(tbody, 0,10);
+	handler: function (place) {
+		var ta = createTiddlyElement(place, "table");
+		var tbody = createTiddlyElement(ta, "tbody");
+		this.fill(tbody, 0, 10);
 	}
 	,
-	fill: function(tbody,off,max)
-	{
+	fill: function (tbody, off, max) {
 		var rcl = http.getRecentComments({ offset: off, limit: max });
 		if (rcl.Success) {
 			var tiddlers = rcl.tiddlers;
@@ -8311,31 +8097,34 @@ config.macros.recentComments = {
 				tiddict[tiddlers[j].id] = tiddlers[j];
 			for (var i = 0; i < rcl.comments.length; i++) {
 				var c = rcl.comments[i];
-				var tr = createTiddlyElement(tbody,"tr",null,i % 2 ? "evenRow":"oddRow");
-				createTiddlyElement(tr,"td",null,null,c.time.substr(0,16));
-				createTiddlyElement(tr,"td",null,null,c.who);
-				var tdl = createTiddlyElement(tr,"td");
+				var tr = createTiddlyElement(tbody, "tr", null, i % 2 ? "evenRow" : "oddRow");
+				createTiddlyElement(tr, "td", null, null, c.time.substr(0, 16));
+				createTiddlyElement(tr, "td", null, null, c.who);
+				var tdl = createTiddlyElement(tr, "td");
 				var tiddlr = tiddict[c.tiddler];
 				if (tiddlr && tiddlr.page && tiddlr.page != window.location.pathname) {
-					var a = createExternalLink(tdl,tiddlr.page + "#" + encodeURIComponent(String.encodeTiddlyLink(tiddlr.title)));
+					var a = createExternalLink(tdl, tiddlr.page + "#" + encodeURIComponent(String.encodeTiddlyLink(tiddlr.title)));
 					a.appendChild(document.createTextNode(tiddlr.title));
 				}
 				else
-					createTiddlyLink(tdl,tiddlr ? tiddlr.title : "(deleted tiddler)",true);
-				createTiddlyElement(tr,"td",null,null,c.text);
+					createTiddlyLink(tdl, tiddlr ? tiddlr.title : "(deleted tiddler)", true);
+				var tdb = createTiddlyElement(tr, "td", null, null);
+				wikify(c.text, tdb);
 			}
-			tr = createTiddlyElement(tbody,"tr");
-			td = createTiddlyElement(tr, "td",null,null,null,{"colspan":"4"});
+			tr = createTiddlyElement(tbody, "tr");
+			td = createTiddlyElement(tr, "td", null, null, null);
 			if (rcl.comments.length == max)
-			  createTiddlyButton(td,"<<","Earlier comments", function(ev) { 
-				var ce = clearParent(resolveTarget(ev || window.event),"tbody");
-				config.macros.recentComments.fill(ce,off + max,max); 
+				createTiddlyButton(td, "<<", "Earlier comments", function (ev) {
+					var ce = clearParent(resolveTarget(ev || window.event), "tbody");
+					config.macros.recentComments.fill(ce, off + max, max);
 				});
 			if (off > 0)
-			  createTiddlyButton(td,">>","Later comments", function(ev) { 
-				var ce = clearParent(resolveTarget(ev || window.event),"tbody");
-				config.macros.recentComments.fill(ce,off - max,max); 
+				createTiddlyButton(td, ">>", "Later comments", function (ev) {
+					var ce = clearParent(resolveTarget(ev || window.event), "tbody");
+					config.macros.recentComments.fill(ce, off - max, max);
 				});
+			td = createTiddlyElement(tr, "td", null, null, null, { "colspan": "3" });
+			createTiddlyText(td, "NB: Links in comments to content on other pages don't work on from here");
 		}
 	}
 }
