@@ -54,7 +54,9 @@ config.macros.plugins =
 			});
 		removeChildren(listWrapper);
 		params = params.parseParams(&quot;anon&quot;);
-		var plugins = installedPlugins.slice(0);
+		var plugins = [];
+		for (var atn in installedPlugins)
+			plugins.push(installedPlugins[atn]);
 		var t,tiddler,p;
 		var configTiddlers = store.getTaggedTiddlers(&quot;systemConfig&quot;);
 		for(t=0; t&lt;configTiddlers.length; t++) {

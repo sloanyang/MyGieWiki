@@ -1,28 +1,28 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <tiddlers>
 <tiddler title="PageProperties" viewTemplate="ViewTemplate" tags="excludeLists">
-	<pre>&lt;script&gt;return PageProperties.init();&lt;/script&gt;
+	<pre>&lt;script&gt;return config.PageProperties.init();&lt;/script&gt;
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 95&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 95&gt;&gt;|
 |Owner&lt;br&gt;&lt;&lt;input text owner 35&gt;&gt;|Group(s) &lt;&lt;defineGroup&gt;&gt;&lt;br&gt;&lt;&lt;input text groups 30&gt;&gt;|Locked&lt;br&gt;&lt;&lt;input checkbox locked false&gt;&gt;|
 |&gt;|&gt;|''Access permissions''|
-|Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes &gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
+|Group&lt;br&gt;&lt;&lt;input select group javascript:config.accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:config.accessTypes &gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:config.accessTypes&quot;&gt;&gt;|
 |&gt;|&gt;|''Use optional features'' (help: [[Template|PageTemplateHelp]], [[Tiddler libraries|LibraryUsageHelp]], [[External scripts|ExtScriptHelp]])|
-|Template&lt;br&gt;&lt;&lt;input select template javascript:availableTemplates() &gt;&gt; - &lt;&lt;button &quot;!PageProperties.isTemplate()&quot; &quot;examine it&quot; &quot;Examine the template&quot; &quot;/__templates/&quot; &quot;externalLink&quot; &quot;ExamineTemplate&quot;&gt;&gt;&lt;br&gt;&lt;script if=&quot;PageProperties.TemplateUpgrade()&quot; label=&quot;Try upgrade to current version&quot;&gt; PageProperties.UpgradeTemplate();&lt;/script&gt;|Tiddler libraries:&lt;br&gt;&lt;script label=&quot;static&quot; title=&quot;Statically installed files&quot;&gt;PageProperties.openLibrary('static');&lt;/script&gt; &lt;script label=&quot;local&quot; title=&quot;Local pages that are tagged library&quot;&gt;PageProperties.openLibrary('local');&lt;/script&gt; &lt;script label=&quot;file&quot; title=&quot;Files on your machine&quot;&gt;PageProperties.promptForUpload();&lt;/script&gt; &lt;script label=&quot;uploads&quot; title=&quot;Uploaded files&quot;&gt;PageProperties.openLibrary('uploads');&lt;/script&gt; &lt;script label=&quot;giewiki&quot; title=&quot;http://giewiki.appspot.com/lib/plugins/&quot;&gt;PageProperties.openLibrary('http://giewiki.appspot.com/lib/plugins/?xsl=');&lt;/script&gt; &lt;script label=&quot;other..&quot;&gt;PageProperties.openLibrary('other');&lt;/script&gt;|&lt;script label=&quot;External scripts&quot;&gt;PageProperties.listScripts()&lt;/script&gt;&lt;br&gt;&lt;script&gt;return PageProperties.usedScripts();&lt;/script&gt;|
+|Template&lt;br&gt;&lt;&lt;input select template javascript:availableTemplates() &gt;&gt; - &lt;&lt;button &quot;!config.PageProperties.isTemplate()&quot; &quot;examine it&quot; &quot;Examine the template&quot; &quot;/__templates/&quot; &quot;externalLink&quot; &quot;ExamineTemplate&quot;&gt;&gt;&lt;br&gt;&lt;script if=&quot;config.PageProperties.TemplateUpgrade()&quot; label=&quot;Try upgrade to current version&quot;&gt; config.PageProperties.UpgradeTemplate();&lt;/script&gt;|Tiddler libraries:&lt;br&gt;&lt;script label=&quot;static&quot; title=&quot;Statically installed files&quot;&gt;config.PageProperties.openLibrary('static');&lt;/script&gt; &lt;script label=&quot;local&quot; title=&quot;Local pages that are tagged library&quot;&gt;config.PageProperties.openLibrary('local');&lt;/script&gt; &lt;script label=&quot;file&quot; title=&quot;Files on your machine&quot;&gt;config.PageProperties.promptForUpload();&lt;/script&gt; &lt;script label=&quot;uploads&quot; title=&quot;Uploaded files&quot;&gt;config.PageProperties.openLibrary('uploads');&lt;/script&gt; &lt;script label=&quot;giewiki&quot; title=&quot;http://giewiki.appspot.com/lib/plugins/&quot;&gt;config.PageProperties.openLibrary('http://giewiki.appspot.com/lib/plugins/?xsl=');&lt;/script&gt; &lt;script label=&quot;other..&quot;&gt;config.PageProperties.openLibrary('other');&lt;/script&gt;|&lt;script label=&quot;External scripts&quot;&gt;config.PageProperties.listScripts(place)&lt;/script&gt;&lt;br&gt;&lt;script&gt;return config.PageProperties.usedScripts();&lt;/script&gt;|
 |&gt;|&gt;|&lt;&lt;importTiddlerStatus forms.PageProperties.systeminclude libraryImport&gt;&gt;|
 |&gt;|&gt;|&lt;html&gt;  &lt;span id='libraryCatalog' /&gt;  &lt;/html&gt;|
 |&gt;|&gt;|&lt;html&gt;  &lt;span id='libraryImport' /&gt;  &lt;/html&gt;|
-|&gt;|Page tags&lt;br&gt;&lt;&lt;input text tags 74&gt;&gt;&lt;br&gt;-type tags separated by spaces or apply special tags:&lt;br&gt;&lt;script label=&quot;hidden&quot; title=&quot;Hide from SiteMap&quot;&gt;PageProperties.addTag('hidden')&lt;/script&gt; - &lt;script label=&quot;library&quot; title=&quot;Make content available via Tiddler library 'local'&quot;&gt;PageProperties.addTag('library')&lt;/script&gt; - &lt;script label=&quot;template&quot; title=&quot;Make page available as a template&quot;&gt;PageProperties.addTag('template')&lt;/script&gt; ( + &lt;script label=&quot;version&quot; title=&quot;See help: Template above&quot;&gt;PageProperties.addTag('version')&lt;/script&gt;, &lt;script label=&quot;include&quot; title=&quot;See help: Template above&quot;&gt;PageProperties.addTag('include')&lt;/script&gt;)|Read-only options&lt;br&gt;&lt;&lt;input checkbox viewprior true&gt;&gt;Prior versions&lt;br&gt;&lt;&lt;input checkbox viewbutton true&gt;&gt;&quot;view&quot; button|
+|&gt;|Page tags&lt;br&gt;&lt;&lt;input text tags 74&gt;&gt;&lt;br&gt;-type tags separated by spaces or apply special tags:&lt;br&gt;&lt;script label=&quot;hidden&quot; title=&quot;Hide from SiteMap&quot;&gt;config.PageProperties.addTag('hidden')&lt;/script&gt; - &lt;script label=&quot;library&quot; title=&quot;Make content available via Tiddler library 'local'&quot;&gt;config.PageProperties.addTag('library')&lt;/script&gt; - &lt;script label=&quot;template&quot; title=&quot;Make page available as a template&quot;&gt;config.PageProperties.addTag('template')&lt;/script&gt; ( + &lt;script label=&quot;version&quot; title=&quot;See help: Template above&quot;&gt;config.PageProperties.addTag('version')&lt;/script&gt;, &lt;script label=&quot;include&quot; title=&quot;See help: Template above&quot;&gt;config.PageProperties.addTag('include')&lt;/script&gt;)|Read-only options&lt;br&gt;&lt;&lt;input checkbox viewprior true&gt;&gt;Prior versions&lt;br&gt;&lt;&lt;input checkbox viewbutton true&gt;&gt;&quot;view&quot; button|
 |&gt;|&gt;|Predefined tiddler tags&lt;br&gt;&lt;&lt;input text tiddlertags 95&gt;&gt;|
-&lt;&lt;submitButton forms.PageProperties.updateaccess 'Save' 'Save your changes' PageProperties.save() explanation 'Only the owner can alter page properties'&gt;&gt; | &lt;&lt;submitButton PageProperties.DeleteAccess() 'Delete page' 'Delete this page and its contents' PageProperties.promptToDeletePage()&gt;&gt;
-&lt;script&gt;return PageProperties.activated();&lt;/script&gt;
+&lt;&lt;submitButton forms.PageProperties.updateaccess 'Save' 'Save your changes' config.PageProperties.save() explanation 'Only the owner can alter page properties'&gt;&gt; | &lt;&lt;submitButton config.PageProperties.DeleteAccess() 'Delete page' 'Delete this page and its contents' config.PageProperties.promptToDeletePage()&gt;&gt;
+&lt;script&gt;return config.PageProperties.activated();&lt;/script&gt;
 	</pre>
 </tiddler>
 <tiddler title="PagePropertiesScript" viewTemplate="ViewTemplate" tags="systemConfig excludeLists excludeSearch">
 <pre>//{{{
-PageProperties = {
+config.PageProperties = {
 	init: function () {
-		accessTypes = &quot;admin|all|edit|add|comment|view|none|&quot;;
+		config.accessTypes = &quot;admin|all|edit|add|comment|view|none|&quot;;
 		if (!forms.PageProperties)
 			forms.PageProperties = http.pageProperties();
 		forms.PageProperties.template_changed = function(f,id,val) {
@@ -50,9 +50,8 @@ PageProperties = {
 	DeleteAccess: function() {
 		return window.location.pathname.length &gt; 1 &amp;&amp; forms.PageProperties.updateaccess;
 	},
-	listScripts: function() {
-		var e = window.event;
-		var tg = resolveTarget(e);
+	listScripts: function(place) {
+		var tg = place;
 		var scrlr = http.listScripts();
 		var desHandler = function(e) {
 			var ev = e || window.event;
@@ -62,7 +61,7 @@ PageProperties = {
 		};
 		var selHandler = function(e) {
 			var ev = e || window.event;
-			var text = resolveTarget(ev).innerText;
+			var text = resolveTarget(ev).firstChild.nodeValue;
 			var bre = document.createElement('br');
 			insertAfter(tg,bre);
 			var cb = document.createElement(&quot;input&quot;);
@@ -81,8 +80,6 @@ PageProperties = {
 				createTiddlyButton(createTiddlyElement(popup, &quot;li&quot;), values[i], null, selHandler);
 			Popup.show();
 		}
-		e.cancelBubble = true;
-		if (e.stopPropagation) e.stopPropagation();
 	},
 	usedScripts: function() {
 		var scripts = forms.PageProperties.scripts;
@@ -106,7 +103,7 @@ PageProperties = {
 		if (!forms.PageProperties || !forms.PageProperties.owner)
 			return;
 		forms.PageProperties.controls['title'].focus();
-		if (!forms.PageProperties.template_info.current &amp;&amp; PageProperties.tryingUpgrade()) {
+		if (!forms.PageProperties.template_info.current &amp;&amp; config.PageProperties.tryingUpgrade()) {
 			displayMessage(&quot;Save PageProperties to switch this version of the template&quot;);
 			forms.PageProperties.upgradeTemplate = true;
 		}
@@ -123,8 +120,15 @@ PageProperties = {
 			return;
 		}
 		setFormFieldValue(forms.PageProperties, 'tags', tl.join(' '))
-	},
-	save: function () {
+	}
+};
+//}}}
+</pre>
+</tiddler>
+<tiddler title="PagePropertiesScript2" viewTemplate="ViewTemplate" tags="systemConfig excludeLists excludeSearch">
+<pre>//{{{
+	
+config.PageProperties.save = function () {
 		if (!forms.PageProperties || !forms.PageProperties.owner)
 			return displayMessage(&quot;You are not logged in&quot;);
 		if (!forms.PageProperties.title)
@@ -138,13 +142,14 @@ PageProperties = {
 
 		var resp = http.pageProperties(forms.PageProperties);
 		if (resp.Success &amp;&amp; config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties'))) {
-			if (PageProperties.tryingUpgrade())
+			if (config.PageProperties.tryingUpgrade())
 				window.location.search = &quot;&quot;;
 			else
 				window.location.reload();
 		}
-	},
-	listLibrary: function (url, lines) {
+	};
+
+config.PageProperties.listLibrary = function (url, lines) {
 		var liblistId = 'libList' + url;
 		var ee = document.getElementById(liblistId);
 		if (ee)
@@ -170,12 +175,13 @@ PageProperties = {
 		if (delc.firstChild &amp;&amp; delc.firstChild.nodeValue)
 			createTiddlyElement(delc, 'br');
 		wikify(output.join('&lt;br&gt; '), delc);
-	},
-	openLibrary: function (url) {
+	};
+	
+config.PageProperties.openLibrary = function (url) {
 		if (url == 'other') {
 			var opts = config.options.txtExternalLibrary;
 			if (!opts)
-				PageProperties.externalLibrary = opts = window.prompt(&quot;URL of tiddlers to use&quot;, PageProperties.externalLibrary);
+				config.PageProperties.externalLibrary = opts = window.prompt(&quot;URL of tiddlers to use&quot;, config.PageProperties.externalLibrary);
 			if (!opts)
 				return;
 			var urls = opts.split(' ');
@@ -190,36 +196,41 @@ PageProperties = {
 					this.listLibrary(url, ld.pages);
 			}
 		}
-	},
-	promptForUpload: function() {
+	};
+	
+config.PageProperties.promptForUpload = function() {
 		var delc = document.getElementById('libraryCatalog');
 		createUploadFrame(delc,'tiddlers','upoadTiddlerFrame', 28, '/static/UploadDialog.htm');
-	},
-	promptToDeletePage: function() {
+	};
+	
+config.PageProperties.promptToDeletePage = function() {
 		if (!confirm(&quot;Do you really want to delete this page?&quot;)) return;
 		if (http.deletePage(window.location.href).Success) {
 			story.closeAllTiddlers();
 			story.displayTiddler(null, &quot;SiteMap&quot;);
 			displayMessage(&quot;This page has now been deleted&quot;);
 		}
-	},
-	TemplateUpgrade: function() {
+	};
+	
+config.PageProperties.TemplateUpgrade = function() {
 		var ti = forms.PageProperties.template_info;
 		return ti ? (forms.PageProperties.template_info.page &amp;&amp; !forms.PageProperties.template_info.current) : false;
-	},
-	UpgradeTemplate: function() {
+	};
+	
+config.PageProperties.UpgradeTemplate = function() {
 		if (window.confirm(&quot;This requires reloading the page (you will lose unsaved changes) - proceed?&quot;)) {
 			window.location.hash = &quot;PageSetup&quot;;
 			window.location.search = &quot;upgradeTemplate=try&quot;;
 		}
-	},
-	MakeFolder: function() {
+	};
+	
+config.PageProperties.MakeFolder = function() {
 		var f = forms[formName(place)];
 		av = f.address;
 		if(typeof av === 'string' &amp;&amp; !av.endsWith('/'))
 			setFormFieldValue(f,'address', av + '/');
-	}
-}
+	};
+
 //}}}
 </pre>
 </tiddler>

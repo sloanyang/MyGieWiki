@@ -559,7 +559,7 @@ var highlightHack = null; // Embarrassing hack department...
 
 var hadConfirmExit = false; // Don't warn more than once
 var safeMode = false; // Disable all plugins and cookies
-var installedPlugins = []; // Information filled in when plugins are executed
+var installedPlugins = {}; // Information filled in when plugins are executed
 var startingUp = false; // Whether we're in the process of starting up
 var pluginInfo, tiddler; // Used to pass information to plugins in loadPlugins()
 
@@ -715,16 +715,17 @@ function loadPlugins() {
     var nLoaded = 0;
     var map = {};
     var nPlugins = tiddlers.length;
-    installedPlugins = [];
     for (var i = 0; i < nPlugins; i++) {
         var p = getPluginInfo(tiddlers[i]);
-        installedPlugins[i] = p;
-        var n = p.Name;
-        if (n)
-            map[n] = p;
-        n = p.Source;
-        if (n)
-            map[n] = p;
+		if (!installedPlugins[p.title]) {
+			installedPlugins[p.title] = p;
+			var n = p.Name;
+			if (n)
+				map[n] = p;
+			n = p.Source;
+			if (n)
+				map[n] = p;
+		}
     }
     var visit = function(p) {
         if (!p || p.done)
@@ -738,8 +739,8 @@ function loadPlugins() {
         }
         toLoad.push(p);
     };
-    for (i = 0; i < nPlugins; i++)
-        visit(installedPlugins[i]);
+    for (var atn in installedPlugins)
+        visit(installedPlugins[atn]);
     for (i = 0; i < toLoad.length; i++) {
         p = toLoad[i];
         pluginInfo = p;
@@ -755,6 +756,7 @@ function loadPlugins() {
                         window.eval(tiddler.text);
                     nLoaded++;
                 } catch (ex) {
+					//displayMessage("Failed to execute " + p.title + '<br>' + exceptionText(ex));
                     p.log.push(config.messages.pluginError.format([exceptionText(ex)]));
                     p.error = true;
                 }
@@ -8816,7 +8818,7 @@ config.formatters.push( {
 				if (lookaheadMatch[2]) { // create a link to an 'onclick' script
 					// add a link, define click handler, save code in link (pass 'place'), set link attributes
 					var link=createTiddlyElement(w.output,"a",null,"tiddlyLinkExisting",lookaheadMatch[2]);
-					link.onclick=function(){try{return(eval(this.code))}catch(e){alert(e.description?e.description:e.toString())}}
+					link.onclick=function(e){var evt = e || window.event; evt.cancelBubble = true; try{return(eval(this.code))}catch(x){alert(x.description?x.description:x.toString())}}
 					link.code="function _out(place){"+lookaheadMatch[5]+"\n};_out(this);"
 					link.setAttribute("title",lookaheadMatch[3]?lookaheadMatch[3]:"");
 					link.setAttribute("href","javascript:;");
