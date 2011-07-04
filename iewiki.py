@@ -3036,10 +3036,11 @@ class MainPage(webapp.RequestHandler):
 								scrdict[sn] = javascriptDict[sn]
 				for k in scrdict.keys():
 					globalPatch.append('\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
+			serverHost = self.request.url.replace('.html?','?')
 			globalPatch.append('\n<script type="text/javascript">' \
 							 + '\nconfig.options.isLoggedIn = ' + ('true' if users.get_current_user() != None else 'false') \
 							 + ';\nconfig.defaultCustomFields["server.host"] = "' \
-							 + self.request.url \
+							 + serverHost \
 							 + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
 			if metaData:
 				for k in scripts:
