@@ -48,8 +48,8 @@ GiewikiAdaptor.prototype.getTiddlerList = function(context,userParams,callback,f
 	if(this.store) {
 		var ret = context.complete(context,context.userParams);
 	} else {
-		ret = loadRemoteFile(context.host,GiewikiAdaptor.loadTiddlyWikiCallback,context);
-		if(typeof ret != &quot;string&quot;)
+		ret = loadRemoteFile(context.host + (context.host.indexOf('?') == -1 ? '?' : '&amp;') + 'rat=' + config.options.rat,GiewikiAdaptor.loadTiddlyWikiCallback,context);
+	if(typeof ret != &quot;string&quot;)
 			ret = true;
 	}
 	return ret;

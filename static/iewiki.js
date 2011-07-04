@@ -590,7 +590,7 @@ config.read = function(t) {
 }
 
 config.isLoggedIn = function() {
-	return config.options.isLoggedIn;
+	return config.options.rat != false;
 }
 
 config.readPages = function(pgs) {

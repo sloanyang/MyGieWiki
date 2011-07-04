@@ -8,6 +8,7 @@ import codecs
 import datetime
 import difflib
 import glob
+import hashlib
 import logging
 import os
 import re
@@ -2715,7 +2716,6 @@ class MainPage(webapp.RequestHandler):
 				defaultTiddlers = "Welcome" # title from help-anonymous.xml
 			else:
 				includefiles.append('page-setup-first.xml')
-				tiddict['PageProperties'] = TiddlerFromXml(xml.dom.minidom.parse('PageProperties.xml').documentElement,self.path)
 
 	if defaultTiddlers != None:
 		td = Tiddler()
@@ -2777,6 +2777,9 @@ class MainPage(webapp.RequestHandler):
 			refTemplate = page.template
 		except:
 			refTemplate = None
+
+		if readAccess == False and self.request.get('twd',None) != None and self.request.get('rat') == self.readAccessToken(page,True):
+			readAccess = True # allow sync status retrieval
 
 		if readAccess and refTemplate != None:
 			tl = self.getTiddlersFromTemplate(refTemplate,tiddict,self.request.get('upgradeTemplate') == 'try')
@@ -3038,7 +3041,7 @@ class MainPage(webapp.RequestHandler):
 					globalPatch.append('\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
 			serverHost = self.request.url.replace('.html?','?')
 			globalPatch.append('\n<script type="text/javascript">' \
-							 + '\nconfig.options.isLoggedIn = ' + ('true' if users.get_current_user() != None else 'false') \
+							 + '\nconfig.options.rat = ' + ( ('"' + self.readAccessToken(page,readAccess) + '"') if users.get_current_user() != None else 'false') \
 							 + ';\nconfig.defaultCustomFields["server.host"] = "' \
 							 + serverHost \
 							 + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
@@ -3064,6 +3067,13 @@ class MainPage(webapp.RequestHandler):
 				saePos = twdtext.find('</div>',sasPos)
 				text = ''.join([twdtext[0:sasPos],elStArea.toxml(),twdtext[saePos + len('</div>'):]]) # insert text into body
 	return text
+
+  def readAccessToken(self,page,readAccess):
+	# returns a read access token for use with TiddlyWiki sync, otherwise effectively a js bool
+	if self.request.get('twd',None) != None:
+		return hashlib.sha224(str(page.key().id())).hexdigest() if readAccess else ''
+	else:
+		return '1' if readAccess or (self.request.path == '/' and page is None and users.get_current_user() != None) else ''
 	
   def get(self): # this is where it all starts
 	self.user = users.get_current_user()
