@@ -8721,6 +8721,13 @@ function editTiddlerHere(place,args,tab) {
 	story.createTiddler(place, null, args[2], args[3] || SPECIAL_EDIT_TEMPLATE);
 }
 
+function MakePathAFolder(fn) {
+	var f = forms[formName(place)];
+	av = f[fn];
+	if(typeof av === 'string' && !av.endsWith('/'))
+		setFormFieldValue(f,fn, av + '/');
+}
+
 SpecialEditorTiddlers = [ 'PageProperties', 'MainMenu', 'DefaultTiddlers', 'ColorPalette', 'StyleSheet' ];
 
 Story.prototype.specialCaseEditorOpen = function(tn)
