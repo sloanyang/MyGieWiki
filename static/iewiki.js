@@ -138,10 +138,10 @@ config.optionsDesc = {
     chkRequireDeleteReason: "Ask for a reason for deletion",
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
     txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
-    txtMaxEditRows: "Maximum number of rows in edit boxes",
+    txtMaxEditRows: "Maximum number of visible lines in edit boxes",
     txtEmail: "Email for receiving messages",
     txtExternalLibrary: "Source of tiddlers listed via Libraries/other..",
-    txtLockDuration: "Lock for edit (if so, duration in minutes)"
+    txtLockDuration: "Lock for edit (if so, duration in minutes) - leave blank to disable edit locking"
 };
 
 // Default tiddler templates
@@ -521,7 +521,7 @@ config.shadowTiddlers = {
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
-    SideBarTabs: '<<tabs txtMainTab "Timeline" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~More" "More lists" TabMore>>',
+    SideBarTabs: '<<tabs txtMainTab "When" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~Deprecated" "Deprecated tiddlers" "js;DeprecatedTiddlers" "~.." "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
 
@@ -2727,17 +2727,19 @@ config.macros.tabs.onClickTab = function(e) {
 config.macros.tabs.switchTab = function(tabset, tab) {
 	if (tabset.nextSibling && tabset.nextSibling.childNodes.length > 0) {
 		var nct = tabset.nextSibling.childNodes[0];
-		var fn = nct.getAttribute("tiddler");
-		if (fn) {
-			var st = store.getTiddler(fn);
-			var fields = {};
-			story.gatherSaveFields(nct, fields);
-			var et = st.text;
-			if (!(fields.text === undefined) && fields.text != st.text) {
-				if (window.confirm("Cancel changes to " + fn))
-					store.notify(fn,true);
-				else
-					return;
+		if (nct.nodeType == 1) {
+			var fn = nct.getAttribute("tiddler");
+			if (fn) {
+				var st = store.getTiddler(fn);
+				var fields = {};
+				story.gatherSaveFields(nct, fields);
+				var et = st.text;
+				if (!(fields.text === undefined) && fields.text != st.text) {
+					if (window.confirm("Cancel changes to " + fn))
+						store.notify(fn,true);
+					else
+						return;
+				}
 			}
 		}
 	}
@@ -3294,6 +3296,7 @@ config.commands.attributes.handlePopup = function(popup, title) {
 	};
 	if (config.owner == config.options.txtUserName)
 		add("private",'isPrivate');
+	add("deprecated",'isDeprecated');
 	add("exclude from index",'excludeLists');
 	add("exclude from search",'excludeSearch');
 	add("treat as script",'systemConfig');
@@ -3970,9 +3973,13 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		fromVer: fromVersion,
 		shadow: tiddler.hasShadow ? 1 : 0
 	}
-	if (tags && tags.readBracketedList().indexOf('isPrivate') > -1)
-		m.private = 'true';
-
+	if (tags) {
+		var tl = tags.readBracketedList();
+		if (tl.indexOf('isPrivate') > -1)
+			m.private = 'true';
+		if (tl.indexOf('isDeprecated') > -1)
+			m.deprecated = 'true';
+	}
 	for (fn in fields) {
 		if (m[fn] === undefined)
 			m[fn] = fields[fn];
@@ -8454,6 +8461,25 @@ function UrlInclude(what) {
 	else
 		q = "?include=" + what;
 	return path + q + h;
+}
+
+config.macros.deprecated_tiddlers = {
+	list_all: function() {
+		var tl = http.getTiddlers({page: window.location.pathname, deprecated: 'only'});
+		var dtls = [];
+		for (var i = 0; i < tl.length; i++) {
+			dtls.push('[[' + tl[i] + '|' + tl[i] + ']]');
+		}
+		return dtls.join('<br>');
+	},
+	handler: function(place) {
+		wikify(this.list_all(),place);
+	}
+};
+
+function DeprecatedTiddlers(place,a,b)
+{
+	wikify("Deprecated tiddlers:<br>" + config.macros.deprecated_tiddlers.list_all(),place);
 }
 
 config.macros.importTiddlers = {

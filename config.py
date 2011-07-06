@@ -82,6 +82,7 @@ var config = {\n\
 	cascadeDepth: 5,\n\
 	locale: "en",\n\
 	project: "<project>",\n\
+	serverType: "<servertype>",\n\
 	options: {\n\
 		' # the rest is built dynamically
 
@@ -139,7 +140,7 @@ class ConfigJs(webapp.RequestHandler):
 	isLoggedIn = user != None
 	self.response.headers['Content-Type'] = 'application/x-javascript'
 	self.response.headers['Cache-Control'] = 'no-cache'
-	self.response.out.write(jsProlog.replace("<project>",self.getSubdomain()))
+	self.response.out.write(jsProlog.replace("<project>",self.getSubdomain()).replace("<servertype>",os.environ['SERVER_SOFTWARE']))
 	if isLoggedIn:
 		upr = UserProfile.all().filter('user',user).get() # my profile
 		if upr == None:

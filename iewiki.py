@@ -34,7 +34,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '2.12'
+giewikiVersion = '2.13'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -1725,8 +1725,16 @@ class MainPage(webapp.RequestHandler):
 	if error == None:
 		tiddlers = Tiddler.all().filter('page', pg).filter('current', True)
 		if tiddlers.count() > 0:
+			want_deprecated = self.request.get('deprecated',None)
 			tr.setAttribute('type', 'string[]')
 			for t in tiddlers:
+				if want_deprecated == None:
+					if hasattr(t,'deprecated'):
+						continue
+				elif want_deprecated == 'only':
+					if not hasattr(t,'deprecated'):
+						continue
+
 				if own or not hasattr(t,'private'):
 					xd.add(tr,"tiddler",unicode(t.title))
 		else:
@@ -2818,8 +2826,13 @@ class MainPage(webapp.RequestHandler):
 			return False
 	else:
 		own = users.get_current_user() == page.owner
+		getdts = self.request.get('deprecated',None)
 		def filter(t):
 			if readAccess:
+				if getdts == None:							# Unless you want the deprecated tiddlers
+					deprecated = hasattr(t,'deprecated')	# Check if this tiddler is deprecated
+					if deprecated:
+						return False						#  and if so, leave it out
 				priv = hasattr(t,'private')
 				if own:
 					if priv:

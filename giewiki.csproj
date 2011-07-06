@@ -67,6 +67,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="config.py" />
+    <Content Include="ExtScriptHelp.xml" />
     <Content Include="GiewikiAdaptor.xml" />
     <Content Include="giewikidb.py" />
     <Content Include="Help On CSS Formatting.xml" />
