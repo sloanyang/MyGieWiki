@@ -862,7 +862,7 @@ config.paramifiers.start = {
 
 config.paramifiers.open = {
     onstart: function(v) {
-        if (!readOnly || store.tiddlerExists(v) || store.isShadowTiddler(v))
+        if (!readOnly || store.tiddlerExists(v) || store.isShadowTiddler(v) || TryGetTiddler(v))
             story.displayTiddler("bottom", v, null, false, null);
     }
 };
