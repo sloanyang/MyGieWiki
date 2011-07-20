@@ -1,7 +1,7 @@
-# this:	iewiki.py
+# this:	every_hour.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.12.4
+# ver.:	1.13
 
 import cgi
 import codecs
@@ -34,12 +34,8 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 class EveryHour(webapp.RequestHandler):
   def get(self):
-	found = 0
-	proc = 0
 	for cj in CronJob.all():
-		found = found + 1
 		if cj.when < datetime.datetime.now():
-			proc = proc + 1
 			tdlr = Tiddler.all().filter('id',cj.tiddler).filter('current',True).get()
 			if tdlr is None:
 				logging.warning("Tiddler not found")
@@ -106,7 +102,6 @@ class EveryHour(webapp.RequestHandler):
 						tdlrvr.put()
 
 			cj.delete()
-	logging.info("Found " + str(found) + ". Proc " + str(proc))
 
 application = webapp.WSGIApplication( [('/every_1_hours', EveryHour)], debug=True)
 
