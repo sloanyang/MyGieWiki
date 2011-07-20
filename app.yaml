@@ -26,5 +26,8 @@ handlers:
 - url: /dynamic/js/.*
   script: dynamic-xsl.py
 
+- url: /every_1_hours
+  script: every_hour.py
+
 - url: /.*
   script: iewiki.py

@@ -411,7 +411,7 @@ config.commands = {
 		text: "help",
 		tooltip: "Display formatting help",
 		topics: [
-			"Font Styles", "Links", "Markup", "CSS Formatting", "Tables", "Macros"]
+			"Font Styles", "Links", "Markup", "CSS Formatting", "Tables", "Macros", "Timing"]
 	},
 	syncing: { type: "popup" },
 	fields: {
@@ -1863,21 +1863,29 @@ config.macros.tag.handler = function(place, macroName, params) {
     createTagButton(place, params[0], null, params[1], params[2]);
 };
 
-config.macros.tags.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
-    params = paramString.parseParams("anon", null, true, false, false);
-    var ul = createTiddlyElement(place, "ul");
-    var title = getParam(params, "anon", "");
-    if (title && store.tiddlerExists(title))
-        tiddler = store.getTiddler(title);
-    var sep = getParam(params, "sep", " ");
-    var lingo = config.views.wikified.tag;
-    var prompt = tiddler.tags.length == 0 ? lingo.labelNoTags : lingo.labelTags;
-    createTiddlyElement(ul, "li", null, "listTitle", prompt.format([tiddler.title]));
-    for (var t = 0; t < tiddler.tags.length; t++) {
-        createTagButton(createTiddlyElement(ul, "li"), tiddler.tags[t], tiddler.title);
-        if (t < tiddler.tags.length - 1)
-            createTiddlyText(ul, sep);
-    }
+config.macros.tags.handler = function (place, macroName, params, wikifier, paramString, tiddler) {
+	params = paramString.parseParams("anon", null, true, false, false);
+	var ul = document.createElement("ul");
+	var title = getParam(params, "anon", "");
+	if (title && store.tiddlerExists(title))
+		tiddler = store.getTiddler(title);
+	var sep = getParam(params, "sep", " ");
+	var lingo = config.views.wikified.tag;
+	var prompt = tiddler.tags.length == 0 ? lingo.labelNoTags : lingo.labelTags;
+	createTiddlyElement(ul, "li", null, "listTitle", prompt.format([tiddler.title]));
+	var nts = 0;
+	for (var t = 0; t < tiddler.tags.length; t++) {
+		if (visibleTag(tiddler.tags[t])) {
+			nts++;
+			createTagButton(createTiddlyElement(ul, "li"), tiddler.tags[t], tiddler.title);
+			if (t < tiddler.tags.length - 1)
+				createTiddlyText(ul, sep);
+		}
+	}
+	if (nts > 0)
+		place.appendChild(ul);
+	else
+		removeNode(place);
 };
 
 config.macros.tagging.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
@@ -3544,6 +3552,16 @@ Tiddler.prototype.assign = function (title, text, modifier, modified, tags, crea
 	return this;
 };
 
+function visibleTag(tag) {
+	if (readOnly) {
+		if (tag.substring(0, 1) != '@')
+			return true;
+		else
+			return false;
+	}
+	return true;
+}
+
 // Get the tags for a tiddler as a string (space delimited, using [[brackets]] for tags containing spaces)
 Tiddler.prototype.getTags = function() {
     return String.encodeTiddlyLinkList(this.tags);
@@ -4052,30 +4070,32 @@ TiddlyWiki.prototype.search = function(searchRegExp, sortField, excludeTag, matc
 // Returns a list of all tags in use
 //   excludeTag - if present, excludes tags that are themselves tagged with excludeTag
 // Returns an array of arrays where [tag][0] is the name of the tag and [tag][1] is the number of occurances
-TiddlyWiki.prototype.getTags = function(excludeTag, results) {
+TiddlyWiki.prototype.getTags = function (excludeTag, results) {
 	if (results === undefined)
 		var results = [];
-    this.forEachTiddler(function(title, tiddler) {
-        for (var g = 0; g < tiddler.tags.length; g++) {
-            var tag = tiddler.tags[g];
-            var n = true;
-            for (var c = 0; c < results.length; c++) {
-                if (results[c][0] == tag) {
-                    n = false;
-                    results[c][1]++;
-                }
-            }
-            if (n && excludeTag) {
-                var t = this.fetchTiddler(tag);
-                if (t && t.isTagged(excludeTag))
-                    n = false;
-            }
-            if (n)
-                results.push([tag, 1]);
-        }
-    });
-    results.sort(function(a, b) { return a[0].toLowerCase() < b[0].toLowerCase() ? -1 : (a[0].toLowerCase() == b[0].toLowerCase() ? 0 : +1); });
-    return results;
+	this.forEachTiddler(function (title, tiddler) {
+		for (var g = 0; g < tiddler.tags.length; g++) {
+			var tag = tiddler.tags[g];
+			if (visibleTag(tag)) {
+				var n = true;
+				for (var c = 0; c < results.length; c++) {
+					if (results[c][0] == tag) {
+						n = false;
+						results[c][1]++;
+					}
+				}
+				if (n && excludeTag) {
+					var t = this.fetchTiddler(tag);
+					if (t && t.isTagged(excludeTag))
+						n = false;
+				}
+				if (n)
+					results.push([tag, 1]);
+			}
+		}
+	});
+	results.sort(function (a, b) { return a[0].toLowerCase() < b[0].toLowerCase() ? -1 : (a[0].toLowerCase() == b[0].toLowerCase() ? 0 : +1); });
+	return results;
 };
 
 // Return an array of the tiddlers that are tagged with a given tag
@@ -7606,6 +7626,12 @@ config.macros.submitButton = {
 	}
 };
 
+function onUploadTiddlers(url) {
+	var delc = document.getElementById('libraryCatalog');
+	removeChildren(delc);
+	importFromDialog(null, url);
+}
+
 config.macros.localDiv = {
 	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
 		createTiddlyElement(place,params[1] || "div",formName(place) + params[0]);
@@ -7777,21 +7803,18 @@ function leaf(url)
 }
 
 config.macros.image = {
-	handler: function(place,macroName,params,wikifier,paramString,tiddler)
-	{
-		var span = createTiddlyElement(place,"span");
+	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
+		var span = createTiddlyElement(place, "span");
 		var hbw = params[3] ? params[3] : "5";
 		var vbw = hbw / 2; // heuristic choice
 		var vbs = params[4] ? params[4] : "border-bottom: " + hbw + "px solid transparent; border-top: " + hbw + "px solid transparent; ";
 		var tat = params[5] ? ' title="' + params[5].htmlEncode() + '"' : '';
 		var align = params[1];
-		if (align)
-		{
+		if (align) {
 			var width = params[2];
 			if (!width) width = "60%";
 			width = "width: " + width + "; ";
-			switch (align.toLowerCase())
-			{
+			switch (align.toLowerCase()) {
 				case "<":
 				case "left":
 					var style = width + "float: left; clear: left; " + vbs + " border-right: " + hbw + "px solid transparent;";
@@ -7807,9 +7830,13 @@ config.macros.image = {
 		else
 			var style = vbs + "width: 100%";
 
-		var path = params[0];
-		span.innerHTML = '<img src="'.concat(path,'"',tat,' style="', style,'"/>');
-	}	
+		var paths = params[0].split("|");
+		span.innerHTML = '<img src="'.concat(paths[0], '"', tat, ' style="', style, '"/>');
+		if (paths.length > 1) {
+			span.firstChild.onclick = function ()
+			{ window.location = paths[1]; };
+		}
+	}
 }
 
 config.macros.menu = {

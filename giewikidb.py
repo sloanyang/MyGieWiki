@@ -272,7 +272,21 @@ class LogEntry(db.Model):
 	when = db.DateTimeProperty(auto_now_add=True)
 	what = db.StringProperty()
 	text = db.TextProperty()
-	
+
+class CronJob(db.Model):
+	when = db.DateTimeProperty()
+	tiddler = db.StringProperty()
+	action = db.StringProperty()
+	position = db.IntegerProperty()
+
+	def save(self,tiddler):
+		self.tiddler = tiddler.id
+		self.put()
+
+def dropCronJob(tiddler):
+	for cj in CronJob.all().filter('tiddler',tiddler.id):
+		cj.delete()
+
 def truncateModel(m):
 	while m.all().get() != None:
 		db.delete(m.all())

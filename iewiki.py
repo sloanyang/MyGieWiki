@@ -29,8 +29,8 @@ from google.appengine.api import urlfetch
 from google.appengine.api import mail
 from google.appengine.api import namespace_manager
 
-from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry
-from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace
+from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
+from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob
 
 from javascripts import javascriptDict
 
@@ -742,10 +742,41 @@ class MainPage(webapp.RequestHandler):
 			atl.current = False
 			tlr.comments = atl.comments
 			atl.put()
+			dropCronJob(atl)
 
 	tlr.current = True
 
 	taglist = [] if tlr.tags == None else tlr.tags.split()
+	crons = []
+	for tag in taglist:
+		if tag.startswith('@'):
+			tps = tag[1:].split('@')
+			if len(tps) > 1:
+				dta = tps[0]
+				if dta in ['announce','promote','demote','deprecate','revert']:
+					dtp = tps[1].replace('T','-').split('-')
+					if len(dtp) >= 3:
+						try:
+							if len(dtp) == 4:
+								hour = int(dtp[3])
+							else:
+								hour = 0
+							dtd = datetime.datetime(int(dtp[0]),int(dtp[1]),int(dtp[2]),hour)
+							ncj = CronJob()
+							ncj.when = dtd
+							ncj.action = dta
+							ncj.position = 0
+							if len(tps) > 2:
+								try:
+									ncj.position = int(tps[2])
+								except ValueError:
+									pass
+							crons.append(ncj)
+						except Exception,x:
+							return self.fail("Invalid date specified (should be yyyy-mm-dd or yyyy-mm-dd-hh)", tps[1])
+				else:
+					return self.fail("Unknown @action@ specified")
+
 	if "includes" in taglist:
 		tlf = list()
 		tls = tlr.text.split("\n")
@@ -780,6 +811,9 @@ class MainPage(webapp.RequestHandler):
 			tlr.text = ''
 		tlr.public = page.anonAccess > page.NoAccess
 		tlr.put()
+		for cj in crons:
+			cj.save(tlr)
+
 	if page != None:
 		page.Update(tlr)
 
@@ -2081,7 +2115,7 @@ class MainPage(webapp.RequestHandler):
 			msg = p + "&lt;br&gt;is an already existing file - &lt;&lt;confirm_replace " + p + "&gt;&gt;";
 			f.msg = msg
 			memcache.set(p,f,300)
-		elif Page.all().filter("path",self.path).get():
+		elif Page.all().filter("path",p).get():
 			msg = p + "&lt;br&gt;is an existing page URL. Pick a different name."
 		else:
 			msg = ""

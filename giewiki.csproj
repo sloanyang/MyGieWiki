@@ -122,6 +122,7 @@
     <Content Include="static\scratch.js" />
     <Content Include="static\upload.js" />
     <Content Include="static\UploadDialog.htm" />
+    <Content Include="every_hour.py" />
     <Content Include="twcomp.html" />
     <Content Include="UploadDialog.htm" />
     <Content Include="SpecialTiddlers.xml">
