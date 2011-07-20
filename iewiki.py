@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.12.3
+# ver.:	1.13.0
 
 import cgi
 import codecs

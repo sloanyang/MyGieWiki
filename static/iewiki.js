@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.12.3
+   version:	1.13.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
