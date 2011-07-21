@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.0
+# ver.:	1.13.1
 
 import cgi
 import codecs
@@ -1362,7 +1362,7 @@ class MainPage(webapp.RequestHandler):
 			'tags': page.tags,
 			'tiddlertags': tiddlertags,
 			'owner':  self.user.nickname() if isOwner else page.owner if hasattr(page,'ownername') == False or page.ownername is None else page.ownername,
-			'updateaccess': isOwner,
+			'updateaccess': isOwner or users.is_current_user_admin(),
 			'locked': page.locked,
 			'anonymous': Page.access[page.anonAccess],
 			'authenticated': Page.access[page.authAccess],
