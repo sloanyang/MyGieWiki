@@ -81,6 +81,7 @@ var config = {\n\
 	cascadeSlow: 60,\n\
 	cascadeDepth: 5,\n\
 	locale: "en",\n\
+	loginName: <loginName>,\n\
 	project: "<project>",\n\
 	serverType: "<servertype>",\n\
 	options: {\n\
@@ -140,7 +141,8 @@ class ConfigJs(webapp.RequestHandler):
 	isLoggedIn = user != None
 	self.response.headers['Content-Type'] = 'application/x-javascript'
 	self.response.headers['Cache-Control'] = 'no-cache'
-	self.response.out.write(jsProlog.replace("<project>",self.getSubdomain()).replace("<servertype>",os.environ['SERVER_SOFTWARE']))
+	loginName = 'null' if user is None else '"' + user.nickname() + '"'
+	self.response.out.write(jsProlog.replace("<project>",self.getSubdomain()).replace("<servertype>",os.environ['SERVER_SOFTWARE']).replace('<loginName>',loginName))
 	if isLoggedIn:
 		upr = UserProfile.all().filter('user',user).get() # my profile
 		if upr == None:

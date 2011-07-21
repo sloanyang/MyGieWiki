@@ -662,8 +662,10 @@ class MainPage(webapp.RequestHandler):
 		tlr = Tiddler()
 		tlr.page = self.path
 		tlr.title = self.request.get("tiddlerName") # why not 'title'?
+		if self.request.get('isPrivate',False) != False:
+			tlr.private = 'true'
 		for ra in self.request.arguments():
-			if not ra in ('method','tiddlerId','tiddlerName','fields','created','modifier','modified','fromVer','shadow','vercnt','key','reverted','reverted_by','links','linksUpdated'):
+			if not ra in ('method','tiddlerId','tiddlerName','fields','isPrivate','created','modifier','modified','fromVer','shadow','vercnt','key','reverted','reverted_by','links','linksUpdated'):
 				setattr(tlr,ra,self.request.get(ra))
 		tlr.id = self.request.get('tiddlerId')
 	else:
@@ -1353,13 +1355,14 @@ class MainPage(webapp.RequestHandler):
 		tiddlertags = page.tiddlertags if hasattr(page,'tiddlertags') else ''
 		if tiddlertags == '' and refTemplate != None:
 			tiddlertags = AttrValueOrBlank(refTemplate,'tiddlertags')
+		isOwner = page.owner == self.user
 		reply = {
 			'title': page.title,
 			'subtitle': page.subtitle,
 			'tags': page.tags,
 			'tiddlertags': tiddlertags,
-			'owner': page.owner if hasattr(page,'ownername') == False or page.ownername is None else page.ownername,
-			'updateaccess': page.owner == users.get_current_user(),
+			'owner':  self.user.nickname() if isOwner else page.owner if hasattr(page,'ownername') == False or page.ownername is None else page.ownername,
+			'updateaccess': isOwner,
 			'locked': page.locked,
 			'anonymous': Page.access[page.anonAccess],
 			'authenticated': Page.access[page.authAccess],

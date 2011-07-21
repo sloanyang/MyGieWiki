@@ -569,7 +569,7 @@ config.read = function(t) {
 	this.clientip = fields.clientip;
 	this.owner = fields.owner;
 	this.access = fields.access;
-	if (this.access == "none" || this.access == "view")
+	if (this.access == "none" || this.access == "view" || this.access == "comment")
 		readOnly = true;
 	this.anonAccess = fields.anonaccess;
 	this.authAccess = fields.authaccess;
@@ -3302,7 +3302,7 @@ config.commands.attributes.handlePopup = function(popup, title) {
 		var checked = act == "mark" ? '+ ' : '- ';
 		createTiddlyButton(createTiddlyElement(popup, 'li'),checked + aLabel,act + ' ' + aTag,handler,null,null,null,{ tiddler: title, tag: aTag });
 	};
-	if (config.owner == config.options.txtUserName)
+	if (config.owner == config.loginName)
 		add("private",'isPrivate');
 	add("deprecated",'isDeprecated');
 	add("exclude from index",'excludeLists');
@@ -3994,7 +3994,7 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 	if (tags) {
 		var tl = tags.readBracketedList();
 		if (tl.indexOf('isPrivate') > -1)
-			m.private = 'true';
+			m.isPrivate = 'true';
 		if (tl.indexOf('isDeprecated') > -1)
 			m.deprecated = 'true';
 	}
@@ -7922,7 +7922,7 @@ config.macros.login = {
 			createTiddlyButton(place, label, tip, this.displayLoginDialog);
 		else {
 			this.open = true;
-			params[0] = config.options.txtUserName + " \u00bb";
+			params[0] = config.loginName + " \u00bb";
 			return config.macros.menu.handler(place,macroName,params,wikifier,paramString,tiddler);
 		}
 	}
