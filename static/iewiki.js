@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.13.0
+   version:	1.13.1
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -621,7 +621,11 @@ function main() {
     startingUp = true;
     if (window.location.search.startsWith("?debugger"))
 		debugger;
-    window.onbeforeunload = function(e) { if (window.confirmExit) return confirmExit(); };
+	window.onbeforeunload = function (e) { if (window.confirmExit) return confirmExit(); };
+	window.onunload = function (e) {
+		for (var lock in config.editLocks)
+			http.unlockTiddler({ "key": lock });
+	};
     params = getParameters();
     if (params)
         params = params.parseParams("open", null, false);
@@ -2927,7 +2931,9 @@ config.commands.closeOthers.handler = function(event, src, title) {
     return false;
 };
 
-config.commands.editTiddler.handler = function(event, src, title) {
+config.editLocks = {};
+
+config.commands.editTiddler.handler = function (event, src, title) {
 	clearMessage();
 	var tiddlerElem = story.getTiddler(title);
 	var fields = tiddlerElem.getAttribute("tiddlyFields");
@@ -2949,6 +2955,7 @@ config.commands.editTiddler.handler = function(event, src, title) {
 		if (config.options.txtLockDuration != "") {
 			var reply = http.editTiddler({ id: st.id, version: editVer, hasVersion: st.version, duration: config.options.txtLockDuration });
 			st.key = reply.key;
+			config.editLocks[st.key] = title;
 			if (reply.Success) {
 				st.lock = reply.now;
 				st.until = reply.until;
@@ -3132,17 +3139,20 @@ config.commands.copyTiddler.isEnabled =  function(tlr) {
 	return tlr.id && tlr.from === undefined;
 };
 
-config.commands.cancelTiddler.handler = function(event, src, title) {
-    if (story.hasChanges(title) && !readOnly) {
-        if (!confirm(this.warning.format([title])))
-            return false;
-    }
-    var t = store.getTiddler(title);
-    if (t && t.key && t.until)
-		http.unlockTiddler({"key": t.key});
-    story.setDirty(title, false);
-    story.displayTiddler(null, title);
-    return false;
+config.commands.cancelTiddler.handler = function (event, src, title) {
+	if (story.hasChanges(title) && !readOnly) {
+		if (!confirm(this.warning.format([title])))
+			return false;
+	}
+	var t = store.getTiddler(title);
+	if (t && t.key && t.until) {
+		http.unlockTiddler({ "key": t.key });
+		delete config.editLocks[t.key];
+		delete t.key;
+	}
+	story.setDirty(title, false);
+	story.displayTiddler(null, title);
+	return false;
 };
 
 config.commands.deleteTiddler.handler = function(event, src, title) {
@@ -3959,9 +3969,9 @@ TiddlyWiki.prototype.addTiddlerFields = function(title, fields) {
     this.setDirty(true);
 };
 
-TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, modified, tags, fields) {
+TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier, modified, tags, fields) {
 	var tiddler = this.fetchTiddler(title);
-	tags = (typeof(tags) == "string") ? tags : String.encodeTiddlyLinkList(tags);
+	tags = (typeof (tags) == "string") ? tags : String.encodeTiddlyLinkList(tags);
 	if (tiddler) {
 		var et = tiddler;
 		var created = tiddler.created; // Preserve created date
@@ -4002,8 +4012,11 @@ TiddlyWiki.prototype.saveTiddler = function(title, newTitle, newBody, modifier, 
 		if (m[fn] === undefined)
 			m[fn] = fields[fn];
 	}
-	if (tiddler.key)
+	if (tiddler.key) {
 		m.key = tiddler.key;
+		delete config.editLocks[m.key];
+		delete tiddler.key;
+	}
 	var result = http.saveTiddler(m);
 	if (result.Success == false)
 		throw (false);
@@ -4549,58 +4562,64 @@ Story.prototype.getTemplateForTiddler = function(title, template, tiddler) {
     return store.getRecursiveTiddlerText(template, null, 10);
 };
 
-Story.prototype.refreshTiddler = function(title, template, force, customFields, defaultText, tdlr) {
-    var tiddlerElem = this.getTiddler(title);
-    if (tiddlerElem) {
-        if (tiddlerElem.getAttribute("dirty") == "true" && !force)
-            return tiddlerElem;
-        template = this.chooseTemplateForTiddler(title, template);
-        var currTemplate = tiddlerElem.getAttribute("template");
-        if ((template != currTemplate) || force) {
-            var tiddler = tdlr || store.getTiddler(title);
-            if (!tiddler) {
-                tiddler = new Tiddler();
-                if (store.isShadowTiddler(title)) {
-                    tiddler.set(title, store.getTiddlerText(title), config.views.wikified.shadowModifier, version.date, [], version.date);
-                } else {
-                    var text = template == "EditTemplate" ?
-                            config.views.editor.defaultText.format([title]) :
-                            config.views.wikified.defaultText.format([title]);
-                    text = defaultText || text;
-                    var fields = customFields ? customFields.decodeHashMap() : null;
-                    tiddler.set(title, text, config.views.wikified.defaultModifier, version.date, [], version.date, fields);
-                }
-            }
-            tiddlerElem.setAttribute("tags", tiddler.tags.join(" "));
-            tiddlerElem.setAttribute("tiddler", title);
-            tiddlerElem.setAttribute("template", template);
-            tiddlerElem.onmouseover = this.onTiddlerMouseOver;
-            tiddlerElem.onmouseout = this.onTiddlerMouseOut;
-            tiddlerElem.ondblclick = this.onTiddlerDblClick;
-            tiddlerElem[window.event ? "onkeydown" : "onkeypress"] = this.onTiddlerKeyPress;
-            tiddlerElem.innerHTML = this.getTemplateForTiddler(title, template, tiddler);
-            applyHtmlMacros(tiddlerElem, tiddler);
-            if (store.getTaggedTiddlers(title).length > 0)
-                addClass(tiddlerElem, "isTag");
-            else
-                removeClass(tiddlerElem, "isTag");
-            if (store.tiddlerExists(title)) {
-                removeClass(tiddlerElem, "shadow");
-                removeClass(tiddlerElem, "missing");
-            } else {
-                addClass(tiddlerElem, store.isShadowTiddler(title) ? "shadow" : "missing");
-            }
-            if (customFields)
-                this.addCustomFields(tiddlerElem, customFields);
+Story.prototype.refreshTiddler = function (title, template, force, customFields, defaultText, tdlr) {
+	var tiddlerElem = this.getTiddler(title);
+	if (tiddlerElem) {
+		if (tiddlerElem.getAttribute("dirty") == "true" && !force)
+			return tiddlerElem;
+		template = this.chooseTemplateForTiddler(title, template);
+		var currTemplate = tiddlerElem.getAttribute("template");
+		if ((template != currTemplate) || force) {
+			var tiddler = tdlr || store.getTiddler(title);
+			if (!tiddler) {
+				tiddler = new Tiddler();
+				if (store.isShadowTiddler(title)) {
+					tiddler.set(title, store.getTiddlerText(title), config.views.wikified.shadowModifier, version.date, [], version.date);
+				} else {
+					var text = template == "EditTemplate" ?
+								config.views.editor.defaultText.format([title]) :
+								config.views.wikified.defaultText.format([title]);
+					text = defaultText || text;
+					var fields = customFields ? customFields.decodeHashMap() : null;
+					tiddler.set(title, text, config.views.wikified.defaultModifier, version.date, [], version.date, fields);
+				}
+			}
+			else if (currTemplate == "EditTemplate") {
+				if (tiddler.key && tiddler.until) {
+					var r = http.unlockTiddler({ key: tiddler.key });
+					delete tiddler.key;
+				}
+			}
+			tiddlerElem.setAttribute("tags", tiddler.tags.join(" "));
+			tiddlerElem.setAttribute("tiddler", title);
+			tiddlerElem.setAttribute("template", template);
+			tiddlerElem.onmouseover = this.onTiddlerMouseOver;
+			tiddlerElem.onmouseout = this.onTiddlerMouseOut;
+			tiddlerElem.ondblclick = this.onTiddlerDblClick;
+			tiddlerElem[window.event ? "onkeydown" : "onkeypress"] = this.onTiddlerKeyPress;
+			tiddlerElem.innerHTML = this.getTemplateForTiddler(title, template, tiddler);
+			applyHtmlMacros(tiddlerElem, tiddler);
+			if (store.getTaggedTiddlers(title).length > 0)
+				addClass(tiddlerElem, "isTag");
+			else
+				removeClass(tiddlerElem, "isTag");
+			if (store.tiddlerExists(title)) {
+				removeClass(tiddlerElem, "shadow");
+				removeClass(tiddlerElem, "missing");
+			} else {
+				addClass(tiddlerElem, store.isShadowTiddler(title) ? "shadow" : "missing");
+			}
+			if (customFields)
+				this.addCustomFields(tiddlerElem, customFields);
 			if (template == "EditTemplate") {
 				var atf = [];
-				if (getElementsByClassName('tagFrame','fieldset',tiddlerElem,atf))
+				if (getElementsByClassName('tagFrame', 'fieldset', tiddlerElem, atf))
 					atf[0].style.display = tiddler.tags.length > 0 ? "block" : "none";
 			}
-            forceReflow();
-        }
-    }
-    return tiddlerElem;
+			forceReflow();
+		}
+	}
+	return tiddlerElem;
 };
 
 Story.prototype.addCustomFields = function(place, customFields) {
