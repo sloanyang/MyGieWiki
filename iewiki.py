@@ -1811,6 +1811,7 @@ class MainPage(webapp.RequestHandler):
 		title = url[1]
 		page = url[0]
 	else:
+		self.Trace(title)
 		page = self.path
 		
 	t = Tiddler.all().filter('page', page).filter('title',title).filter('current', True).get()
@@ -2589,10 +2590,13 @@ class MainPage(webapp.RequestHandler):
 		LogEvent("tm:" + m,'\n'.join(self.trace))
 	return r
 
+  def traceKey(self):
+	return "T:" + self.request.remote_addr
+
   def post(self):
 	self.user = users.get_current_user()
 	self.path = self.request.path
-	trace = memcache.get(self.request.remote_addr)
+	trace = memcache.get(self.traceKey())
 	self.trace = [] if trace != None and trace != "0" else False
 	self.getSubdomain()
 	m = self.request.get("method") # what do you want to do
@@ -2994,52 +2998,14 @@ class MainPage(webapp.RequestHandler):
 			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,self.user))
 
 	if metaData:
-		metaDiv = xd.createElement('div')
-		metaDiv.setAttribute('title', "_MetaData")
-		metaDiv.setAttribute('version','-1')
-		metaDiv.setAttribute('admin', 'true' if users.is_current_user_admin() else 'false')
-		metaDiv.setAttribute('clientip', self.request.remote_addr)
-		if page == None:
-			metaDiv.setAttribute('access','admin' if users.is_current_user_admin() else 'none')
-			metaDiv.setAttribute('sitetitle',"giewiki")
-			metaDiv.setAttribute('subtitle',message)
+		introMsg = self.request.get("introduce",None)
+		if not introMsg is None:
+			self.warnings.append(introMsg)
+		wmckey = "W:" + self.request.remote_addr
+		if len(self.warnings) > 0:
+			memcache.set(wmckey,'<br>'.join(self.warnings))
 		else:
-			username = self.user.nickname() if self.user != None else ""
-			metaDiv.setAttribute('timestamp',unicode(datetime.datetime.now()))
-			metaDiv.setAttribute('username',username)
-			metaDiv.setAttribute('owner', page.owner.nickname())
-			metaDiv.setAttribute('access', AccessToPage(page,self.user))
-			metaDiv.setAttribute('anonaccess',page.access[page.anonAccess])
-			metaDiv.setAttribute('authaccess',page.access[page.authAccess])
-			metaDiv.setAttribute('groupaccess',page.access[page.groupAccess])
-			metaDiv.setAttribute('sitetitle',page.title)
-			metaDiv.setAttribute('subtitle',page.subtitle)
-			metaDiv.setAttribute('tiddlertags', AttrValueOrBlank(page,'tiddlertags'))
-			if page.groups != None:
-				metaDiv.setAttribute('groups',page.groups)
-				if (page.groupAccess > page.ViewAccess) and HasGroupAccess(page.groups,username):
-					metaDiv.setAttribute('groupmember','true')
-			metaDiv.setAttribute('viewbutton', 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false')
-			metaDiv.setAttribute('viewprior', 'true' if hasattr(page,'viewprior') and page.viewprior else 'false')
-			# metaDiv.setAttribute('server', self.gwserverVersion)
-			if page.locked:
-				metaDiv.setAttribute('locked','true')
-			if len(self.warnings) > 0:
-				metaDiv.setAttribute('warnings','<br>'.join(self.warnings))
-		if self.trace != None and self.trace != False and len(self.trace) > 0:
-			metaPre = xd.createElement('pre')
-			metaDiv.appendChild(metaPre)
-			metaPre.appendChild(xd.createTextNode('\n'.join(self.trace)))
-		pgse = xd.createElement("div")
-		metaDiv.appendChild(pgse)
-		pgse.setAttribute('title',"pages")
-		for p in pages:
-			xpage = xd.createElement("a")
-			pgse.appendChild(xpage)
-			xpage.setAttribute('title',"page")
-			xpage.setAttribute('href', p.path)
-			xpage.appendChild(xd.createTextNode(p.subtitle))
-		elStArea.appendChild(metaDiv)
+			memcache.delete(wmckey)
 
 	if xsl != None and xsl != "":	# except if no CSS is desired
 		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
@@ -3136,8 +3102,8 @@ class MainPage(webapp.RequestHandler):
 	else:
 		self.traceLevel = trace
 		self.trace = []
-		memcache.set(self.request.remote_addr, self.traceLevel, 300) # 5 minutes
-		self.Trace("TL=" + memcache.get(self.request.remote_addr))
+		memcache.set(self.traceKey(), self.traceLevel, 300) # 5 minutes
+		self.Trace("TL=" + memcache.get(self.traceKey()))
 
 	self.getSubdomain()
 	method = self.request.get('method',None)

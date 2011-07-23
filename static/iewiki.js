@@ -563,57 +563,24 @@ var installedPlugins = {}; // Information filled in when plugins are executed
 var startingUp = false; // Whether we're in the process of starting up
 var pluginInfo, tiddler; // Used to pass information to plugins in loadPlugins()
 
-config.read = function(t) {
-	var fields = t.fields;
-	this.admin = window.eval(fields.admin);
-	this.clientip = fields.clientip;
-	this.owner = fields.owner;
-	this.access = fields.access;
+config.read = function () {
 	if (this.access == "none" || this.access == "view" || this.access == "comment")
 		readOnly = true;
-	this.anonAccess = fields.anonaccess;
-	this.authAccess = fields.authaccess;
-	this.groupAccess = fields.groupaccess;
-	this.groups = fields.groups;
-	this.viewButton = window.eval(fields.viewbutton);
-	this.viewPrior = window.eval(fields.viewprior);
-	this.locked = fields.locked;
-	this.pages = this.readPages(t.ace);
-	this.tiddlerTags = fields.tiddlertags ? fields.tiddlertags.readBracketedList() : [];
-	this.warnings = fields.warnings;
+	var pglt = {};
+	for (var pgi = this.pages.length - 1; pgi >= 0; pgi--)
+		pglt[this.pages[pgi].p.split('/').pop()] = this.pages[pgi]; // build wikipage lookup table
+	this.pages = pglt;
+	this.tiddlerTags = this.tiddlerTags ? this.tiddlerTags.readBracketedList() : [];
 	var st = store.getTiddler('SiteTitle');
 	if (!st || st.hasShadow)
-		config.shadowTiddlers.SiteTitle = fields.sitetitle;
+		this.shadowTiddlers.SiteTitle = this.sitetitle;
 	st = store.getTiddler('SiteSubtitle');
 	if (!st || st.hasShadow)
-		config.shadowTiddlers.SiteSubtitle = fields.subtitle;
+		this.shadowTiddlers.SiteSubtitle = this.subtitle;
 }
 
 config.isLoggedIn = function() {
 	return config.options.rat != false;
-}
-
-config.readPages = function(pgs) {
-	var a = [];
-	if (pgs) 
-	  for (var i=0; i<pgs.length; i++) {
-		try {
-		switch (pgs[i].getAttribute("title")) {
-		  case "pages":
-			var pages = pgs[i].childNodes;
-			for (var j=0; j<pages.length; j++) {
-			  var hr = pages[j].href;
-			  if (hr)
-				a[hr.split('/').pop()] = pages[j];
-			}
-			break;
-		  }
-		}
-		catch (ex)
-		{
-		}
-	  }
-	return a;
 }
 
 // Starting up
@@ -638,8 +605,7 @@ function main() {
         store.addNotification(config.notifyTiddlers[s].name, config.notifyTiddlers[s].notify);
     loadShadowTiddlers(false);
     store.loadFromDiv("storeArea", "store", true);
-    config.read(store.fetchTiddler("_MetaData"));
-	store.removeTiddler("_MetaData");
+    config.read();
     invokeParamifier(params, "onload");
     var hms = store.getTiddlerText("HttpMethods");
 	if (hms) http._init(hms.split('\n'));
@@ -5454,8 +5420,8 @@ function getTiddlyLinkInfo(title, currClasses) {
         classes.remove("tiddlyLinkNonExisting");
         classes.remove("shadow");
     } else if (config.pages[title]) {
-        subTitle = config.pages[title].innerText;
-        link = config.pages[title].href;
+        subTitle = config.pages[title].s || config.pages[title].t;
+        link = config.pages[title].p;
         classes.pushUnique("tiddlyLinkExisting");
         classes.remove("tiddlyLinkNonExisting");
         classes.remove("shadow");
@@ -8776,6 +8742,12 @@ config.macros.giewiki = {
 	handler: function(place, macroName, params) {
 		var a = createExternalLink(place, "http://giewiki.appspot.com", true);
 		createTiddlyText(a, params[1] || "giewiki");
+	}
+};
+
+config.macros.timestamp = {
+	handler: function (place, macroName, params) {
+		createTiddlyText(place, config.timeStamp);
 	}
 };
 

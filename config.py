@@ -1,7 +1,7 @@
 # this:	Config.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.1
+# ver.:	1.13.2
 
 import cgi
 import codecs
@@ -16,9 +16,10 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
+from google.appengine.api import memcache
 from google.appengine.api import namespace_manager
 
-from giewikidb import UserProfile
+from giewikidb import UserProfile,Page,AccessToPage
 
 HttpMethods = '\
 createPage\n\
@@ -68,7 +69,8 @@ updateTemplate\n\
 getTemplates'
 
 jsProlog = '\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 13, revision: 1, date: new Date("July 21, 2011"), extensions: {} };\n\
+// This file is auto-generated\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 13, revision: 1, date: new Date("July 23, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -81,17 +83,37 @@ var config = {\n\
 	cascadeSlow: 60,\n\
 	cascadeDepth: 5,\n\
 	locale: "en",\n\
+	admin: <isAdmin>,\n\
 	loginName: <loginName>,\n\
+	owner: <pageOwner>,\n\
+	access: "<access>",\n\
+	anonAccess: "<anonAccess>",\n\
+	authAccess: "<authAccess>",\n\
+	groupAccess: "<groupAccess>",\n\
+	groups: <userGroups>,\n\
 	project: "<project>",\n\
+	sitetitle: <sitetitle>,\n\
+	subtitle: <subtitle>,\n\
+	locked: <isLocked>,\n\
+	tiddlerTags: <tiddlerTags>,\n\
+	viewButton: <viewButton>,\n\
+	viewPrior: <viewPrior>,\n\
 	serverType: "<servertype>",\n\
+	clientip: "<clientIP>",\n\
+	timeStamp: "<timestamp>",\n\
+	warnings: <allWarnings>,\n\
+	pages: [ <siblingPages> ],\n\
 	options: {\n\
 		' # the rest is built dynamically
 
 def isNameAnOption(name):
 	return name.startswith('txt') or name.startswith('chk')
 
+def AttrValueOrBlank(o,a):
+	return unicode(getattr(o,a)) if o != None and hasattr(o,a) and getattr(o,a) != None else ''
+
 def jsEncodeStr(s):
-	return '"' + unicode(s).replace(u'"',u'\\"').replace(u'\n',u'\\n').replace(u'\r',u'') + u'"'
+	return 'null' if s is None else u'"' + unicode(s).replace(u'"',u'\\"').replace(u'\n',u'\\n').replace(u'\r',u'') + u'"'
 
 def IsIPaddress(v):
 	if len(v) < 4:
@@ -137,12 +159,72 @@ class ConfigJs(webapp.RequestHandler):
 	'Dynamically construct file "/config.js"'
 	user = users.get_current_user()
 	self.getSubdomain()
+	page = memcache.get(self.request.remote_addr)
+	warnings = memcache.get("W:" + self.request.remote_addr)
+	userGroups = ''
+	pages = []
+	if page is None:
+		logging.error("page not found in memcache")
+		yourAccess = 'view' #?
+		anonAccess = 'view' #?
+		authAccess = 'view' #?
+		groupAccess = 'view'#?
+		owner = ''
+		locked = false
+		siteTitle = ''
+		subTitle = ''
+		viewButton = false
+		viewPrior = false
+	else:
+		yourAccess = AccessToPage(page,user)
+		anonAccess = page.access[page.anonAccess]
+		authAccess = page.access[page.authAccess]
+		groupAccess = page.access[page.groupAccess]
+		owner = page.ownername if not user is page.owner else user.nickname()
+		if page.groups != None:
+			userGroups = page.groups
+		viewButton = 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false'
+		viewPrior = 'true' if hasattr(page,'viewprior') and page.viewprior else 'false'
+		siteTitle = page.title
+		subTitle = page.subtitle
+		locked = page.locked
+		papalen = page.path.rfind('/')
+		if papalen == -1:
+			paw = ""
+		else:
+			paw = page.path[0:papalen + 1]
+		for p in Page.all():
+			if p.path.startswith(paw): # list sibling pages
+				pages.append(''.join(['{ p:', jsEncodeStr(p.path), ',t:', jsEncodeStr(p.title), ',s:', jsEncodeStr(p.subtitle),'}']))
+
+	if not page is None:
+		logging.info("Config for " + page.path + ": " + page.title)
 	self.configOptions = list()
 	isLoggedIn = user != None
 	self.response.headers['Content-Type'] = 'application/x-javascript'
 	self.response.headers['Cache-Control'] = 'no-cache'
-	loginName = 'null' if user is None else '"' + user.nickname() + '"'
-	self.response.out.write(jsProlog.replace("<project>",self.getSubdomain()).replace("<servertype>",os.environ['SERVER_SOFTWARE']).replace('<loginName>',loginName))
+	loginName = 'null' if user is None else jsEncodeStr(user.nickname())
+	self.response.out.write( jsProlog\
+		.replace('<project>',self.getSubdomain(),1)\
+		.replace('<sitetitle>',jsEncodeStr(siteTitle),1)\
+		.replace('<subtitle>',jsEncodeStr(subTitle),1)\
+		.replace('<isLocked>','true' if locked else 'false',1)\
+		.replace('<tiddlerTags>',jsEncodeStr(AttrValueOrBlank(page,'tiddlertags')),1)\
+		.replace('<viewButton>',viewButton,1)\
+		.replace('<viewPrior>',viewPrior,1)\
+		.replace('<servertype>',os.environ['SERVER_SOFTWARE'],1)\
+		.replace('<isAdmin>','true' if users.is_current_user_admin() else 'false',1)\
+		.replace('<loginName>',loginName,1)\
+		.replace('<pageOwner>',jsEncodeStr(owner),1)\
+		.replace('<access>',yourAccess,1)\
+		.replace('<anonAccess>',anonAccess,1)\
+		.replace('<authAccess>',authAccess,1)\
+		.replace('<groupAccess>',groupAccess,1)\
+		.replace('<userGroups>',jsEncodeStr(userGroups),1)\
+		.replace('<clientIP>',self.request.remote_addr,1)\
+		.replace('<allWarnings>',jsEncodeStr(warnings),1)\
+		.replace('<siblingPages>', ',\n'.join(pages),1)\
+		.replace('<timestamp>', unicode(datetime.datetime.now()),1)) # time.strftime("%Y-%m-%d-%H:%M:%S"),1))
 	if isLoggedIn:
 		upr = UserProfile.all().filter('user',user).get() # my profile
 		if upr == None:
