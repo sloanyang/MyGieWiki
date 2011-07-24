@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.1
+# ver.:	1.13.2
 
 import cgi
 import codecs
@@ -30,7 +30,7 @@ from google.appengine.api import mail
 from google.appengine.api import namespace_manager
 
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
-from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob
+from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, NoSuchTiddlers
 
 from javascripts import javascriptDict
 
@@ -1833,6 +1833,14 @@ class MainPage(webapp.RequestHandler):
 			else:
 				return self.fail()
 		except Exception, x:
+			cp = self.CurrentPage()
+			if not cp is None:
+				nctl = cp.NoSuchTiddlersOfPage()
+				if not title in nctl:
+					nctl.append(title)
+					setattr(cp,NoSuchTiddlers,'\n'.join(nctl))
+					cp.put()
+
 			return self.fail()
 
 	self.deliverTiddler(t)
@@ -1994,7 +2002,7 @@ class MainPage(webapp.RequestHandler):
 			et = Tiddler.all().filter('id',nt.id).filter("current",True).get() if nt.id != "" else None
 			if et == None:
 				et = Tiddler.all().filter('page',self.path).filter('title',nt.title).filter("current",True).get()
-				
+
 			# self.response.out.write("Not found " if et == None else ("Found v# " + unicode(et.version)))
 			if et == None:
 				self.status = ' - added'
@@ -3200,7 +3208,9 @@ class MainPage(webapp.RequestHandler):
 
 	if page == None:
 		if rootpath:
-			pass
+			pg = Page()
+			pg.path = "/"
+			memcache.set(self.request.remote_addr,pg) # used by config.js request
 		else:
 			if self.path == '/UploadDialog.htm':
 				ftwd = open('UploadDialog.htm')

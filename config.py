@@ -19,7 +19,7 @@ from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import namespace_manager
 
-from giewikidb import UserProfile,Page,AccessToPage
+from giewikidb import UserProfile,Page,AccessToPage,NoSuchTiddlers
 
 HttpMethods = '\
 createPage\n\
@@ -70,7 +70,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 13, revision: 1, date: new Date("July 23, 2011"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 13, revision: 2, date: new Date("July 23, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -103,6 +103,7 @@ var config = {\n\
 	timeStamp: "<timestamp>",\n\
 	warnings: <allWarnings>,\n\
 	pages: [ <siblingPages> ],\n\
+	noSuchTiddlers: <noSuchTiddlers>,\n\
 	options: {\n\
 		' # the rest is built dynamically
 
@@ -114,6 +115,9 @@ def AttrValueOrBlank(o,a):
 
 def jsEncodeStr(s):
 	return 'null' if s is None else u'"' + unicode(s).replace(u'"',u'\\"').replace(u'\n',u'\\n').replace(u'\r',u'') + u'"'
+
+def jsEncodeBool(b):
+	return 'true' if b else 'false'
 
 def IsIPaddress(v):
 	if len(v) < 4:
@@ -163,18 +167,19 @@ class ConfigJs(webapp.RequestHandler):
 	warnings = memcache.get("W:" + self.request.remote_addr)
 	userGroups = ''
 	pages = []
-	if page is None:
-		logging.error("page not found in memcache")
-		yourAccess = 'view' #?
+	noSuchTiddlers = None
+	if page is None or page.is_saved() == False:
+		logging.error("page not found in memcache" if page is None else "Page is new")
+		yourAccess =  'view' if page is None else 'admin' # admin when db is blank
 		anonAccess = 'view' #?
 		authAccess = 'view' #?
 		groupAccess = 'view'#?
 		owner = ''
-		locked = false
+		locked = False
 		siteTitle = ''
 		subTitle = ''
-		viewButton = false
-		viewPrior = false
+		viewButton = 'false'
+		viewPrior = 'false'
 	else:
 		yourAccess = AccessToPage(page,user)
 		anonAccess = page.access[page.anonAccess]
@@ -188,6 +193,9 @@ class ConfigJs(webapp.RequestHandler):
 		siteTitle = page.title
 		subTitle = page.subtitle
 		locked = page.locked
+		if hasattr(page,NoSuchTiddlers):
+			noSuchTiddlers = getattr(page,NoSuchTiddlers)
+
 		papalen = page.path.rfind('/')
 		if papalen == -1:
 			paw = ""
@@ -196,9 +204,8 @@ class ConfigJs(webapp.RequestHandler):
 		for p in Page.all():
 			if p.path.startswith(paw): # list sibling pages
 				pages.append(''.join(['{ p:', jsEncodeStr(p.path), ',t:', jsEncodeStr(p.title), ',s:', jsEncodeStr(p.subtitle),'}']))
-
-	if not page is None:
 		logging.info("Config for " + page.path + ": " + page.title)
+
 	self.configOptions = list()
 	isLoggedIn = user != None
 	self.response.headers['Content-Type'] = 'application/x-javascript'
@@ -208,7 +215,7 @@ class ConfigJs(webapp.RequestHandler):
 		.replace('<project>',self.getSubdomain(),1)\
 		.replace('<sitetitle>',jsEncodeStr(siteTitle),1)\
 		.replace('<subtitle>',jsEncodeStr(subTitle),1)\
-		.replace('<isLocked>','true' if locked else 'false',1)\
+		.replace('<isLocked>', jsEncodeBool(locked),1)\
 		.replace('<tiddlerTags>',jsEncodeStr(AttrValueOrBlank(page,'tiddlertags')),1)\
 		.replace('<viewButton>',viewButton,1)\
 		.replace('<viewPrior>',viewPrior,1)\
@@ -223,6 +230,7 @@ class ConfigJs(webapp.RequestHandler):
 		.replace('<userGroups>',jsEncodeStr(userGroups),1)\
 		.replace('<clientIP>',self.request.remote_addr,1)\
 		.replace('<allWarnings>',jsEncodeStr(warnings),1)\
+		.replace('<noSuchTiddlers>',jsEncodeStr(noSuchTiddlers),1)\
 		.replace('<siblingPages>', ',\n'.join(pages),1)\
 		.replace('<timestamp>', unicode(datetime.datetime.now()),1)) # time.strftime("%Y-%m-%d-%H:%M:%S"),1))
 	if isLoggedIn:

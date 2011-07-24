@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.13.1
+   version:	1.13.2
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -577,6 +577,8 @@ config.read = function () {
 	st = store.getTiddler('SiteSubtitle');
 	if (!st || st.hasShadow)
 		this.shadowTiddlers.SiteSubtitle = this.subtitle;
+	if (this.noSuchTiddlers)
+		this.NoSuchTiddlers = this.NoSuchTiddlers.concat(this.noSuchTiddlers.split('\n'))
 }
 
 config.isLoggedIn = function() {

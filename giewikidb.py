@@ -1,7 +1,7 @@
 # this: giewikidb.py
 # by:   Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:  http://code.google.com/p/giewiki
-# ver.: 1.13
+# ver.: 1.13.2
 
 import logging
 import datetime
@@ -88,7 +88,9 @@ class PageTemplate(db.Model):
   scripts = db.StringProperty()
   include = db.BooleanProperty()
 
-class Page(db.Model):
+NoSuchTiddlers = 'NoSuchTiddlers'
+
+class Page(db.Expando):
   NoAccess = 0
   ViewAccess = 2
   CommentAccess = 4
@@ -146,12 +148,20 @@ class Page(db.Model):
 	if tiddler.title == "SiteTitle":
 		self.title = tiddler.text
 		self.titleModified = tiddler.modified
+		put = True
 	elif tiddler.title == "SiteSubtitle":
 		self.subtitle = tiddler.text
 		self.subtitleModified = tiddler.modified
+		put = True
 	else:
-		return
-	self.put()
+		put = False
+	nctl = self.NoSuchTiddlersOfPage()
+	if tiddler.title in nctl:
+		nctl.remove(tiddler.title)
+		setattr(self,NoSuchTiddlers,'\n'.join(nctl))
+		put = True
+	if put:
+		self.put()
   
   def UpdateViolation(self):
 	if users.get_current_user() == None and self.anonAccess < 6:
@@ -159,6 +169,13 @@ class Page(db.Model):
 	if users.get_current_user() != self.owner and self.authAccess < 6 and (self.groupAccess < 6 or HasGroupAccess(self.groups,userWho()) == False):
 		return "Edit access is restricted"
 	return None
+
+  def NoSuchTiddlersOfPage(self):
+	if hasattr(self,NoSuchTiddlers):
+		return getattr(self,NoSuchTiddlers).split('\n')
+	else:
+		return []
+
 
 class DeletionLog(db.Model):
 	page = db.StringProperty()
