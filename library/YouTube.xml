@@ -32,6 +32,7 @@ var swfobject=function(){var D=&quot;undefined&quot;,r=&quot;object&quot;,S=&quo
 //{{{
 config.macros.youtube = {
 	textLocation: {},
+	paused: {},
 	handler: function (place, macroName, params, wikifier, paramString) {
 		if (params.length == 0)
 			throw(&quot;Missing required parameter: youtube video id&quot;);
@@ -82,6 +83,29 @@ config.macros.youtube = {
 				nochrome = true;
 			else if (opt == 'altlabel')
 				altLabel = params.shift();
+			else if (opt == 'pause') {
+				var player = document.getElementById(vid);
+				var when = config.macros.youtube.paused[vid];
+				var cpt = player &amp;&amp; player.getCurrentTime();
+				if (player == null)
+					wikify("//Player " + vid + " will stop at this point//",place);
+				else if (!when || cpt &lt; when || cpt &gt; when + 0.2 )
+				{
+					//debugger;
+					player.pauseVideo();
+					config.macros.youtube.paused[vid] = player.getCurrentTime();
+					if (params.length &amp;&amp; params.shift() == "resume")
+						createTiddlyButton(place, params.length ? params.shift() : "resume", null, function(ev) 
+						{ 
+							var target = resolveTarget(ev || window.event);
+							target.parentNode.removeChild(target);
+							//config.macros.youtube.paused[vid] = false;
+							debugger;
+							player.playVideo(); 
+						});
+				}
+				return;
+			}
 			else if (opt == 'play' || opt  == 'time' || opt == 'text') { // options: auto-play / transcript
 				aus[opt] = true;
 				if (opt == 'time' || opt == 'text') {
@@ -103,6 +127,7 @@ config.macros.youtube = {
 						switch (ps) {
 							case -1: // unstarted
 							case 5:
+								config.macros.youtube.paused[vid] = false;
 								if (aus.play)
 									player.playVideo();
 								if (!aus.transcript &amp;&amp; !aus.text) break;
@@ -114,9 +139,11 @@ config.macros.youtube = {
 							case 1: // playing
 								var t = player.getCurrentTime();
 								for (at in ats) {
-									if (t &gt; at) {
+									fat = parseFloat(at);
+									if (t &gt; fat &amp;&amp; t &lt; fat + 0.1) {
 										removeChildren(aus.textLocation);
 										wikify(ats[at],aus.textLocation); //-or-: aus.textLocation.innerHTML = ats[at];
+										break;
 									}
 								}
 								return;
@@ -280,6 +307,8 @@ If you want more control over where the text/subtitles are presented, you can ad
 |class //classname//|Assigns classname to the div that wraps the player (and the default subtitle location)|
 |play|Causes the player to start playing as soon as it is ready|
 |chromeless|Causes the player to be presented without the control/status portion that normally appears below|
+|pause|When used inside a subtitles tiddler, causes the playing video to be paused|
+|pause resume|Like pause, but inserts a button to allow playback to be resumed. A further parameter may be given to specify an alternative label for this button|
 |altlabel "link-text"|Causes ''link-text'' to be displayed in stead of ''YouTube/video-id'' on devices that do not support flash. For the benefit of iOS users, a link to youtube is inserted, which will launch the video in the YouTube application.|
 
 </pre></div><div id="13711798-6293-402c-8716-665d631d6e35" modified="20101204183940" modifier="PoulStaugaard" tags="" title="StyleSheet" ><pre>.ytmx { font-family: courier; font-size: 1.15em; margin-left:2em; }</pre></div><div id="60e24090-71d2-44a3-b0f1-7c72f44d2e35" modified="20101204181123" modifier="PoulStaugaard" tags="Example" title="Both Sides Now" ><pre>&lt;&lt;youtube tKQSlH-LLTQ -600&gt;&gt;</pre></div><div comments="0" id="ae3a7712-70d5-4876-87ff-093cce5baf34" modified="20101203231719" modifier="PoulStaugaard" reverted="20101204181828" reverted_by="PoulStaugaard" tags="Example MMU" title="Me And My Uncle (ts)"><pre>|9.596|''Me and my uncle''|
