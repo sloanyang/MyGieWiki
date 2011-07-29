@@ -1,5 +1,5 @@
 # this:	iewiki.py
-# by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
+# by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
 # ver.:	1.13.2
 
@@ -657,6 +657,10 @@ class MainPage(webapp.RequestHandler):
   def saveTiddler(self, tlr=None, upload=False):
 	"http tiddlerName text tags version tiddlerId versions"
 	self.response.headers.add_header('Access-Control-Allow-Origin','*')
+	title = self.request.get('tiddlerName',None)
+	tlrId = self.request.get('tiddlerId')
+	if title == None:
+		return self.fail("tiddlerName not present")
 	if tlr == None:
 		reply = True # called directly
 		tlr = Tiddler()
@@ -667,7 +671,7 @@ class MainPage(webapp.RequestHandler):
 		for ra in self.request.arguments():
 			if not ra in ('method','tiddlerId','tiddlerName','fields','isPrivate','created','modifier','modified','fromVer','shadow','vercnt','key','reverted','reverted_by','links','linksUpdated'):
 				setattr(tlr,ra,self.request.get(ra))
-		tlr.id = self.request.get('tiddlerId')
+		tlr.id = tlrId
 	else:
 		reply = False # called from authenticateAndSaveUploadedTiddlers
 
@@ -692,6 +696,10 @@ class MainPage(webapp.RequestHandler):
 			detail['modified'] = tlr.modified.strftime("%Y%m%d%H%M%S")
 			detail['errorcode'] = S_FALSE
 			detail['id'] = tlr.id
+	t = Tiddler.all().filter('page',self.request.path).filter('current',True).filter('title',title).get()
+	if t != None:
+		if t.id != tlrId:
+			return self.fail("Tiddler name conflict, cannot save by this name")
 	if tlr.id == '' or tlr.version == 0:
 		tlr.version = 1
 		tlr.vercnt = 1
@@ -702,7 +710,8 @@ class MainPage(webapp.RequestHandler):
 			# break the link and create a new tiddler
 			nt = self.SaveNewTiddler(tlr.page, self.request.get("tiddlerName"),self.request.get("text"))
 			return self.reply({"Success": True, "id": nt.id})
-		t = Tiddler.all().filter('id', tlr.id).filter('current',True).get()
+		if t == None:
+			t = Tiddler.all().filter('id', tlr.id).filter('current',True).get()
 		if t == None:
 			error = "Tiddler does not exist"
 		else:
@@ -1842,6 +1851,11 @@ class MainPage(webapp.RequestHandler):
 					cp.put()
 
 			return self.fail()
+	else:
+		if hasattr(t,'private') and t.private: # Check if page owner is asking for it
+			cp = self.CurrentPage()
+			if cp != None and cp.owner != None and cp.owner != self.user:
+				return self.fail() # No access allowed
 
 	self.deliverTiddler(t)
 
