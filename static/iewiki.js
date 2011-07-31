@@ -2990,7 +2990,11 @@ function KeepTiddlers(st,title) {
 	return keeper(st);
 }
 
+var tryGetWhatTiddler = null;
+
 function TryGetTiddler(title) {
+	if (title == tryGetWhatTiddler) // debugging aid
+		debugger;
 	if (config.NoSuchTiddlers.contains(title))
 		return null;
 	st = http.getTiddler({'title': title});
@@ -3671,10 +3675,10 @@ function TiddlyWiki() {
     	var t = tiddlers[at];
     	return t instanceof Tiddler && (real ? t.id : true);
     };
-    this.fetchTiddler = function (title) {
+    this.fetchTiddler = function (title,co) {
     	var t = tiddlers[title];
     	if (!t)
-			if (this.fetchFromServer)
+			if (this.fetchFromServer && !co)
     			t = TryGetTiddler(title);
     	return t instanceof Tiddler ? t : null;
     };
@@ -3719,7 +3723,7 @@ TiddlyWiki.prototype.tiddlerExists = function(title) {
 };
 
 TiddlyWiki.prototype.isShadowTiddler = function (title) {
-	var t = this.fetchTiddler(title);
+	var t = this.fetchTiddler(title,true);
     return t && t.hasShadow;
 };
 

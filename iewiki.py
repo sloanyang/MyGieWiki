@@ -30,7 +30,7 @@ from google.appengine.api import mail
 from google.appengine.api import namespace_manager
 
 from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
-from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, NoSuchTiddlers
+from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, noSuchTiddlers
 
 from javascripts import javascriptDict
 
@@ -1847,7 +1847,7 @@ class MainPage(webapp.RequestHandler):
 				nctl = cp.NoSuchTiddlersOfPage()
 				if not title in nctl:
 					nctl.append(title)
-					setattr(cp,NoSuchTiddlers,'\n'.join(nctl))
+					cp.noSuchTiddlers = '\n'.join(nctl)
 					cp.put()
 
 			return self.fail()

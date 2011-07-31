@@ -88,7 +88,7 @@ class PageTemplate(db.Model):
   scripts = db.StringProperty()
   include = db.BooleanProperty()
 
-NoSuchTiddlers = 'NoSuchTiddlers'
+noSuchTiddlers = 'noSuchTiddlers'
 
 class Page(db.Expando):
   NoAccess = 0
@@ -123,6 +123,7 @@ class Page(db.Expando):
   viewprior = db.BooleanProperty(True)
   template = db.ReferenceProperty(PageTemplate)
   scripts = db.StringProperty()
+  noSuchTiddlers = db.TextProperty()
   def todict(s,d):
 	d['path'] = s.path
 	d['owner'] = s.owner
@@ -158,7 +159,7 @@ class Page(db.Expando):
 	nctl = self.NoSuchTiddlersOfPage()
 	if tiddler.title in nctl:
 		nctl.remove(tiddler.title)
-		setattr(self,NoSuchTiddlers,'\n'.join(nctl))
+		self.noSuchTiddlers = None if len(nctl) == 0 else '\n'.join(nctl)
 		put = True
 	if put:
 		self.put()
@@ -171,8 +172,9 @@ class Page(db.Expando):
 	return None
 
   def NoSuchTiddlersOfPage(self):
-	if hasattr(self,NoSuchTiddlers):
-		return getattr(self,NoSuchTiddlers).split('\n')
+	if hasattr(self,noSuchTiddlers):
+		nsts = self.noSuchTiddlers
+		return [] if nsts is None else nsts.split('\n')
 	else:
 		return []
 

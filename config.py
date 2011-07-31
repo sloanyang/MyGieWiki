@@ -19,7 +19,7 @@ from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import namespace_manager
 
-from giewikidb import UserProfile,Page,AccessToPage,NoSuchTiddlers
+from giewikidb import UserProfile,Page,AccessToPage,noSuchTiddlers
 
 HttpMethods = '\
 createPage\n\
@@ -167,7 +167,7 @@ class ConfigJs(webapp.RequestHandler):
 	warnings = memcache.get("W:" + self.request.remote_addr)
 	userGroups = ''
 	pages = []
-	noSuchTiddlers = None
+	noSuchTdlrs = None
 	if page is None or page.is_saved() == False:
 		logging.error("page not found in memcache" if page is None else "Page is new")
 		yourAccess =  'view' if page is None else 'admin' # admin when db is blank
@@ -185,7 +185,10 @@ class ConfigJs(webapp.RequestHandler):
 		anonAccess = page.access[page.anonAccess]
 		authAccess = page.access[page.authAccess]
 		groupAccess = page.access[page.groupAccess]
-		owner = page.ownername if not user is page.owner else user.nickname()
+		if (not page.ownername is None) and (user is None or user.nickname() != page.owner.nickname()):
+			owner = page.ownername
+		else:
+			owner = page.owner.nickname()
 		if page.groups != None:
 			userGroups = page.groups
 		viewButton = 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false'
@@ -193,8 +196,8 @@ class ConfigJs(webapp.RequestHandler):
 		siteTitle = page.title
 		subTitle = page.subtitle
 		locked = page.locked
-		if hasattr(page,NoSuchTiddlers):
-			noSuchTiddlers = getattr(page,NoSuchTiddlers)
+		if hasattr(page,noSuchTiddlers):
+			noSuchTdlrs = page.noSuchTiddlers
 
 		papalen = page.path.rfind('/')
 		if papalen == -1:
@@ -230,7 +233,7 @@ class ConfigJs(webapp.RequestHandler):
 		.replace('<userGroups>',jsEncodeStr(userGroups),1)\
 		.replace('<clientIP>',self.request.remote_addr,1)\
 		.replace('<allWarnings>',jsEncodeStr(warnings),1)\
-		.replace('<noSuchTiddlers>',jsEncodeStr(noSuchTiddlers),1)\
+		.replace('<noSuchTiddlers>',jsEncodeStr(noSuchTdlrs),1)\
 		.replace('<siblingPages>', ',\n'.join(pages),1)\
 		.replace('<timestamp>', unicode(datetime.datetime.now()),1)) # time.strftime("%Y-%m-%d-%H:%M:%S"),1))
 	if isLoggedIn:
