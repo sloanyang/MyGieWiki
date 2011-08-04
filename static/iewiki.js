@@ -228,18 +228,20 @@ config.macros = {
 		label: "permaview",
 		prompt: "Link to an URL that retrieves all the currently displayed tiddlers"
 	},
-    comments: {
-        listLabel: "%0 comments",
-        listPrompt: "List comments",
-        notesLabel: "%0 notes",
-        messagesLabel: "%0 messages",
-        listPrompt: "List notes",
-        addCommentLabel: "add comment",
-        addCommentPrompt: "comment on above",
-        addMessageLabel: "add message",
-        addMessagePrompt: "message to author",
-        addNoteLabel: "add note",
-        addNotePrompt: "add personal note"
+	comments: {
+		listLabel: "%0 comments",
+		listPrompt: "List comments",
+		notesLabel: "%0 notes",
+		messagesLabel: "%0 messages",
+		listPrompt: "List notes",
+		addCommentLabel: "add comment",
+		addCommentPrompt: "comment on above",
+		addMessageLabel: "add message",
+		addMessagePrompt: "message to author",
+		addNoteLabel: "add note",
+		addNotePrompt: "add personal note",
+		addTagLabel: "add tag",
+		addTagPrompt: "add one ore more tags"
     },
     slider: {},
     option: {},
@@ -1911,6 +1913,27 @@ config.macros.permaview.onClick = function(e)
 	return false;
 };
 
+function onAddTagClick(ev) {
+	var target = resolveTarget(ev || window.event);
+	var tiddlerElem = story.findContainingTiddler(target);
+	var title = tiddlerElem.getAttribute('tiddler');
+	story.displayTiddler(null, title, "AddTagsTemplate");
+	var be = document.getElementById('addTagsButton');
+	if (be)
+		be.onclick = function(ev) {
+			var afi = [];
+			if (getElementsByClassName('addTagsText',null, be.parentNode,afi)) {
+				st = store.getTiddler(title);
+				var ars = http.addTags({id: st.id, version: st.version, tags: afi[0].value });
+				if (ars.Success) {
+					st.tags = ars.tags.readBracketedList();
+					store.notify(title,true);
+				}
+			}
+			story.displayTiddler(null, title, DEFAULT_VIEW_TEMPLATE);
+		}
+}
+
 config.macros.comments.addToolbar = function(cmc,ced,tiddler) {
 	if (tiddler.comments)
 		var ccb = createTiddlyButton(ced, cmc.listLabel.format([tiddler.comments]), cmc.listPrompt, cmc.onListClick);
@@ -1923,6 +1946,7 @@ config.macros.comments.addToolbar = function(cmc,ced,tiddler) {
 	createTiddlyButton(ced, cmc.addCommentLabel, cmc.addCommentPrompt, cmc.onAddCommentClick);
 	createTiddlyButton(ced, cmc.addMessageLabel, cmc.addMessagePrompt, cmc.onAddMessageClick);
 	createTiddlyButton(ced, cmc.addNoteLabel, cmc.addNotePrompt, cmc.onAddNoteClick);
+	createTiddlyButton(ced, cmc.addTagLabel, cmc.addTagPrompt, onAddTagClick);
 };
 
 config.macros.comments.handler = function(place, macroName, params, wikifier, paramString, tiddler) {

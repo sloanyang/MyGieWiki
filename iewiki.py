@@ -877,6 +877,20 @@ class MainPage(webapp.RequestHandler):
 	tlr.put()
 	self.reply()
 
+  def addTags(self):
+	id = self.request.get('id',None)
+	if id == None:
+		return self.fail("Missing arg 'id'")
+	tlr = Tiddler.all().filter('id',id).filter('current',True).get()
+	if tlr == None:
+		return self.fail("Tiddler not found")
+	if tlr.version != int(self.request.get('version')):
+		return self.fail("Tiddler not current")
+	newTags = self.request.get('tags')
+	tlr.tags = tlr.tags + " " + newTags
+	tlr.put()
+	return self.reply({'tags': tlr.tags})
+
   def tiddlerHistory(self):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
