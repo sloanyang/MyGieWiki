@@ -414,8 +414,8 @@ table.listView th, table.listView td, table.listView tr {padding:0px 3px 0px 3px
 .siteMapTags { color: #ff0000 }
 
 .diffout { font-size:1.0em; font-family: courier; }
-.diffminus { background-color: #d0ffdd; }
-.diffplus { background-color: #ffd0dd; }
+.diffminus { background-color: #d0ffdd; color: blue; }
+.diffplus { background-color: #ffd0dd; color: darkred; }
 /*}}}*/
 </pre>
 </div>
@@ -487,7 +487,7 @@ body {font-size:0.8em;}
 &lt;div macro='annotations'&gt;&lt;/div&gt;
 &lt;fieldset&gt;&lt;legend&gt;Text&lt;/legend&gt;&lt;div class='editor' macro='edit text'&gt;&lt;/div&gt;
 &lt;table style='width:100%;'&gt;&lt;tr&gt;&lt;td&gt;&lt;div class='commentToolbar' macro='toolbar [[ToolbarCommands::TextToolbar]]'&gt;&lt;/td&gt;&lt;td align='right'&gt;&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::EditToolbar]]'&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt; &lt;/fieldset&gt;
-&lt;fieldset id='preview' style='display:none'&gt;&lt;legend&gt;Preview&lt;/legend&gt;&lt;div class='preview' &gt;&lt;/div&gt;&lt;/fieldset&gt;
+&lt;fieldset id='preview' style='display:none'&gt;&lt;legend&gt;Preview&lt;/legend&gt;&lt;div class='viewer' &gt;&lt;/div&gt;&lt;/fieldset&gt;
 &lt;fieldset id='tag' class='tagFrame'&gt;&lt;legend&gt;Tags &amp; attributes&lt;/legend&gt;&lt;div class='editor' macro='edit tags'&gt;&lt;/div&gt;&lt;div class='editorFooter'&gt;&lt;span macro='message views.editor.tagPrompt'&gt;&lt;/span&gt;&lt;span macro='tagChooser'&gt;&lt;/span&gt;&lt;/div&gt;&lt;/fieldset&gt;
 &lt;!--}}}--&gt;
 </pre>

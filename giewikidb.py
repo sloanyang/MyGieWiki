@@ -97,8 +97,8 @@ class Page(db.Expando):
   AddAccess = 6
   EditAccess = 8
   AllAccess = 10
-  access = { "all":10, "edit":8, "add":6, "comment":4, "view":2, "none":0,
-             10:"all", 8:"edit", 6:"add", 4:"comment", 2:"view", 0:"none" }
+  access = { "all":10, "edit":8, "add":6, "tag":5, "comment":4, "view":2, "none":0,
+             10:"all", 8:"edit", 6:"add", 5:"tag", 4:"comment", 2:"view", 0:"none" }
     
   path = db.StringProperty()
   sub = db.StringProperty()

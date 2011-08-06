@@ -22,7 +22,7 @@
 <pre>//{{{
 config.PageProperties = {
 	init: function () {
-		config.accessTypes = &quot;admin|all|edit|add|comment|view|none|&quot;;
+		config.accessTypes = &quot;admin|all|edit|add|tag|comment|view|none|&quot;;
 		if (!forms.PageProperties)
 			forms.PageProperties = http.pageProperties();
 		forms.PageProperties.template_changed = function(f,id,val) {

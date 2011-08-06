@@ -1975,6 +1975,7 @@ config.macros.comments.addToolbar = function(cmc,ced,tiddler) {
 	createTiddlyButton(ced, cmc.addCommentLabel, cmc.addCommentPrompt, cmc.onAddCommentClick);
 	createTiddlyButton(ced, cmc.addMessageLabel, cmc.addMessagePrompt, cmc.onAddMessageClick);
 	createTiddlyButton(ced, cmc.addNoteLabel, cmc.addNotePrompt, cmc.onAddNoteClick);
+	if (config.access == "comment") return;
 	createTiddlyButton(ced, cmc.addTagLabel, cmc.addTagPrompt, onAddTagClick);
 };
 
