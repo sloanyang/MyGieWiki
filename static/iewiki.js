@@ -1915,23 +1915,52 @@ config.macros.permaview.onClick = function(e)
 
 function onAddTagClick(ev) {
 	var target = resolveTarget(ev || window.event);
+	var where = target.parentNode.parentNode.parentNode;
 	var tiddlerElem = story.findContainingTiddler(target);
 	var title = tiddlerElem.getAttribute('tiddler');
-	story.displayTiddler(null, title, "AddTagsTemplate");
-	var be = document.getElementById('addTagsButton');
-	if (be)
-		be.onclick = function(ev) {
-			var afi = [];
-			if (getElementsByClassName('addTagsText',null, be.parentNode,afi)) {
-				st = store.getTiddler(title);
-				var ars = http.addTags({id: st.id, version: st.version, tags: afi[0].value });
-				if (ars.Success) {
-					st.tags = ars.tags.readBracketedList();
-					store.notify(title,true);
-				}
+	var st = store.getTiddler(title);
+	
+    var wrapper1 = createTiddlyElement(where,'fieldset');
+    createTiddlyElement(wrapper1,'legend',null,null,"Add tags");
+    e = createTiddlyElement(wrapper1, 'textarea',null,'commentArea',null,{rows: 1, edit: 'tags'});
+	efs = createTiddlyElement(wrapper1,'span',null,'editorFooter');
+	createTiddlyText(efs,config.views.editor.tagPrompt);
+	config.macros.tagChooser.handler(efs, null, null, null, null, st);
+    createTiddlyElement(wrapper1,'HR');
+    var wrtb = createTiddlyElement(wrapper1,'div',null,'toolbar');
+	var onSave = function(e) {
+		var tg = resolveTarget(e || window.event);
+		var afi = [];
+		if (getElementsByClassName('commentArea',null,where,afi)) {
+			var ars = http.addTags({id: st.id, version: st.version, tags: afi[0].value });
+			if (ars.Success) {
+				st.tags = ars.tags.readBracketedList();
+				store.notify(title,true);
 			}
-			story.displayTiddler(null, title, DEFAULT_VIEW_TEMPLATE);
 		}
+		story.displayTiddler(null, title, DEFAULT_VIEW_TEMPLATE);
+	};
+	var onCancel = function(e) {
+		wrapper1.parentNode.removeChild(wrapper1);
+	};
+    
+    var smbtn = createTiddlyButton(wrtb,"submit","Save comment",onSave,"defaultCommand");
+    addClass(smbtn,"button");
+    var ccbtn = createTiddlyButton(wrtb,"cancel","Cancel comment",onCancel,"cancelCommand");
+    addClass(ccbtn,"button");
+	var kph = function(ev) {
+		var e = ev || window.event;
+			switch (e.keyCode) {
+				case 27: // Esc
+					onCancel(e);
+					return false;
+				default:
+					return true;
+		}
+	};
+	e[window.event ? "onkeydown" : "onkeypress"] = kph;
+	e.focus();
+	return e;
 }
 
 config.macros.comments.addToolbar = function(cmc,ced,tiddler) {
