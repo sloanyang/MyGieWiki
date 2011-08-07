@@ -43,6 +43,9 @@ var Type = {
     System: { Exception: "System.Exception" }
 };
 
+// Errors in the tiddler save process
+TIDDLER_NOT_SAVED = -2; // Implies do not close the editor
+
 // Hashmap of alternative parsers for the wikifier
 config.parsers = {};
 
@@ -3088,7 +3091,9 @@ config.commands.saveTiddler.handler = function(event, src, title) {
 			story.displayTiddler(null, newTitle);
 		return false;
 	} catch (x) {
-		if (x)
+		if (x == TIDDLER_NOT_SAVED)
+			story.focusTiddler(title, "text");
+		else if (x)
 			displayMessage(x);
 	}
 };
@@ -4038,15 +4043,14 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		if (m[fn] === undefined)
 			m[fn] = fields[fn];
 	}
-	if (tiddler.key) {
+	if (tiddler.key)
 		m.key = tiddler.key;
+	var result = http.saveTiddler(m);
+	if (result.Success == false)
+		throw (TIDDLER_NOT_SAVED);
+	else if (tiddler.key) {
 		delete config.editLocks[m.key];
 		delete tiddler.key;
-	}
-	var result = http.saveTiddler(m);
-	if (result.Success == false) {
-		story.focusTiddler(title, "text");
-		throw (false);
 	}
 	tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
 	if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
