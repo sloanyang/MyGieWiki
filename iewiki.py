@@ -715,6 +715,19 @@ class MainPage(webapp.RequestHandler):
 		if t == None:
 			error = "Tiddler does not exist"
 		else:
+			# Check if there are any changes at all
+			nCh = 0
+			for apn in (Tiddler.properties().keys() + tlr.dynamic_properties()):
+				if apn in ['author','author_ip','created','modified','comments','public','current','version','vercnt','currentver','currentVer']:
+					continue
+				if hasattr(t,apn):
+					if not getattr(t,apn) == getattr(tlr,apn):
+						logging.info("The " + apn + " property of " + tlr.title + " has changed")
+						nCh = nCh + 1
+						# break
+			if nCh == 0:
+				return self.fail("No changes to save (use cancel or [Esc] to close)")
+						
 			tlr.version = t.version + 1
 			tlr.vercnt = t.vercnt + 1 if hasattr(t,'vercnt') and t.vercnt != None else tlr.version
 			key = self.request.get("key")
@@ -741,9 +754,10 @@ class MainPage(webapp.RequestHandler):
 	if users.get_current_user():
 		tlr.author = users.get_current_user()
 	tlr.author_ip = self.AuthorIP() # ToDo: Get user's sig in stead
-
+	
 	tls = Tiddler.all().filter('id', tlr.id).filter('version >=',tlr.version - 1)
 
+	# At this point it's too late to cancel the save cuz we begin to update the prior versions, something that might, conceiveably be relegated to a task queue
 	for atl in tls:
 		if atl.version >= tlr.version:
 			tlr.version = atl.version + 1
@@ -821,7 +835,7 @@ class MainPage(webapp.RequestHandler):
 		if tlr.text is None:
 			tlr.text = ''
 		tlr.public = page.anonAccess > page.NoAccess
-		tlr.put()
+		tlr.put() #  <-- This is where it gets put()
 		for cj in crons:
 			cj.save(tlr)
 

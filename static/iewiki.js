@@ -4044,8 +4044,10 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		delete tiddler.key;
 	}
 	var result = http.saveTiddler(m);
-	if (result.Success == false)
+	if (result.Success == false) {
+		story.focusTiddler(title, "text");
 		throw (false);
+	}
 	tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
 	if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
 		window.location.reload();
