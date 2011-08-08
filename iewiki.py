@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.2
+# ver.:	1.13.3
 
 import cgi
 import codecs
@@ -659,17 +659,24 @@ class MainPage(webapp.RequestHandler):
 	self.response.headers.add_header('Access-Control-Allow-Origin','*')
 	title = self.request.get('tiddlerName',None)
 	tlrId = self.request.get('tiddlerId')
+	minorEdit = False
 	if title == None:
 		return self.fail("tiddlerName not present")
 	if tlr == None:
 		reply = True # called directly
-		tlr = Tiddler()
-		tlr.page = self.path
+		
+		if self.request.get('minorEdit', False):
+			tlr = Tiddler.all().filter('id',tlrId).filter('current',True).get()
+			if tlr != None and (tlr.author == self.user or users.is_current_user_admin()): #only the author or an admin is allowed to do this
+				minorEdit = True
+		if minorEdit == False:
+			tlr = Tiddler()
+			tlr.page = self.path
 		tlr.title = self.request.get("tiddlerName") # why not 'title'?
 		if self.request.get('isPrivate',False) != False:
 			tlr.private = 'true'
 		for ra in self.request.arguments():
-			if not ra in ('method','tiddlerId','tiddlerName','fields','isPrivate','created','modifier','modified','fromVer','shadow','vercnt','key','reverted','reverted_by','links','linksUpdated'):
+			if not ra in ('method','tiddlerId','tiddlerName','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','vercnt','key','reverted','reverted_by','links','linksUpdated'):
 				setattr(tlr,ra,self.request.get(ra))
 		tlr.id = tlrId
 	else:
@@ -722,14 +729,15 @@ class MainPage(webapp.RequestHandler):
 					continue
 				if hasattr(t,apn):
 					if not getattr(t,apn) == getattr(tlr,apn):
-						logging.info("The " + apn + " property of " + tlr.title + " has changed")
+						if minorEdit:
+							logging.info("The " + apn + " property of " + tlr.title + " has changed")
 						nCh = nCh + 1
 						# break
 			if nCh == 0:
 				return self.fail("No changes to save (use cancel or [Esc] to close)")
-						
-			tlr.version = t.version + 1
-			tlr.vercnt = t.vercnt + 1 if hasattr(t,'vercnt') and t.vercnt != None else tlr.version
+			if minorEdit == False:
+				tlr.version = t.version + 1
+				tlr.vercnt = t.vercnt + 1 if hasattr(t,'vercnt') and t.vercnt != None else tlr.version
 			key = self.request.get("key")
 			if key != "":
 				if self.unlock(key) == False:
@@ -747,29 +755,30 @@ class MainPage(webapp.RequestHandler):
 	if error != None:
 		detail['version'] = tlr.version
 		return self.fail(error,detail)
-		
-	tlr.comments = 0
+	
+	if minorEdit == False:
+		tlr.comments = 0
 	if (tlr.id == ""):
 		tlr.id = unicode(uuid.uuid4())
 	if users.get_current_user():
 		tlr.author = users.get_current_user()
 	tlr.author_ip = self.AuthorIP() # ToDo: Get user's sig in stead
-	
-	tls = Tiddler.all().filter('id', tlr.id).filter('version >=',tlr.version - 1)
+	if minorEdit == False:
+		tls = Tiddler.all().filter('id', tlr.id).filter('version >=',tlr.version - 1)
 
-	# At this point it's too late to cancel the save cuz we begin to update the prior versions, something that might, conceiveably be relegated to a task queue
-	for atl in tls:
-		if atl.version >= tlr.version:
-			tlr.version = atl.version + 1
-			tlr.comments = atl.comments
-		if atl.current:
-			tlr.vercnt = atl.versionCount() + 1
-			atl.current = False
-			tlr.comments = atl.comments
-			atl.put()
-			dropCronJob(atl)
+		# At this point it's too late to cancel the save cuz we begin to update the prior versions, something that might, conceiveably be relegated to a task queue
+		for atl in tls:
+			if atl.version >= tlr.version:
+				tlr.version = atl.version + 1
+				tlr.comments = atl.comments
+			if atl.current:
+				tlr.vercnt = atl.versionCount() + 1
+				atl.current = False
+				tlr.comments = atl.comments
+				atl.put()
+				dropCronJob(atl)
 
-	tlr.current = True
+		tlr.current = True
 
 	taglist = [] if tlr.tags == None else tlr.tags.split()
 	crons = []

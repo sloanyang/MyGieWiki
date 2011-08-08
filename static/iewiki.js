@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.13.2
+   version:	1.13.3
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -4032,6 +4032,8 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		fromVer: fromVersion,
 		shadow: tiddler.hasShadow ? 1 : 0
 	}
+	if (modified === undefined)
+		m.minorEdit = true; 
 	if (tags) {
 		var tl = tags.readBracketedList();
 		if (tl.indexOf('isPrivate') > -1)
@@ -4052,7 +4054,7 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		delete config.editLocks[m.key];
 		delete tiddler.key;
 	}
-	tiddler.set(newTitle, newBody, modifier, modified, tags, created, fields);
+	tiddler.set(newTitle, newBody, modifier, modified || tiddler.modified, tags, created, fields);
 	if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
 		window.location.reload();
 
