@@ -2362,7 +2362,7 @@ class MainPage(webapp.RequestHandler):
 					raise ImportException("Fetching the url " + url + " returned status code " + unicode(result.status_code))
 				else:
 					content = result.content
-					if cache != None:
+					if cache != None and len(content) < 1000000:
 						memcache.add(url,content,cache)
 			xd = FixTWSyntaxAndParse(content)
 			if xd == None:
