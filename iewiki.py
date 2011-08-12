@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.3
+# ver.:	1.13.4
 
 import cgi
 import codecs
@@ -2230,12 +2230,24 @@ class MainPage(webapp.RequestHandler):
 		files = files.filter("owner =",owner)
 		
 	path = self.request.get("path")
-	xd = self.initXmlResponse()
-	re = xd.addArrayOfObjects('result')
+	far = []
 	for f in files.fetch(100):
 		if path == "" or f.path.find(path) == 0:
-			xd.add(re, 'file',f.path,attrs={'mimetype':f.mimetype})
-	self.response.out.write(xd.toxml())
+			far.append( { 'date': f.date, 'mimetype': f.mimetype, 'owner': f.owner.nickname() if f.owner != None else '', 'path': f.path } ) 
+	self.reply({ 'files': far })
+
+  def deleteFile(self):
+	fn = self.request.get('url', None)
+	if fn is None:
+		return self.fail("Missing argument")
+	else:
+		ufo = UploadedFile.all().filter('path',fn).get()
+		if ufo is None:
+			return self.fail("No such file: " + fn)
+		elif ufo.owner != users.get_current_user() and not users.is_current_user_admin():
+			return self.fail("Not allowed to delete " + fn)
+		ufo.delete()
+		self.reply()
 	
   def urlFetch(self):
 	result = urlfetch.fetch(self.request.get('url'))

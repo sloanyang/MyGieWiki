@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.13.3
+   version:	1.13.4
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -7522,7 +7522,7 @@ function CheckNewAddress(title) {
 	    return r.Address;
 }
 
-var forms = [];
+var forms = {};
 
 function formName(e) {
     if (!e) var e = resolveTarget(window.event);
@@ -7533,8 +7533,8 @@ function GetForm(fn) {
     if (typeof(fn) != "string")
         fn = formName(fn);
     if (!fn) return;
-    if (forms[fn] == undefined)
-        forms[fn] = [];
+    if (forms[fn] === undefined)
+        forms[fn] = {};
     return forms[fn];
 }
 
@@ -8227,12 +8227,34 @@ function clearParent(ce, pt)
 }
 
 config.macros.fileList = {
-	handler: function(place)
+	handler: function(place,macro,params,w,ps,tiddler)
 	{
-		var files = http.fileList();
-		for (var i = 0; i < files.length; i++) {
-			createTiddlyElement(place,"a",null,null,files[i],{ href: files[i] });
-			createTiddlyElement(place,"br");
+		var fl = http.fileList();
+		if (fl.Success) {
+			this.fn = tiddler.title;
+			forms[this.fn] = {};
+			var flt = "|!Path|!Date|!Type|"
+			for (var i = 0; i < fl.files.length; i++) {
+				forms[this.fn][fl.files[i].path] = false;
+				flt = [flt, '\n|<<input checkbox "', fl.files[i].path, '" false>> [[', fl.files[i].path, ']]|', fl.files[i].date.formatString('DD MMM YYYY 0hh:0mm'), '|', fl.files[i].mimetype, '|'].join('')
+			}
+			flt = flt + '\n<<submitButton true "Delete file(s)" "Delete selected files" config.macros.fileList.DeleteSelected()>>';
+			wikify(flt,place,null,tiddler);
+		}
+	},
+	DeleteSelected: function() {
+		debugger;
+		for (var fn in forms[this.fn]) {
+			var fls = forms[this.fn]
+			for (var path in fls) {
+				if (path != 'controls' && fls[path]) {
+					dr = http.deleteFile({url:path})
+					if (dr.Success) {
+						displayMessage("Deleted " + fn);
+						delete fls[path];
+					}
+				}
+			}
 		}
 	}
 };

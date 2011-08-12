@@ -1,7 +1,7 @@
 # this:	Config.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.2
+# ver.:	1.13.4
 
 import cgi
 import codecs
@@ -29,6 +29,7 @@ lockTiddler\n\
 saveTiddler\n\
 addTags\n\
 changeTags\n\
+deleteFile\n\
 deleteTiddler\n\
 revertTiddler\n\
 deleteVersions\n\
