@@ -4932,14 +4932,19 @@ Story.prototype.saveTiddler = function(title, minorUpdate, newTemplate) {
     return null;
 };
 
-Story.prototype.permaView = function() {
+Story.prototype.viewState = function(axcl) {
     var links = [];
     this.forEachTiddler(function(title, element) {
-        links.push(String.encodeTiddlyLink(title));
+		if (axcl == undefined || axcl.contains(title) == false)
+			links.push(String.encodeTiddlyLink(title));
     });
-    var t = encodeURIComponent(links.join(" "));
-    if (t == "")
-        t = "#";
+    return encodeURIComponent(links.join(' '));
+};
+
+Story.prototype.permaView = function() {
+	var t = this.viewState();
+    if (t == '')
+        t = '#';
     if (window.location.hash != t)
         window.location.hash = t;
 };
@@ -7958,7 +7963,7 @@ config.macros.loginDialog = {
 		if (insideTiddler(place, 'PageSetup'))
 			return;
 		if (config.isLoggedIn() == false)
-			window.location = http.getLoginUrl({ path: window.location.pathname }).Url;
+			window.location = http.getLoginUrl({ path: window.location.pathname + '#' + story.viewState(["LoginDialog"]) }).Url;
 	}
 };
 
