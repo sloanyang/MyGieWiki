@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.4
+# ver.:	1.13.5
 
 import cgi
 import codecs
@@ -2156,7 +2156,7 @@ class MainPage(webapp.RequestHandler):
 		self.response.out.write("Oops: " + unicode(x))
 		return
 
-  def uploadFile(self):
+  def uploadFile(self, replace = False):
 	filename = self.request.get("filename")
 	filedata = self.request.get("MyFile")
 	filetype = Filetype(filename)
@@ -2168,16 +2168,24 @@ class MainPage(webapp.RequestHandler):
 	elif filetype == 'twd':
 		return self.uploadTiddlyWikiDoc(filename,filedata)
 	else:
-		p = CombinePath(self.path, filename)
+		p = filename if filename[0] == '/' else CombinePath(self.path, filename)
 		f = UploadedFile()
 		f.owner = users.get_current_user()
 		f.path = p
 		f.mimetype = mimetype
 		f.data = db.Blob(filedata)
-		if UploadedFile.all().filter('path',p).get():
-			msg = p + "&lt;br&gt;is an already existing file - &lt;&lt;confirm_replace " + p + "&gt;&gt;";
-			f.msg = msg
-			memcache.set(p,f,300)
+		ef = UploadedFile.all().filter('path',p).get()
+		if ef != None:
+			if replace == False:
+				msg = p + "&lt;br&gt;is an already existing file - &lt;&lt;confirm_replace " + p + "&gt;&gt;";
+				f.msg = msg
+				memcache.set(p,f,300)
+			elif f.owner != ef.owner and not users.is_current_user_admin():
+				msg = "Not allowed"
+			else:
+				ef.data = f.data
+				ef.put()
+				msg = p + " replaced"
 		elif Page.all().filter("path",p).get():
 			msg = p + "&lt;br&gt;is an existing page URL. Pick a different name."
 		else:
@@ -2187,6 +2195,9 @@ class MainPage(webapp.RequestHandler):
 		ut = u.read().replace("UFL",leafOfPath(self.path) + self.request.get("filename")).replace("UFT",mimetype).replace("ULR","Uploaded:").replace("UFM",msg)
 		self.response.out.write(ut)
 		u.close()
+		
+  def replaceFile(self):
+	return self.uploadFile(True)
 
   def replaceExistingFile(self):
 	tuf = memcache.get(self.request.get('filename'))

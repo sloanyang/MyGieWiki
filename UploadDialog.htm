@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <!--
-	File: 	UploadDialog.htm
-	Version	2011-01-16 18:00
+	File:	UploadDialog.htm
+	ver.:	1.13.5
 -->
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
 	<head>
@@ -9,7 +9,17 @@
 		<script type="text/javascript">
 function init()
 {
-	var bImg = window.location.search.length > 1;
+	if (window.location.search.indexOf('?replace=') == 0)
+	{
+		var bImg = false;
+		var fn = decodeURIComponent(window.location.search.substr(9));
+		var fid = document.getElementById("filename");
+		fid.value = fn;
+		document.upldlg.MyFile.value = fn;
+		document.upldlg.method.value = 'replaceFile';
+	}
+	else
+		var bImg = window.location.search.length > 1;
 	if (bImg == false)
 		setStylesheet("*.imgctl { visibility: hidden }");
 		
@@ -143,6 +153,7 @@ function fileSelected()
 		Name the uploaded file<br />
 		<input name="filename" type="text" id="filename" />
 		</td>
+		<!--td>or replace an<br><a href='javascript:;' id='listExisting'>Existing file</a-->		
 		<td ><span class="imgctl">Align<br /><select name="align"><option>center</option><option>left</option><option>right</option></select></span></td>
 		<td ><span class="imgctl">Width<br /><select name="width"><option>100%</option><option>67%</option><option>50%</option><option>33%</option></select></span><br /></td>
 		</tr>

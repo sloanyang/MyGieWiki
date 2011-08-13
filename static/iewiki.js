@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.13.4
+   version:	1.13.5
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -8244,20 +8244,32 @@ config.macros.fileList = {
 				flt = [flt, '\n|<<input checkbox "', fl.files[i].path, '" false>> [[', fl.files[i].path, ']]|', fl.files[i].date.formatString('DD MMM YYYY 0hh:0mm'), '|', fl.files[i].mimetype, '|'].join('')
 			}
 			flt = flt + '\n<<submitButton true "Delete file(s)" "Delete selected files" config.macros.fileList.DeleteSelected()>>';
+			flt = flt + ' <<submitButton true "Replace file.." "Replace selected file" config.macros.fileList.ReplaceSelected()>>';
 			wikify(flt,place,null,tiddler);
 		}
 	},
 	DeleteSelected: function() {
-		debugger;
 		for (var fn in forms[this.fn]) {
 			var fls = forms[this.fn]
 			for (var path in fls) {
 				if (path != 'controls' && fls[path]) {
 					dr = http.deleteFile({url:path})
 					if (dr.Success) {
-						displayMessage("Deleted " + fn);
+						displayMessage("Deleted " + path);
 						delete fls[path];
 					}
+				}
+			}
+		}
+	},
+	ReplaceSelected: function() {
+		for (var fn in forms[this.fn]) {
+			var fls = forms[this.fn]
+			for (var path in fls) {
+				if (path != 'controls' && fls[path]) {
+					displayMessage("Replace(" + path + ") via " + this.fn);
+					wikify("<<uploadDialog replace=" + encodeURIComponent(path) + ">>", story.getTiddler(this.fn));
+					return;
 				}
 			}
 		}
@@ -8435,7 +8447,7 @@ config.macros.uploadFile = {
 config.macros.uploadDialog = {
 	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
 	{
-		createUploadFrame(place,"");
+		createUploadFrame(place,paramString);
 		createTiddlyElement(place,"DIV","displayUploadResult");
 		createTiddlyElement(place,"DIV","displayUploads");
 	}
