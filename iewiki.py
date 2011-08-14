@@ -2954,10 +2954,12 @@ class MainPage(webapp.RequestHandler):
 		getdts = self.request.get('deprecated',None)
 		def filter(t):
 			if readAccess:
+				deprecated = hasattr(t,'deprecated')	# Check if this tiddler is deprecated
+				if page != None and deprecated:
+					page.deprecatedCount = page.deprecatedCount + 1
 				if getdts == None:							# Unless you want the deprecated tiddlers
-					deprecated = hasattr(t,'deprecated')	# Check if this tiddler is deprecated
 					if deprecated:
-						return False						#  and if so, leave it out
+						return False						#   leave 'em out
 				priv = hasattr(t,'private')
 				if own:
 					if priv:
@@ -3306,11 +3308,11 @@ class MainPage(webapp.RequestHandler):
 			self.response.headers['Cache-Control'] = 'no-cache'
 			self.response.out.write(text)
 			return
-	else:
-		memcache.set(self.request.remote_addr,page) # used by config.js request
 
 	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
+	if not page is None:
+		memcache.set(self.request.remote_addr,page) # used by config.js request
 		
 	# last, but no least
 	self.response.headers['Cache-Control'] = 'no-cache'

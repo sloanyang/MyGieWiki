@@ -526,11 +526,15 @@ config.shadowTiddlers = {
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
-    SideBarTabs: '<<tabs txtMainTab "When" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~Deprecated" "Deprecated tiddlers" "js;DeprecatedTiddlers" "~.." "More lists" TabMore>>',
+    SideBarTabs: '<<tabs txtMainTab "When" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~js:config.deprecatedCount~Deprecated" "Deprecated tiddlers" "js;DeprecatedTiddlers" "~.." "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
 
 // Strings in "double quotes" should be translated; strings in 'single quotes' should be left alone
+config.patches = { // Special case
+	FixedIndex: "<div id='sidebarTabs' refresh='content' force='true' tiddler='SideBarTabs'></div>",
+	FoldOutIndex: "<div id='sidebarTabs' refresh='macro' force='true' macro='slider chkSideBarTabs SideBarTabs \"index \u00bb\" \"display lists of tiddlers\"'></div>"
+};	
 
 config.messages.dates.months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 config.messages.dates.days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -619,8 +623,7 @@ function main() {
     loadShadowTiddlers(true);
 	if (config.foldIndex) {
 		var pt = store.getTiddler('PageTemplate');
-		pt.text = pt.text.replace("<div id='sidebarTabs' refresh='content' force='true' tiddler='SideBarTabs'></div>",
-								  "<div id='sidebarTabs' refresh='macro' force='true' macro='slider chkSideBarTabs SideBarTabs \"index \u00bb\" \"display lists of tiddlers\"'></div>");
+		pt.text = pt.text.replace( config.patches.FixedIndex, config.patches.FoldOutIndex);
 	}
     formatter = new Formatter(config.formatters);
     invokeParamifier(params, "onconfig");
@@ -2739,7 +2742,12 @@ config.macros.tabs.handler = function(place, macroName, params) {
         var content = params[t * 3 + 3];
         var skip = false;
         if (label.startsWith('~')) {
-			if (readOnly)
+			if (label.startsWith('~js:')) {
+				var lps = label.substr(4).split('~')[0];
+				skip = eval(lps) == 0;
+				label = label.substr(5 + lps.length); 
+			}
+			else if (readOnly)
 				skip = true;
 			else
 				label = label.substring(1);

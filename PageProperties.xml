@@ -145,8 +145,11 @@ config.PageProperties.save = function () {
 	if (resp.Success &amp;&amp; config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties'))) {
 		if (config.PageProperties.tryingUpgrade())
 			window.location.search = &quot;&quot;;
-		else
+		else {
+			if (window.location.hash == "#Welcome")
+				window.location.hash = "#";
 			window.location.reload();
+		}
 	}
 };
 

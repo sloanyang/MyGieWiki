@@ -125,6 +125,7 @@ class Page(db.Expando):
   template = db.ReferenceProperty(PageTemplate)
   scripts = db.StringProperty()
   noSuchTiddlers = db.TextProperty()
+  deprecatedCount = 0 # piggybacked data for use by config.py
   def todict(s,d):
 	d['path'] = s.path
 	d['owner'] = s.owner

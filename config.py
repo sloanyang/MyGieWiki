@@ -106,6 +106,7 @@ var config = {\n\
 	timeStamp: "<timestamp>",\n\
 	warnings: <allWarnings>,\n\
 	pages: [ <siblingPages> ],\n\
+	deprecatedCount: <deprecatedCount>,\n\
 	noSuchTiddlers: <noSuchTiddlers>,\n\
 	options: {\n\
 		' # the rest is built dynamically
@@ -179,6 +180,7 @@ class ConfigJs(webapp.RequestHandler):
 		groupAccess = 'view'#?
 		owner = ''
 		locked = False
+		deprecatedCount = 0
 		siteTitle = ''
 		subTitle = ''
 		viewButton = 'false'
@@ -201,6 +203,7 @@ class ConfigJs(webapp.RequestHandler):
 		siteTitle = page.title
 		subTitle = page.subtitle
 		locked = page.locked
+		deprecatedCount = page.deprecatedCount
 		if hasattr(page,noSuchTiddlers):
 			noSuchTdlrs = page.noSuchTiddlers
 
@@ -238,6 +241,7 @@ class ConfigJs(webapp.RequestHandler):
 		.replace('<groupAccess>',groupAccess,1)\
 		.replace('<userGroups>',jsEncodeStr(userGroups),1)\
 		.replace('<clientIP>',self.request.remote_addr,1)\
+		.replace('<deprecatedCount>', str(deprecatedCount),1)\
 		.replace('<allWarnings>',jsEncodeStr(warnings),1)\
 		.replace('<noSuchTiddlers>',jsEncodeStr(noSuchTdlrs),1)\
 		.replace('<siblingPages>', ',\n'.join(pages),1)\

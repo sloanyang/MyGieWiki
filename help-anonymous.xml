@@ -1,4 +1,4 @@
-<?xml version="1.0" ?><document><storeArea><div comments="0" id="78d7a7cd-89eb-4f8e-b047-b5036eac1f8f" modified="20100731100819" modifier="Poul Staugaard" tags="help" title="Welcome" vercnt="1" version="1"><pre>Before you can start editing your new giewiki, you need to &lt;&lt;login LoginOnly&gt;&gt; as administrator and set various data for the root page (making you the owner of it). This is done via the ''page properties'' dialog which looks a lot like this:&lt;br&gt;
+<?xml version="1.0" ?><document><storeArea><div modified="20100731100819" modifier="giewiki" tags="help" title="Welcome" vercnt="1" version="1"><pre>Before you can start editing your new giewiki, you need to &lt;&lt;login LoginOnly&gt;&gt; as administrator and set various data for the root page (making you the owner of it). This is done via the ''page properties'' dialog which looks a lot like this:&lt;br&gt;
 &lt;&lt;tiddler PageProperties&gt;&gt;
 The data is:
 * ''Title &amp; Subtitle''&lt;br&gt;What is displayed at the top of the page and in the SiteMap, etc.
@@ -12,6 +12,7 @@ The data is:
 * ''Read-only options''&lt;br&gt;Various aspects of how the page looks to someone who does not have edit access:
 ** ''Prior versions''&lt;br&gt;Allows the reader access to prior versions of a tiddler, if they are preserved.
 ** ''"view" button''&lt;br&gt;Allows the reader to see the "raw" text of a tiddler, including it's markup.
+* ''Fold-out index''&lt;br&gt;Controls whether the index lists located at the bottom of the right sidebar should be presented as a fold-out element (which makes large pages render more quickly).
 
 	The page properties dialog is normally accessed via the edit menu, but for a page with no data, it opens automatically.&lt;br&gt;
 The login dialog is usually accessed via the button at the top of the toolset on the right.
