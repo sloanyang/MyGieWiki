@@ -1373,6 +1373,7 @@ class MainPage(webapp.RequestHandler):
 			page.scripts = self.request.get('scripts')
 			page.viewbutton = True if self.request.get('viewbutton') == 'true' else False
 			page.viewprior = self.request.get('viewprior') == 'true'
+			page.foldIndex = self.request.get('foldindex', 'false') == 'true'
 			reqTemplate = self.request.get('template')
 			if reqTemplate != '' and reqTemplate != "normal":
 				pt = PageTemplate.all().filter('title',reqTemplate).filter('current',True).get()
@@ -1419,6 +1420,7 @@ class MainPage(webapp.RequestHandler):
 			'scripts': page.scripts if hasattr(page,'scripts') else '',
 			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
 			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
+			'foldindex': NoneIsFalse(page.foldIndex) if hasattr(page,'foldIndex') else False,
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude }
 		if self.path == '/_templates/normal':
 			reply['message'] = "The 'normal' template is empty"

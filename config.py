@@ -100,6 +100,7 @@ var config = {\n\
 	tiddlerTags: <tiddlerTags>,\n\
 	viewButton: <viewButton>,\n\
 	viewPrior: <viewPrior>,\n\
+	foldIndex: <foldIndex>,\n\
 	serverType: "<servertype>",\n\
 	clientip: "<clientIP>",\n\
 	timeStamp: "<timestamp>",\n\
@@ -182,6 +183,7 @@ class ConfigJs(webapp.RequestHandler):
 		subTitle = ''
 		viewButton = 'false'
 		viewPrior = 'false'
+		foldIndex = 'false'
 	else:
 		yourAccess = AccessToPage(page,user)
 		anonAccess = page.access[page.anonAccess]
@@ -195,6 +197,7 @@ class ConfigJs(webapp.RequestHandler):
 			userGroups = page.groups
 		viewButton = 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false'
 		viewPrior = 'true' if hasattr(page,'viewprior') and page.viewprior else 'false'
+		foldIndex = 'true' if hasattr(page,'foldIndex') and page.foldIndex else 'false'
 		siteTitle = page.title
 		subTitle = page.subtitle
 		locked = page.locked
@@ -224,6 +227,7 @@ class ConfigJs(webapp.RequestHandler):
 		.replace('<tiddlerTags>',jsEncodeStr(AttrValueOrBlank(page,'tiddlertags')),1)\
 		.replace('<viewButton>',viewButton,1)\
 		.replace('<viewPrior>',viewPrior,1)\
+		.replace('<foldIndex>',foldIndex,1)\
 		.replace('<servertype>',os.environ['SERVER_SOFTWARE'],1)\
 		.replace('<isAdmin>','true' if users.is_current_user_admin() else 'false',1)\
 		.replace('<loginName>',loginName,1)\

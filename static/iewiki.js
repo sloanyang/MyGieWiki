@@ -614,11 +614,14 @@ function main() {
     store.loadFromDiv("storeArea", "store", true);
     config.read();
     invokeParamifier(params, "onload");
-    var hms = store.getTiddlerText("HttpMethods");
-	if (hms) http._init(hms.split('\n'));
 
     var pluginProblem = loadPlugins();
     loadShadowTiddlers(true);
+	if (config.foldIndex) {
+		var pt = store.getTiddler('PageTemplate');
+		pt.text = pt.text.replace("<div id='sidebarTabs' refresh='content' force='true' tiddler='SideBarTabs'></div>",
+								  "<div id='sidebarTabs' refresh='macro' force='true' macro='slider chkSideBarTabs SideBarTabs \"index \u00bb\" \"display lists of tiddlers\"'></div>");
+	}
     formatter = new Formatter(config.formatters);
     invokeParamifier(params, "onconfig");
     story.switchTheme(config.options.txtTheme);

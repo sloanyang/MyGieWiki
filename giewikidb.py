@@ -121,6 +121,7 @@ class Page(db.Expando):
   gwversion = db.StringProperty()
   viewbutton = db.BooleanProperty(True)
   viewprior = db.BooleanProperty(True)
+  foldIndex = db.BooleanProperty(False)
   template = db.ReferenceProperty(PageTemplate)
   scripts = db.StringProperty()
   noSuchTiddlers = db.TextProperty()
