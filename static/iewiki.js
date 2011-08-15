@@ -660,8 +660,7 @@ function loadShadowTiddlers(again) {
 		t.version = t.currentVer = 0; 
 		t.hasShadow = true; 
 		t.modifier = config.views.wikified.shadowModifier; 
-		t.created = null; 
-		t.modified = null;
+		t.created = t.modified = new Date(0);
 		if (!again)
 			config.shadowTiddlers[t.title] = t.text;
 		return t; 
@@ -3746,6 +3745,8 @@ function TiddlyWiki() {
     	return t instanceof Tiddler && (real ? t.id : true);
     };
     this.fetchTiddler = function (title,co) {
+		if (!title)
+			return null;
     	var t = tiddlers[title];
     	if (!t)
 			if (this.fetchFromServer && !co)
@@ -6652,6 +6653,8 @@ function getFlag(params, name, defaultValue) {
 
 // Substitute date components into a string
 Date.prototype.formatString = function(template) {
+	if (!this.getTime()) // Probably not meaningful value
+		return ""; 
     var t = template.replace(/0hh12/g, String.zeroPad(this.getHours12(), 2));
     t = t.replace(/hh12/g, this.getHours12());
     t = t.replace(/0hh/g, String.zeroPad(this.getHours(), 2));
@@ -7210,7 +7213,8 @@ TW21Loader.prototype.internalizeTiddler = function(tiddler, title, node) {
     var c = node.getAttribute("created");
     var m = node.getAttribute("modified");
     var v = node.getAttribute("version") != null ? parseInt(node.getAttribute("version")) : 0;
-
+	if (!c)
+		c = m;
     var created = c ? Date.convertFromYYYYMMDDHHMM(c) : null;
     var modified = m ? Date.convertFromYYYYMMDDHHMM(m) : created;
     var tags = node.getAttribute("tags");
