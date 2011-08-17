@@ -612,8 +612,9 @@ class MainPage(webapp.RequestHandler):
 	self.fail(error)
 
   def unlock(self,key):
-	if key == '' or key == None:
+	if key == '' or key is None:
 		return True
+	logging.info('Unlocking ' + str(key))
 	lock = EditLock.get(db.Key(key))
 	if lock != None:
 		lock.delete()
@@ -622,7 +623,7 @@ class MainPage(webapp.RequestHandler):
 		return self.fail("Lock was not held")
 	
   def unlockTiddler(self):
-	if self.unlock(self.request.get("key")):
+	if self.unlock(self.request.get("key",None)):
 		self.reply({})
 
   def lockTiddler(self):
