@@ -372,8 +372,8 @@ config.commands = {
         hideReadOnly: true,
         text: "delete versions",
         tooltip: "Delete prior versions",
-        warning: "Are you sure you want to delete all your prior versions?",
-        adminWarning: "Are you sure you want to delete all prior versions?"
+        warning: "delete all your prior versions?",
+        adminWarning: "delete all prior versions?"
     },
     permalink: {
         text: "permalink",
@@ -3264,10 +3264,21 @@ config.commands.revertTiddler.isEnabled = function(t)
 };
 
 config.commands.truncateTiddler.handler = function(event,src,title) {
+	var warning = config.admin ? this.adminWarning.format([title]) : this.warning.format([title]);
+	if (story.hasChanges(title) && !readOnly) {
+		if (!confirm("Save changes and " + warning))
+			return false;
+		var newTitle = story.saveTiddler(title, event.shiftKey);
+	}
+	else
+		var newTitle = false;
+
 	var tiddler = store.fetchTiddler(title);
-	var doit = config.admin ? confirm(this.adminWarning.format([title])) : confirm(this.warning.format([title]));
+	var doit = newTitle || confirm(warning);
 	if (doit) {
-		var res = http.deleteVersions({ tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version})
+		if (newTitle)
+			delete tiddler.key;
+		var res = http.deleteVersions({ tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version});
 		tiddler.versions = res.versions;
 		tiddler.fields.vercnt = res.vercnt;
 		story.setDirty(tiddler.title, false);
@@ -3316,7 +3327,7 @@ config.commands.help.handlePopup = function(popup, title) {
 		var pme = createTiddlyElement(createTiddlyElement(popup, "li"), "a",null,null,this.topics[i],{'href':'javascript:;'} );
 		pme.onclick = function(ev) {
 			var t = resolveTarget(ev || window.event);
-			story.displayTiddler(null,"Help On " + t.innerText);
+			story.displayTiddler(null,"Help On " + t.firstChild.nodeValue);
 		};
 	}
 };
