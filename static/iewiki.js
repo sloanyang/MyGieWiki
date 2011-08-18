@@ -8699,7 +8699,7 @@ config.macros.importTiddlers = {
 			if (nCurrent + nExcluded > 1)
 				document.getElementById('chkAll' + aurl).onchange = function (ev) {
 					var cke = resolveTarget(ev || window.event);
-					var tbe = cke.parentElement.parentElement.parentElement;
+					var tbe = cke.parentNode.parentNode.parentNode;
 					for (var tre = tbe.firstChild; tre; tre = tre.nextSibling) {
 						var cksn = tre.firstChild.firstChild;
 						cksn.checked = cke.checked;
@@ -8733,7 +8733,7 @@ config.macros.importTiddlers = {
 	showAll: function (ev) {
 		var target = resolveTarget(ev || window.event);
 		var url = target.id.substring(3);
-		var pel = target.parentElement;
+		var pel = target.parentNode;
 		removeChildren(pel);
 		config.macros.importTiddlers.serve(url, false, true, pel.id);
 		//var libs = http.tiddlersFromUrl({ url: url, filter: afilter || '' }).sort(config.macros.importTiddlers.sortf);
@@ -8743,7 +8743,7 @@ config.macros.importTiddlers = {
 		var aurl = target.getAttribute('aurl');
 		var filt = target.getAttribute('filter');
 		var wrd = document.getElementById( "wrdiv:" + aurl);
-		var place = wrd.parentElement;
+		var place = wrd.parentNode;
 		place.removeChild(wrd);
 		config.macros.importTiddlers.renderTL(place,aurl,filt,null,true);
 		var libs = http.tiddlersFromUrl({ url: aurl, filter: filt || '', source: 'remote' }).sort(config.macros.importTiddlers.sortf);
@@ -8936,10 +8936,9 @@ CommonTasks = {
 		else
 			return false;
 	},
-	RemoveThisLi: function () {
-		var src = window.event.srcElement;
-		var cul = src.parentElement.parentElement;
-		cul.removeChild(src.parentElement);
+	RemoveThisLi: function (src) {
+		var cul = src.parentNode.parentNode;
+		cul.removeChild(src.parentNode);
 	}
 }
 
