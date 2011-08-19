@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.5
+# ver.:	1.13.6
 
 import cgi
 import codecs
@@ -979,11 +979,15 @@ class MainPage(webapp.RequestHandler):
 		v1t = self.request.get('shadowText') if vn1 == 0 else Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn1).get().text
 	except Exception,x:
 		raise Exception("Cannot get version " + unicode(vn1) + " of " + self.request.get('tid'))
-	vn2 = int(self.request.get('vn2'))
-	try:
-		v2t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn2).get().text
-	except Exception,x:
-		raise Exception("Cannot get version " + unicode(vn2) + " of " + self.request.get('tid'))
+	vn2 = self.request.get('vn2',None)
+	if vn2 == None:
+		v2t = self.request.get('text')
+	else:
+		vn2 = int(vn2)
+		try:
+			v2t = Tiddler.all().filter('id', self.request.get('tid')).filter('version',vn2).get().text
+		except Exception,x:
+			raise Exception("Cannot get version " + unicode(vn2) + " of " + self.request.get('tid'))
 	ndiffg = difflib.ndiff(v1t.replace('\r\n','\n').splitlines(),v2t.replace('\r\n','\n').splitlines())
 	ndiff = []
 	for v in ndiffg:

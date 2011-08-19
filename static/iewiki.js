@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.13.5
+   version:	1.13.6
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -411,6 +411,10 @@ config.commands = {
 		text: "attributes",
 		tooltip: "Toggle special tags"
 	},
+	diff: {
+		text: "changes",
+		tooltip: "What have I changed?"
+	},
 	help: {
 		type: "popup",
 		text: "help",
@@ -521,7 +525,7 @@ config.shadowTiddlers = {
     TabMoreShadowed: '<<list shadowed>>',
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler copyTiddler cutTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler copyTiddler cutTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes diff help|',
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -3381,6 +3385,7 @@ config.commands.preview.handler = function(e, src, title) {
 		var te = displayPart(src).childNodes[1].firstChild.firstChild.firstChild;
 		removeChildren(pe);
 		wikify(te.value,pe);
+		pe.previousSibling.firstChild.nodeValue = "Preview";
 	}	
 	var dt = story.findContainingTiddler(resolveTarget(window.event));
 	var fn = dt.getAttribute("tiddler");
@@ -3389,6 +3394,23 @@ config.commands.preview.handler = function(e, src, title) {
 	var et = store.replaceText(fn,fields.text);
 	store.notify(fn,true);
 	store.replaceText(fn,et);
+};
+
+config.commands.diff.handler = function(e, src, title) {
+	var pe = displayPart(src,'preview')
+	if (pe) {
+		pe = pe.childNodes[1];
+		var te = displayPart(src).childNodes[1].firstChild.firstChild.firstChild;
+		removeChildren(pe);
+		var pto = story.findContainingTiddler(resolveTarget(e || window.event));
+		if 	(pto) {
+			var t = pto.getAttribute('tiddler');
+			var tiddler = store.fetchTiddler(t);
+			if (!t) return;
+			pe.innerHTML = http.tiddlerDiff({ tid: tiddler.id, text: te.value, vn1: tiddler.version });
+			pe.previousSibling.firstChild.nodeValue = "Changes";
+		}
+	}
 };
 
 config.commands.history.isEnabled = function(tdlr) {
