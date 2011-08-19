@@ -658,11 +658,10 @@ class MainPage(webapp.RequestHandler):
   def saveTiddler(self, tlr=None, upload=False):
 	"http tiddlerName text tags version tiddlerId versions"
 	self.response.headers.add_header('Access-Control-Allow-Origin','*')
-	title = self.request.get('tiddlerName',None)
+	tiddlerName = self.request.get('tiddlerName',None)
+	title = str(datetime.datetime.today())[0:23] if tiddlerName is None else tiddlerName
 	tlrId = self.request.get('tiddlerId')
 	minorEdit = False
-	if title == None:
-		return self.fail("tiddlerName not present")
 	if tlr == None:
 		reply = True # called directly
 		
@@ -673,7 +672,7 @@ class MainPage(webapp.RequestHandler):
 		if minorEdit == False:
 			tlr = Tiddler()
 			tlr.page = self.path
-		tlr.title = self.request.get("tiddlerName") # why not 'title'?
+		tlr.title = title
 		if self.request.get('isPrivate',False) != False:
 			tlr.private = 'true'
 		for ra in self.request.arguments():
@@ -716,7 +715,7 @@ class MainPage(webapp.RequestHandler):
 	else:
 		if tlr.id.startswith('include-'):
 			# break the link and create a new tiddler
-			nt = self.SaveNewTiddler(tlr.page, self.request.get("tiddlerName"),self.request.get("text"))
+			nt = self.SaveNewTiddler(tlr.page, title, self.request.get("text"))
 			return self.reply({"Success": True, "id": nt.id})
 		if t == None:
 			t = Tiddler.all().filter('id', tlr.id).filter('current',True).get()
@@ -879,6 +878,11 @@ class MainPage(webapp.RequestHandler):
 		aue.appendChild(xd.createTextNode(getAuthor(tlr)))
 		vce = xd.createElement('vercnt')
 		vce.appendChild(xd.createTextNode(unicode(tlr.vercnt)))
+		if tiddlerName is None: # not provided
+			tne = xd.createElement('title')
+			tne.appendChild(xd.createTextNode(title))
+			esr.appendChild(tne)
+			
 		esr.appendChild(we)
 		esr.appendChild(ide)
 		esr.appendChild(vne)
