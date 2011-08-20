@@ -65,6 +65,7 @@ config.macros.STETabInsert = {
 |&lt;&lt;STETabInsert TabMoreShadowed&gt;&gt;|This shadow tiddler contains the contents of the 'Shadowed' tab in the right-hand sidebar|
 |&lt;&lt;STETabInsert TabTags&gt;&gt;|This shadow tiddler contains the contents of the 'Tags' tab in the right-hand sidebar|
 |&lt;&lt;STETabInsert TabTimeline&gt;&gt;|This shadow tiddler contains the contents of the 'Timeline' tab in the right-hand sidebar|
+|&lt;&lt;STETabInsert TopRightCorner&gt;&gt;|This special tiddler contains optional content to be displayed in the top-right corner|
 |&lt;&lt;STETabInsert ToolbarCommands&gt;&gt;|This shadow tiddler determines which commands are shown in tiddler toolbars|
 |&lt;&lt;STETabInsert UploadDialog&gt;&gt;|Presents a file upload dialog|
 |&lt;&lt;STETabInsert UserMenu&gt;&gt;|Appears at the top of the right sidebar when (having logged in) you click your username|

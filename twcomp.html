@@ -58,14 +58,13 @@ DAMAGE.
 
 </head>
 <body onload="main();" onunload="if(window.unload) unload();">
-<div id="copyright">
-Welcome to TiddlyWiki created by Jeremy Ruston, Copyright &copy; 2007 UnaMesa Association
-</div>
 <noscript>
 <div id="javascriptWarning">
 This page requires JavaScript to function properly.
 </div>
 </noscript>
+<div id="storeArea">
+</div>
 <div id="saveTest"></div>
 <div id="backstageCloak"></div>
 <div id="backstageButton"></div>
@@ -301,6 +300,8 @@ a.tiddlyLinkNonExisting.shadow {font-weight:bold;}
 .siteTitle {font-size:3em;}
 .siteSubtitle {font-size:1.2em;}
 
+#topRightCorner { position:absolute; top:0.5em;right:0.9em; font-size: 1.1em; text-align: right; }
+
 #mainMenu {position:absolute; left:0; width:10em; text-align:right; line-height:1.6em; padding:1.5em 0.5em 0.5em 0.5em; font-size:1.1em;}
 
 #sidebar {position:absolute; right:3px; width:16em; font-size:.9em;}
@@ -452,6 +453,7 @@ body {font-size:0.8em;}
 &lt;div id='headerArea'&gt;
 &lt;span class='siteTitle' refresh='content' tiddler='SiteTitle'&gt;&lt;/span&gt;&amp;nbsp;
 &lt;span class='siteSubtitle' refresh='content' tiddler='SiteSubtitle'&gt;&lt;/span&gt;
+&lt;span id='topRightCorner' refresh='content' tiddler='TopRightCorner'&gt;&lt;/span&gt;
 &lt;/div&gt;
 &lt;div id='mainMenu' refresh='content' tiddler='MainMenu'&gt;&lt;/div&gt;
 &lt;div id='sidebar'&gt;
@@ -650,8 +652,6 @@ forms[fn] = { 'updateaccess': true };
 </pre>
 </div>
 <!--- injection point B --->
-</div>
-<div id="storeArea">
 </div>
 </body>
 </html>

@@ -42,9 +42,7 @@ DAMAGE.
 <link rel='alternate' type='application/rss+xml' title='RSS' href='index.xml' />
 <!--}}}-->
 <!--PRE-HEAD-END-->
-<title>
-
-</title>
+<title> About - giewiki </title>
 <style id="styleArea" type="text/css">
 #saveTest {display:none;}
 #messageArea {display:none;}
@@ -55,10 +53,12 @@ DAMAGE.
 #javascriptWarning {width:100%; text-align:center; font-weight:bold; background-color:#dd1100; color:#fff; padding:1em 0em;}
 </style>
 <!--POST-HEAD-START-->
+
 <!--POST-HEAD-END-->
 </head>
 <body onload="main();" onunload="if(window.unload) unload();">
 <!--PRE-BODY-START-->
+
 <!--PRE-BODY-END-->
 <div id="copyright">
 Welcome to TiddlyWiki created by Jeremy Ruston, Copyright &copy; 2007 UnaMesa Association
@@ -510,47 +510,9 @@ Also see [[AdvancedOptions]]</pre>
 </div>
 </div>
 <!--POST-SHADOWAREA-->
-<div id="storeArea"><div id="SiteTitle" locked="true" modified="20100101000000" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20100101000000" server.type="giewiki" title="SiteTitle" vercnt="0" version="0"><pre>About</pre></div><div id="SiteSubtitle" locked="true" modified="20100101000000" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20100101000000" server.type="giewiki" title="SiteSubtitle" vercnt="0" version="0"><pre>giewiki</pre></div><div comments="0" currentVer="1" id="7a46e3cf-ab98-4dbf-81d9-acac159c0305" modified="20110706070205" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706070205" server.type="giewiki" tags="" title="TiddlyWiki security" vercnt="2" version="2"><pre>Probably the most important criticism that can be aimed at TiddlyWiki is that you have to trust the document with write access to your local file system. Which is fine only as long as you don't install [[PlugIns|PlugIn]] of untrustworthy origin. Giewiki eliminates the risk by delegating storage responsibility to a server (that you need to install on your computer if you want to be able to work offline).</pre></div><div comments="0" creator="YourName" id="3f63f5b9-aa6a-452c-afaa-da52743688fe" modified="20110706081331" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706081331" server.type="giewiki" tags="" title="GettingStarted" vercnt="1" version="1"><pre>Once you have [[implemented giewiki|DeploymentGuide]] and you've logged in to your own site, you will have and ''edit'' item in the menu on the right. This opens up for a number of actions:
-* ''new tiddler'': Let's you add content, using wiki-style markup. There is, by design, no wysiwyg editing. In stead, you have a help menu as an entry point to the markup tutorial, and there is a //preview// button that lets you see a rendered version of your content before you hit 'done'. As a shortcut to 'done', you can use [Ctrl]+[Return].</pre></div><div comments="0" currentVer="1" id="3c4f2ded-e48c-4a38-82cb-ca94dafae7e7" modified="20110706062437" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706062437" server.type="giewiki" tags="" title="DeploymentGuide" vercnt="1" version="1"><pre>//How to set up giewiki either for local use ''-or-'' hosted by Google at your own ''appspot.com'' (sub-)site.//
-! Software Requirements
-Download the [[latest release|SourceCode]] and unpack it (''or'' you can pull the most recent bits directly from Subversion, if you have software to do so).
-Either way, you will also need [[Python 2.5|http://www.python.org/download/releases/2.5.4/]] (2.6 or 2.7 seem to work as well) and the [[App Engine SDK |http://code.google.com/appengine/downloads.html]] from Google, both of which are also free (recent Mac and most Linux boxes already have Python; if your're unsure, open a terminal window and type python [enter]).
-! Running giewiki locally
-The App Engine SDK includes a simple web server together with the runtime libraries required to run a server on your own computer. Both the Windows and the Mac version also includes a graphical frontend called the ''Google App Engine Launcher'' for starting this web server. Simply fire it up and go to File - Add existing application. Point it to the folder containing the unpacked giewiki files. That will give you an entry in the list that it presents. Select this entry if it isn't already and click the ''Run'' button above. After a little while (during which Windows may prompt for your confirmation), the server should be ready and the ''Browse'' button gets enabled. Clicking that will fire up your default web browser with the address of your local server. If you are on Linux (or you want the server to start automatically), there is an alternative (command line) method which is described at http://code.google.com/appengine/docs/python/tools/devserver.html
-! appspot.com hosting requirements
-Unless you are setting it up on behalf of someone else, you will need to have your own (free) App Engine account. Go to https://appengine.google.com/start if you haven't one already - the process requires a phone capable of receiving text messages for the purpose of identification.
-! Adaptation for hosting
-To deploy giewiki to your own ''appspot.com'' site (//this is not neccessary to use it locally//), you have to first change one file, the one named ''app.yaml'' (a plaintext file that you can edit with notepad (on a Mac, use textedit), altering the first line: 
-{{{
-application: giewiki
-}}}
-..to name your appspot subdomain in stead of {{{giewiki}}}.
-! Deployment to appspot.com
-Actual deployment can be performed using the ''appcfg.py'' script as described [[here|http://code.google.com/appengine/docs/python/tools/uploadinganapp.html]]
-
-What that page doesn't say, however, is that on some platforms (Windows and Mac), you can launch the process directly from the above mentioned ''Google App Engine Launcher'' (a GUI application that comes with the App Engine SDK). Just choose ''File-Add Existing application'' and select the unpacked giewiki folder, that you have modified as described above. Then it will be added to the (initially empty) list, and you can just select it and click the ''deploy'' button. The deployment process takes a couple of minutes, but there's an output window that shows you what's happening.
-
-If this is ''not'' the first version that you deploy to a particular site, you need to explicitly set the new version as the default, using the app engine dashboard at http://appengine.google.com (under Administration/Versions) - this is so that you can revert to the prior version, if needed.
-
-There is currently no way to deploy content together with the code, but if you need to, read http://code.google.com/appengine/docs/python/tools/uploadingdata.html.
-
-Beware that if you are upgrading an existing application, in some cases it may be a while before it is fully functional, because the server needs to rebuild the indexes which is a task that is queued for batch processing. Under heavy load it may take several hours, but you can monitor the process at appengine.google.com.
-!Upgrading to a new version
-Beware that if you have an earlier version installed in your appspot.com account already, you need to visit http://appengine.google.com (http://appspot.com will take you there) in order to make the new version the active one. This is done via the versions list. The 1.x releases appears as version x (unless you have changed it in the app.yaml). </pre></div><div comments="0" currentVer="1" currentver="1" id="e21af232-6db2-4a76-bd01-c0bc53cd4993" modified="20110706071111" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706071111" server.type="giewiki" tags="" title="TiddlyWiki" vercnt="2" version="2"><pre>[[TiddlyWiki|http://tiddlywiki.com]] is the name of an extremely versatile browser script, that implements sort of a personal MicroWiki within the confines of the webbrowser. You can even save it to a local file on your computer ([[if you let it|TiddlyWiki security]]). Primary resources are:
-* [[TiddlyWiki.com|http://www.tiddlywiki.com]]
-* [[TiddlyWiki.org|http://www.tiddlywiki.org]]
-* [[TiddlyTools.com|http://www.tiddlytools.com]]
-* [[groups.google.com/group/tiddlywiki|http://groups.google.com/group/tiddlywiki]]
-
-Giewiki uses TiddlyWiki as a way to allow offline editing:
-# On the page you want to edit offline, open the options panel and right-click Download TiddlyWiki and save it wherever you want. This will give you a standard TiddlyWiki with all the contents of the page, as before, but with the addition of the GiewikiAdaptor plugin. Currently, I do not include the ~TiddlySaver.jar file which is needed if you use Safari or Chrome; you will have to get that from http://tiddlywiki.com/TiddlySaver.jar if you don't have it already (put it next to your HTML file).
-# Do your offline editing classic TiddlyWiki style.
-# When you want to upload your changes (and additions), open the ''Backstage'' menu (at the very top right), and choose ''sync'', then sync the tiddlers that you have changed.
-# This should give you a message with a link saying 'Please __authenticate your post__'. You need to click this link, which takes you to the online page in order to authenticate your uploaded tiddlers. Until you do, they are not accessible from the server. The reason I need to do it this way is that the authentication method uses your google account, and there is no way to do the google login except via the web site.
-Use this feature with real caution, and -specifically- do //not// put any HTML that you haven't written or explicitly trust into the same folder with TiddlySaver.jar. //The potential jeopardy ''if you aren't careful'' is the reason I am not terribly happy with this solution.//
-
-Current limitations/bugs that I hope to remove are the ones that follow from using unmodified ~TiddlyWiki code: If you rename a tiddler, the link to the online version appears to be broken, although it actually isn't; the server-side identifies the tiddler by a unique id, not by its title.
-This solution does not, regrettably, help those who use giewiki on their iPads. This will require that I replace TiddlyWiki's storage mechanism with a solution based on [[HTML5 client-side storage|http://diveintohtml5.org/storage.html]]. That should be a priority project for some time 2011'ish. </pre></div><div comments="0" currentVer="1" id="f266cd08-8639-4482-ab56-83c1652444a0" modified="20110706062102" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706062102" server.type="giewiki" tags="" title="About giewiki" vercnt="1" version="1"><pre>This is giewiki. It's free as in as in freedom of expression and sharing ''//and//'' as in free of cost or commercial entanglement. It borrows heavily from TiddlyWiki, but takes the viewpoint that //TW// is a great way of organising information, if only it weren't (probably) stored on a USB stick in the pocket of the pants you wore yesterday.
+<div id="storeArea">
+<div title="About giewiki" modifier="PoulStaugaard" modified="201107060621" comments="0" currentVer="1" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706062102" server.type="giewiki" vercnt="1" version="1" id="f266cd08-8639-4482-ab56-83c1652444a0">
+<pre>This is giewiki. It's free as in as in freedom of expression and sharing ''//and//'' as in free of cost or commercial entanglement. It borrows heavily from TiddlyWiki, but takes the viewpoint that //TW// is a great way of organising information, if only it weren't (probably) stored on a USB stick in the pocket of the pants you wore yesterday.
 
 //&quot;- OK, but ''what does it do''&quot;//, I hear you asking.
 
@@ -572,271 +534,81 @@ Zoologically, it's a somewhat distant descendant of the WikiWiki concept that Wa
 
 The ultimate aim of giewiki (dare I write claim ?) is to offer the most powerful solution for general purpose web publishing, that is available to non-technical users entirely for free. Obviously, it won't run on wind power alone - you need some sort of digital hardware. I also recommend that you use the free hosting offered by Google in the form of their App Engine, which is free as long as your needs are modest and you don't require your own domain (you would have a subdomain of appspot.com, like giewiki.appspot.com). If your needs (traffic, storage or other) exceeds certain limits, you can still use App Engine, at cost. And you //can// have it serve though your own domain, at cost and with some [[limitations|App Engine on Google Apps]]. For more information, check out http://code.google.com/appengine/kb/
 
-Obviously, this isn't going to be the best solution for every application, but the aim is to offer the best solution for as many as possible.</pre></div><div from="GiewikiAdaptor.xml" id="included" locked="true" modified="20101230165400" modifier="giewiki" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20101230165400" server.type="giewiki" tags="systemConfig excludeSearch excludeLists" title="GiewikiAdaptor" vercnt="1" version="1"><pre>//{{{
-//--
-//-- Server adaptor for reaching giewiki pages from TiddlyWiki
-//--
+Obviously, this isn't going to be the best solution for every application, but the aim is to offer the best solution for as many as possible.</pre>
+</div>
+<div title="DefaultTiddlers" modifier="PoulStaugaard" modified="201107060644" currentver="0" comments="0" currentVer="1" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706064406" server.type="giewiki" vercnt="2" version="2" id="3ce00ed6-6ae9-4e21-a536-bac47ab98b7e">
+<pre>[[About giewiki]]</pre>
+</div>
+<div title="DeploymentGuide" modifier="giewiki" modified="201108201515" comments="0" currentVer="1" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706062437" server.type="giewiki" vercnt="1" version="1" id="3c4f2ded-e48c-4a38-82cb-ca94dafae7e7" changecount="2">
+<pre>//How to set up giewiki either for local use ''-or-'' hosted by Google at your own ''appspot.com'' (sub-)site.//
+! Software Requirements
+Download the [[latest release|SourceCode]] and unpack it (''or'' you can pull the most recent bits directly from Subversion, if you have software to do so).
+Either way, you will also need [[Python 2.5|http://www.python.org/download/releases/2.5.4/]] (2.6 or 2.7 seem to work as well) and the [[App Engine SDK |http://code.google.com/appengine/downloads.html]] from Google, both of which are also free (recent Mac and most Linux boxes already have Python; if your're unsure, open a terminal window and type python [enter]).
+! Running giewiki locally
+The App Engine SDK includes a simple web server together with the runtime libraries required to run a server on your own computer. Both the Windows and the Mac version also includes a graphical frontend called the ''Google App Engine Launcher'' for starting this web server. Simply fire it up and go to File - Add existing application. Point it to the folder containing the unpacked giewiki files. That will give you an entry in the list that it presents. Select this entry if it isn't already and click the ''Run'' button above. After a little while (during which Windows may prompt for your confirmation), the server should be ready and the ''Browse'' button gets enabled. Clicking that will fire up your default web browser with the address of your local server. If you are on Linux (or you want the server to start automatically), there is an alternative (command line) method which is described at http://code.google.com/appengine/docs/python/tools/devserver.html
+Some command line options to the server that are nice to know if you need them (you have to specify them 'manually' in the [Edit - Application settings] //Extra command line Flags// of the App Engine Launcher):&lt;&lt;tiddler &quot;dev_appserver options&quot;&gt;&gt;
+! appspot.com hosting requirements
+Unless you are setting it up on behalf of someone else, you will need to have your own (free) App Engine account. Go to https://appengine.google.com/start if you haven't one already - the process requires a phone capable of receiving text messages for the purpose of identification.
+! Adaptation for hosting
+To deploy giewiki to your own ''appspot.com'' site (//this is not neccessary to use it locally//), you have to first change one file, the one named ''app.yaml'' (a plaintext file that you can edit with notepad (on a Mac, use textedit), altering the first line: 
+{{{
+application: giewiki
+}}}
+..to name your appspot subdomain in stead of {{{giewiki}}}.
+! Deployment to appspot.com
+Actual deployment can be performed using the ''appcfg.py'' script as described [[here|http://code.google.com/appengine/docs/python/tools/uploadinganapp.html]]
 
-function GiewikiAdaptor()
-{
-}
+What that page doesn't say, however, is that on some platforms (Windows and Mac), you can launch the process directly from the above mentioned ''Google App Engine Launcher'' (a GUI application that comes with the App Engine SDK). Just choose ''File-Add Existing application'' and select the unpacked giewiki folder, that you have modified as described above. Then it will be added to the (initially empty) list, and you can just select it and click the ''deploy'' button. The deployment process takes a couple of minutes, but there's an output window that shows you what's happening.
 
-GiewikiAdaptor.prototype = new AdaptorBase();
-GiewikiAdaptor.serverType = 'giewiki';
-GiewikiAdaptor.serverLabel = 'giewiki';
+If this is ''not'' the first version that you deploy to a particular site, you need to explicitly set the new version as the default, using the app engine dashboard at http://appengine.google.com (under Administration/Versions) - this is so that you can revert to the prior version, if needed.
 
-GiewikiAdaptor.loadTiddlyWikiCallback = function(status,context,responseText,url,xhr)
-{
-	context.status = status;
-	if(!status) {
-		context.statusText = &quot;Error reading file&quot;;
-	} else {
-		context.adaptor.store = new TiddlyWiki();
-		if(!context.adaptor.store.importTiddlyWiki(responseText)) {
-			context.statusText = config.messages.invalidFileError.format([url]);
-			context.status = false;
-		}
-	}
-	context.complete(context,context.userParams);
-};
+There is currently no way to deploy content together with the code, but if you need to, read http://code.google.com/appengine/docs/python/tools/uploadingdata.html.
 
-// Get the list of workspaces on a given server
-GiewikiAdaptor.prototype.getWorkspaceList = function(context,userParams,callback)
-{
-	context = this.setContext(context,userParams,callback);
-	context.workspaces = [{title:&quot;(default)&quot;}];
-	context.status = true;
-	if(callback)
-		window.setTimeout(function() {callback(context,userParams);},10);
-	return true;
-};
-
-// Gets the list of tiddlers within a given workspace
-GiewikiAdaptor.prototype.getTiddlerList = function(context,userParams,callback,filter)
-{
-	context = this.setContext(context,userParams,callback);
-	if(!context.filter)
-		context.filter = filter;
-	context.complete = GiewikiAdaptor.getTiddlerListComplete;
-
-	if(this.store) {
-		var ret = context.complete(context,context.userParams);
-	} else {
-		ret = loadRemoteFile(context.host + (context.host.indexOf('?') == -1 ? '?' : '&amp;') + 'rat=' + config.options.rat,GiewikiAdaptor.loadTiddlyWikiCallback,context);
-	if(typeof ret != &quot;string&quot;)
-			ret = true;
-	}
-	return ret;
-};
-
-GiewikiAdaptor.getTiddlerListComplete = function(context,userParams)
-{
-	if(context.status) {
-		if(context.filter) {
-			context.tiddlers = context.adaptor.store.filterTiddlers(context.filter);
-		} else {
-			context.tiddlers = [];
-			context.adaptor.store.forEachTiddler(function(title,tiddler) {context.tiddlers.push(tiddler);});
-		}
-
-		for(var i=0; i&lt;context.tiddlers.length; i++) {
-			context.tiddlers[i].fields['server.type'] = GiewikiAdaptor.serverType;
-			context.tiddlers[i].fields['server.host'] = AdaptorBase.minHostName(context.host);
-		}
-
-		context.status = true;
-	}
-
-	if(context.callback) {
-		window.setTimeout(function() {context.callback(context,userParams);},10);
-	}
-
-	return true;
-};
-
-GiewikiAdaptor.prototype.generateTiddlerInfo = function(tiddler)
-{
-	var info = {};
-	info.uri = tiddler.fields['server.host'] + &quot;#&quot; + tiddler.title;
-	return info;
-};
-
-// Retrieve a tiddler from a given workspace on a given server
-GiewikiAdaptor.prototype.getTiddler = function(title,context,userParams,callback)
-{
-	context = this.setContext(context,userParams,callback);
-	context.title = title;
-	context.complete = GiewikiAdaptor.getTiddlerComplete;
-	return context.adaptor.store ?
-		context.complete(context,context.userParams) :
-		loadRemoteFile(context.host,FileAdaptor.loadTiddlyWikiCallback,context);
-};
-
-GiewikiAdaptor.getTiddlerComplete = function(context,userParams)
-{
-	var t = context.adaptor.store.fetchTiddler(context.title);
-	if(t) {
-		t.fields['server.type'] = GiewikiAdaptor.serverType;
-		t.fields['server.host'] = AdaptorBase.minHostName(context.host);
-		context.tiddler = t;
-		context.status = true;
-	} else { //# tiddler does not exist in document
-		context.status = false;
-	}
-
-	if(context.allowSynchronous) {
-		context.isSynchronous = true;
-		context.callback(context,userParams);
-	} else {
-		window.setTimeout(function() {context.callback(context,userParams);},10);
-	}
-	return true;
-};
-
-GiewikiAdaptor.prototype.putTiddler = function(tiddler,context,userParams,callback)
-{
-	tiddler.tiddlerId = tiddler.fields.id;
-	tiddler.currentVer = tiddler.fields.version;
-	context = this.setContext(context,userParams,callback);
-	var res = HttpGet(tiddler,'uploadTiddler',userParams.serverHost.split('?')[0]);
-	if (res &amp;&amp; res.errorcode &gt; 0) {
-		tiddler.currentVer = res.version;
-		tiddler.fields.id = res.id
-		if (res.modified)
-			tiddler.fields['server.page.revision'] = res.modified;
-		callback(context,userParams);
-		tiddler.fields['changecount'] = 0;
-		return true;
-	}
-	return false;
-};
-
-GiewikiAdaptor.prototype.close = function()
-{
-	delete this.store;
-	this.store = null;
-};
-
-config.adaptors[GiewikiAdaptor.serverType] = GiewikiAdaptor;
-config.defaultAdaptor = GiewikiAdaptor.serverType;
-
-function JsoFromXml(rce) {
-	if (rce == null)
-		return null;
-	var v =  rce.childNodes.length ? rce.firstChild.nodeValue : '';
-	var type = rce.attributes.getNamedItem('type');
-	if (type != null &amp;&amp; type.value != null)
-		switch (type.value) {
-		case 'int':
-			v = parseInt(v);
-			break;
-		case 'bool':
-			v = window.eval(v);
-			break;
-		case 'datetime':
-			try {
-				v = Date.convertFromYYYYMMDDHHMM(v);
-			}
-			catch (e) {
-				alert(&quot;bad datetime: &quot; + v);
-			}
-			break;
-		case '[]':
-			v = [];
-			break;
-		case 'string[]':
-			v = [];
-			for (var ae = 0; ae &lt; rce.childNodes.length; ae++) {
-				var ace = rce.childNodes[ae];
-				v[ae] = ace.firstChild ? ace.firstChild.nodeValue : ace;
-			}
-			break;
-		case 'object':
-			v = {};
-			for (var ae = 0; ae &lt; rce.childNodes.length; ae++)
-				v[rce.childNodes[ae].nodeName] = JsoFromXml(rce.childNodes[ae]);
-			break;
-		case 'object[]':
-			v = [];
-			for (var ae = 0; ae &lt; rce.childNodes.length; ae++)
-				v[ae] = JsoFromXml(rce.childNodes[ae]);
-			break;
-		}
-	else if (rce.childNodes.length &amp;&amp; rce.firstChild.nodeType == 1) {
-		v = {};
-		for (var i = 0; i &lt; rce.childNodes.length; i++) {
-			var ace = rce.childNodes[i];
-			v[ace.nodeName] = JsoFromXml(ace);
-		}
-	}
-	return v;
-}
-
-function displayHTMLMessage(text) {
-	var ma = document.getElementById(&quot;messageArea&quot;);
-	if (ma &amp;&amp; ma.innerHTML.indexOf(text) &gt; 0)
-		return; // do not repeat
-	var e = getMessageDiv();
-	e.innerHTML = text;
-}
-
-function HttpReply(req) {
-	if (typeof(req) != &quot;object&quot;)
-		return req;
-	if (req.responseXML &amp;&amp; req.responseXML.documentElement)
-		return JsoFromXml(req.responseXML.documentElement);
-	else
-		return req.responseText;
-}
-
-function HttpGet(args, method, url) {
-	var fields = [];
-	if (method)
-		fields.push(&quot;method=&quot; + method);
-	for (var a in args) {
-		var v = args[a];
-		if (!(v == undefined || typeof(v) == &quot;function&quot;))
-			fields.push(a + &quot;=&quot; + encodeURIComponent(v));
-	}
-	var rs = HttpRequest(fields.join(&quot;&amp;&quot;), false, url);
-	var rp = HttpReply(rs);
-	if (rp &amp;&amp; rp.Message)
-		displayHTMLMessage(rp.Message);
-	return rp || rs;
-}
-
-function HttpRequest(args,debug,url) {
-	if (!url) 
-		url = window.location.pathname;
-
-	var req;
-	try { req = new XMLHttpRequest(); }
-	catch (e) {
-		try { req = new ActiveXObject(&quot;Msxml2.XMLHTTP&quot;) }
-		catch (e) {
-			try { req = new ActiveXObject(&quot;Microsoft.XMLHTTP&quot;) }
-			catch (e) { return }
-		}
-	}
-
-	req.open(&quot;POST&quot;, url, false);
-	req.setRequestHeader(&quot;Content-Type&quot;,&quot;application/x-www-form-urlencoded&quot;);
-
-	req.send(args);
-	if (req.status &gt;= 400)
-		return displayMessage(&quot;HttpRequest(&quot; + url + &quot;) failed: &quot; + req.status + &quot;&lt;br&gt;&quot; + req.responseText);
-	if (!(debug === undefined)) {
-		if (typeof(debug) == &quot;function&quot;)
-			debug(req);
-		else if (debug)
-			alert(req.responseText);
-	}
-	return req;
-}
-
-//}}}</pre></div><div comments="0" currentVer="1" currentver="0" id="3ce00ed6-6ae9-4e21-a536-bac47ab98b7e" modified="20110706064406" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706064406" server.type="giewiki" tags="" title="DefaultTiddlers" vercnt="2" version="2"><pre>[[About giewiki]]</pre></div><div comments="0" currentVer="2" currentver="1" id="a3b249f3-b27f-46af-9836-f5044af2d66d" modified="20110706081505" modifier="PoulStaugaard" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706081505" server.type="giewiki" tags="" title="MainMenu" vercnt="3" version="3"><pre>GettingStarted
+Beware that if you are upgrading an existing application, in some cases it may be a while before it is fully functional, because the server needs to rebuild the indexes which is a task that is queued for batch processing. Under heavy load it may take several hours, but you can monitor the process at appengine.google.com.
+!Upgrading to a new version
+Beware that if you have an earlier version installed in your appspot.com account already, you need to visit http://appengine.google.com (http://appspot.com will take you there) in order to make the new version the active one. This is done via the versions list. The 1.x releases appears as version x (unless you have changed it in the app.yaml).  If you already have (about) 10 versions deployed, you may have to delete some before you can deploy a new version. </pre>
+</div>
+<div title="GettingStarted" creator="YourName" modifier="PoulStaugaard" modified="201107060813" comments="0" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706081331" server.type="giewiki" vercnt="1" version="1" id="3f63f5b9-aa6a-452c-afaa-da52743688fe">
+<pre>Once you have [[implemented giewiki|DeploymentGuide]] and you've logged in to your own site, you will have and ''edit'' item in the menu on the right. This opens up for a number of actions:
+* ''new tiddler'': Let's you add content, using wiki-style markup. There is, by design, no wysiwyg editing. In stead, you have a help menu as an entry point to the markup tutorial, and there is a //preview// button that lets you see a rendered version of your content before you hit 'done'. As a shortcut to 'done', you can use [Ctrl]+[Return].</pre>
+</div>
+<div title="MainMenu" modifier="PoulStaugaard" modified="201107060815" currentver="1" comments="0" currentVer="2" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706081505" server.type="giewiki" vercnt="3" version="3" id="a3b249f3-b27f-46af-9836-f5044af2d66d">
+<pre>GettingStarted
 DeploymentGuide
-TiddlyWiki</pre></div></div>
+TiddlyWiki</pre>
+</div>
+<div title="SiteSubtitle" modifier="PoulStaugaard" modified="201001010000" locked="true" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20100101000000" server.type="giewiki" vercnt="0" version="0" id="SiteSubtitle">
+<pre>giewiki</pre>
+</div>
+<div title="SiteTitle" modifier="PoulStaugaard" modified="201001010000" locked="true" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20100101000000" server.type="giewiki" vercnt="0" version="0" id="SiteTitle">
+<pre>About</pre>
+</div>
+<div title="TiddlyWiki" modifier="PoulStaugaard" modified="201107060711" currentver="1" comments="0" currentVer="1" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706071111" server.type="giewiki" vercnt="2" version="2" id="e21af232-6db2-4a76-bd01-c0bc53cd4993">
+<pre>[[TiddlyWiki|http://tiddlywiki.com]] is the name of an extremely versatile browser script, that implements sort of a personal MicroWiki within the confines of the webbrowser. You can even save it to a local file on your computer ([[if you let it|TiddlyWiki security]]). Primary resources are:
+* [[TiddlyWiki.com|http://www.tiddlywiki.com]]
+* [[TiddlyWiki.org|http://www.tiddlywiki.org]]
+* [[TiddlyTools.com|http://www.tiddlytools.com]]
+* [[groups.google.com/group/tiddlywiki|http://groups.google.com/group/tiddlywiki]]
+
+Giewiki uses TiddlyWiki as a way to allow offline editing:
+# On the page you want to edit offline, open the options panel and right-click Download TiddlyWiki and save it wherever you want. This will give you a standard TiddlyWiki with all the contents of the page, as before, but with the addition of the GiewikiAdaptor plugin. Currently, I do not include the ~TiddlySaver.jar file which is needed if you use Safari or Chrome; you will have to get that from http://tiddlywiki.com/TiddlySaver.jar if you don't have it already (put it next to your HTML file).
+# Do your offline editing classic TiddlyWiki style.
+# When you want to upload your changes (and additions), open the ''Backstage'' menu (at the very top right), and choose ''sync'', then sync the tiddlers that you have changed.
+# This should give you a message with a link saying 'Please __authenticate your post__'. You need to click this link, which takes you to the online page in order to authenticate your uploaded tiddlers. Until you do, they are not accessible from the server. The reason I need to do it this way is that the authentication method uses your google account, and there is no way to do the google login except via the web site.
+Use this feature with real caution, and -specifically- do //not// put any HTML that you haven't written or explicitly trust into the same folder with TiddlySaver.jar. //The potential jeopardy ''if you aren't careful'' is the reason I am not terribly happy with this solution.//
+
+Current limitations/bugs that I hope to remove are the ones that follow from using unmodified ~TiddlyWiki code: If you rename a tiddler, the link to the online version appears to be broken, although it actually isn't; the server-side identifies the tiddler by a unique id, not by its title.
+This solution does not, regrettably, help those who use giewiki on their iPads. This will require that I replace TiddlyWiki's storage mechanism with a solution based on [[HTML5 client-side storage|http://diveintohtml5.org/storage.html]]. That should be a priority project for some time 2011'ish. </pre>
+</div>
+<div title="TiddlyWiki security" modifier="PoulStaugaard" modified="201107060702" comments="0" currentVer="1" server.host="http://localhost:8094/About?twd=empty.html" server.page.revision="20110706070205" server.type="giewiki" vercnt="2" version="2" id="7a46e3cf-ab98-4dbf-81d9-acac159c0305">
+<pre>Probably the most important criticism that can be aimed at TiddlyWiki is that you have to trust the document with write access to your local file system. Which is fine only as long as you don't install [[PlugIns|PlugIn]] of untrustworthy origin. Giewiki eliminates the risk by delegating storage responsibility to a server (that you need to install on your computer if you want to be able to work offline).</pre>
+</div>
+<div title="dev_appserver options" creator="YourName" modifier="giewiki" created="201108201514" modified="201108201515" changecount="2">
+<pre>* {{{--datastore_path=}}}//filespec//&lt;br&gt;Lets you  define a different file than the default for storing your content.
+* {{{--clear_datastore}}}&lt;br&gt;Use with caution: deletes all your content.
+* {{{--address=0.0.0.0}}}&lt;br&gt;Makes the server listen on an interface that's accessible from other machines than your own (security restrictions permitting).</pre>
+</div>
+</div>
 <!--POST-STOREAREA-->
 <!--POST-BODY-START-->
 <!--POST-BODY-END-->
@@ -10049,12 +9821,7 @@ if(useJavaSaver)
 //]]>
 </script>
 <!--POST-SCRIPT-START-->
+
 <!--POST-SCRIPT-END-->
 </body>
-</html><!--- injected text: --->
-<script type="text/javascript">
-config.options.rat = "b51d18b551043c1f145f22dbde6f8531faeaf68c54ed9dd79ce24d17";
-config.defaultCustomFields["server.host"] = "http://localhost:8094/About?twd=empty.html";
-config.defaultCustomFields["server.type"] = "giewiki";
-</script>
-
+</html>

@@ -1687,10 +1687,20 @@ class MainPage(webapp.RequestHandler):
 		self.fail("Page already exists: " + page.path)
 		
   def getLoginUrl(self):
+	p = self.request.get("path")
+	while len(p) > 300:
+		ei = len(p)
+		lsi = p.rfind('%20',0,ei) # last tiddler separator
+		lpi = p.rfind('%5D%5D',0,ei)
+		if lpi > lsi:
+			lsi = p.rfind('%5B%5B',0,lpi)
+		if lsi > 0:
+			p = p[0:lsi]
+			
 	if users.get_current_user() is None:
-		self.reply( {"Url": users.create_login_url(self.request.get("path")), "Success": True })
+		self.reply( {"Url": users.create_login_url(p), "Success": True })
 	else:
-		self.reply( {"Url": users.create_logout_url(self.request.get("path")), "Success": True })
+		self.reply( {"Url": users.create_logout_url(p), "Success": True })
 
   def deletePage(self):
 	path = self.path
@@ -3106,6 +3116,7 @@ class MainPage(webapp.RequestHandler):
 		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
 
 	elDoc.appendChild(elShArea)
+	elStArea.appendChild( xd.createComment("Content lives here!") )
 	elDoc.appendChild(elStArea) # the root element
 	
 	xd.appendChild(elDoc)
@@ -3135,7 +3146,9 @@ class MainPage(webapp.RequestHandler):
 
 			eoS = '<!--- injection point A --->'
 			psPos = twdtext.rfind(eoS)
-			globalPatch = [ twdtext[0:psPos],'<!--- injected text: --->']
+			if psPos == -1:
+				psPos = twdtext.rfind('<!--POST-SCRIPT-START-->')	
+			globalPatch = [ twdtext[0:psPos],'<!-- injected text: -->']
 			if not page is None:
 				scrdict = dict()
 				if hasattr(page,'scripts') and page.scripts != None:
