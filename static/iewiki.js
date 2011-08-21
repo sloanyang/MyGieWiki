@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.13.6
+   version:	1.14.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -267,7 +267,7 @@ config.macros = {
     newTiddler: {
         label: "new tiddler",
         prompt: "Create a new tiddler",
-        title: "New Tiddler",
+        title: "",
         accessKey: "N"
     },
     newJournal: {
@@ -2479,8 +2479,11 @@ config.macros.view.views = {
 };
 
 config.macros.view.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
-    if ((tiddler instanceof Tiddler) && params[0]) {
-        var value = store.getValue(tiddler, params[0]);
+	var fn = params[0];
+    if ((tiddler instanceof Tiddler) && fn) {
+        var value = store.getValue(tiddler, fn);
+		if (!value && fn == 'title') // workaround for newTiddler.title being ""
+			value = "New tiddler";
         if (value) {
 			if (params[3]) createTiddlyText(place,params[3]);
             var type = params[1] || config.macros.view.defaultView;
@@ -3197,7 +3200,10 @@ config.commands.cancelTiddler.handler = function (event, src, title) {
 		delete t.key;
 	}
 	story.setDirty(title, false);
-	story.displayTiddler(null, title);
+	if (title)
+		story.displayTiddler(null, title);
+	else
+		story.closeTiddler(title);
 	return false;
 };
 
@@ -4093,6 +4099,9 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 	}
 	if (tiddler.key)
 		m.key = tiddler.key;
+	else if (m.tiddlerName == '')
+		delete m.tiddlerName; // ie. get a server-generated title
+
 	var result = http.saveTiddler(m);
 	if (result.Success == false)
 		throw (TIDDLER_NOT_SAVED);
@@ -4100,6 +4109,9 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		delete config.editLocks[m.key];
 		delete tiddler.key;
 	}
+	if (result.title !== undefined)
+		newTitle = result.title;
+
 	tiddler.set(newTitle, newBody, modifier, modified || tiddler.modified, tags, created, fields);
 	if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
 		window.location.reload();
@@ -4114,7 +4126,6 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 	if (title != newTitle)
 		this.notify(title, true);
 	this.notify(newTitle, true);
-	//this.setDirty(true);
 	return tiddler;
 };
 
@@ -4649,6 +4660,10 @@ Story.prototype.getTemplateForTiddler = function(title, template, tiddler) {
 };
 
 Story.prototype.refreshTiddler = function (title, template, force, customFields, defaultText, tdlr) {
+	if (title == "" && template == DEFAULT_VIEW_TEMPLATE) {
+		this.closeTiddler(title);
+		return null;
+	}
 	var tiddlerElem = this.getTiddler(title);
 	if (tiddlerElem) {
 		if (tiddlerElem.getAttribute("dirty") == "true" && !force)
@@ -4937,12 +4952,18 @@ Story.prototype.hasChanges = function(title) {
         var fields = {};
         this.gatherSaveFields(e, fields);
         var tiddler = store.fetchTiddler(title);
-        if (!tiddler)
-            return true;
-        for (var n in fields) {
-            if (store.getValue(title, n) != fields[n])
-                return true;
-        }
+        if (!tiddler) {
+			for (var n in fields) {
+				if (!n.startsWith('server.') && fields[n])
+					return true;
+			}
+		}
+		else {
+			for (var n in fields) {
+				if (store.getValue(title, n) != fields[n])
+					return true;
+			}
+		}
     }
     return false;
 };
@@ -4979,7 +5000,7 @@ Story.prototype.saveTiddler = function(title, minorUpdate, newTemplate) {
                 extendedFields[n] = fields[n];
         }
         var tiddler = store.saveTiddler(title, newTitle, fields.text, minorUpdate ? undefined : config.options.txtUserName, minorUpdate ? undefined : newDate, fields.tags, extendedFields);
-        return newTitle;
+        return newTitle || tiddler.title;
     }
     return null;
 };

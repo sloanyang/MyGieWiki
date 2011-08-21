@@ -1,7 +1,7 @@
 # this:	Config.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.13.4
+# ver.:	1.14.0
 
 import cgi
 import codecs
@@ -72,7 +72,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 13, revision: 2, date: new Date("July 23, 2011"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 14, revision: 0, date: new Date("July 23, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
