@@ -4555,8 +4555,14 @@ Story.prototype.displayDefaultTiddlers = function() {
 };
 
 Story.prototype.displayTiddlers = function(srcElement, titles, template, animate, unused, customFields, toggle) {
+	var chkState = config.options.chkAutoSyncAddress;
+	config.options.chkAutoSyncAddress = false; // cuz updating the address bar is too expensive to do in a loop
     for (var t = titles.length - 1; t >= 0; t--)
         this.displayTiddler(srcElement, titles[t], template, animate, unused, customFields);
+	if (config.options.chkAutoSyncAddress != chkState) {
+		this.permaView();
+		config.options.chkAutoSyncAddress = chkState;
+	}
 };
 
 Story.prototype.specialCases = [];
@@ -5373,6 +5379,15 @@ config.macros.option.types = {
     }
 };
 
+config.macros.option.onChangedHandlers = {
+	chkAutoSyncAddress: function(n,v) {
+		if (v)
+			story.permaView();
+		else
+			window.location.hash = "#";
+	}
+};
+
 config.macros.option.propagateOption = function(opt, valueField, value, elementType, elem) {
     config.options[opt] = value;
     var nodes = document.getElementsByTagName(elementType);
@@ -5381,6 +5396,9 @@ config.macros.option.propagateOption = function(opt, valueField, value, elementT
         if (opt == optNode && nodes[t] != elem)
             nodes[t][valueField] = value;
     }
+	var och = config.macros.option.onChangedHandlers[opt];
+	if (och)
+		och(opt,value);
 };
 
 config.macros.option.handler = function(place, macroName, params, wikifier, paramString) {
