@@ -1179,7 +1179,7 @@ class MainPage(webapp.RequestHandler):
 
   def emailSubTemplate(self,comment,tls,txt):
 	return txt.replace('<tiddler_name>',tls.title)\
-		.replace('<tiddler_url>',self.CurrentPage().path + '#' + urllib.quote(tls.title))\
+		.replace('<tiddler_url>',self.request.url + '#' + urllib.quote(tls.title))\
 		.replace('<message_text>',comment)
 	
   def SendEmailNotification(self,comment,tls):
