@@ -214,6 +214,9 @@ def NoneIsFalse(v):
 
 def NoneIsBlank(v):
     return u"" if v == None else unicode(v)
+	
+def NoneIsDefault(a,d):
+	return d if a is None else a
 
 def toDict(iter,keyName):
 	d = dict()
@@ -340,23 +343,6 @@ def getAuthor(t):
 		return unicode(t.author_ip)
 	else:
 		return u"?"
-
-def SendEmailNotification(comment,tls):
-	if comment.receiver == None or users.get_current_user() == None:
-		return False
-	ru = UserProfile.all().filter('user', comment.receiver).get()
-	if ru != None and hasattr(ru,'txtEmail'):
-		rma = ru.txtEmail
-	else:
-		rma = comment.receiver.email()
-	if mail.is_email_valid(rma):
-		mail.send_mail(sender=users.get_current_user().email(),
-				to=rma,
-				subject=tls.title,
-				body=comment.text)
-		return True
-	else:
-		return False
 
 def LogEvent(what,text):
 	logging.info(what + ": " + text)
@@ -1191,6 +1177,28 @@ class MainPage(webapp.RequestHandler):
   def add(self):
 	self.reply({"Success": True, "result": int(self.request.get("a")) + int(self.request.get("b"))})
 
+  def emailSubTemplate(self,comment,tls,txt):
+	return txt.replace('<tiddler_name>',tls.title)\
+		.replace('<tiddler_url>',self.CurrentPage().path + '#' + urllib.quote(tls.title))\
+		.replace('<message_text>',comment)
+	
+  def SendEmailNotification(self,comment,tls):
+	if comment.receiver == None or users.get_current_user() == None:
+		return False
+	ru = UserProfile.all().filter('user', comment.receiver).get()
+	if ru != None and hasattr(ru,'txtEmail'):
+		rma = ru.txtEmail
+	else:
+		rma = comment.receiver.email()
+	if mail.is_email_valid(rma):
+		mail.send_mail(sender=users.get_current_user().email(),
+				to = rma,
+				subject = self.emailSubTemplate(comment.text,tls,"Re: <tiddler_name>"),
+				body = self.emailSubTemplate(comment.text,tls,"<message_text>\n<tiddler_url>"))
+		return True
+	else:
+		return False
+
   def submitComment(self):
 	tls = Tiddler.all().filter('id', self.request.get("tiddler")).filter('current',True).get()
 	if tls == None:
@@ -1215,7 +1223,7 @@ class MainPage(webapp.RequestHandler):
 	if t == "C" and ani.ref == "":
 		tls.comments = tls.comments + 1
 	elif t == "M":
-		ms = SendEmailNotification(ani,tls)
+		ms = self.SendEmailNotification(ani,tls)
 		if tls.messages == None:
 			tls.messages = '|'
 		tls.messages = tls.messages + ani.receiver.nickname() + '|'
@@ -2567,8 +2575,12 @@ class MainPage(webapp.RequestHandler):
 		setattr(u,an,av)
 	if an != None:
 		u.put()
-		self.reply()
-	elif u != None: # retrieve data
+		return self.reply()
+		
+	# retrieve data, if it exists
+	default_subject = "Re: <tiddler_name>"
+	default_body = "<message_text>\n<tiddler_url>"
+	if u != None: 
 		urls = list()
 		host = self.request.host
 		if self.subdomain != None:
@@ -2585,6 +2597,8 @@ class MainPage(webapp.RequestHandler):
 			'txtEmail': u.txtEmail if hasattr(u,'txtEmail') else cu.email(), 
 			'aboutme': NoneIsBlank(u.aboutme),
 			'tiddler': NoneIsBlank(u.tiddler),
+			'tmsg_subject': NoneIsDefault(getattr(u,'tmsg_subject'),default_subject),
+			'tmsg_body': NoneIsDefault(getattr(u,'tmsg_body'),default_body),
 			'projects': ' '.join(urls),
 			'updateaccess': True })
 	elif cu != None:
@@ -2592,6 +2606,8 @@ class MainPage(webapp.RequestHandler):
 			'Success': True, \
 			'txtUserName': cu.nickname(),
 			'txtEmail': cu.email(),
+			'tmsg_subject': default_subject,
+			'tmsg_body': default_body,
 			'updateaccess': True })
 	else:
 		self.reply()

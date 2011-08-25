@@ -266,6 +266,8 @@ class UserProfile(db.Expando):
   aboutme = db.TextProperty("")
   tiddler = db.StringProperty("")
   projects = db.StringProperty("")
+  tmsg_subject = db.StringProperty()
+  tmsg_body = db.StringProperty(multiline=True)
   txtUserName = db.StringProperty() # penname, using TW's term
   clipTiddler = db.ReferenceProperty(Tiddler)
   clipDomain = db.StringProperty("")

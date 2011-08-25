@@ -4902,11 +4902,16 @@ Story.prototype.areAnyDirty = function() {
 
 Story.prototype.closeAllTiddlers = function(exclude) {
     clearMessage();
-    this.forEachTiddler(function(title, element) {
-        if ((title != exclude) && element.getAttribute("dirty") != "true")
-            this.closeTiddler(title);
-    });
-    window.scrollTo(0, ensureVisible(this.container));
+	var chkState = config.options.chkAutoSyncAddress;
+	config.options.chkAutoSyncAddress = false;
+	this.forEachTiddler(function(title, element) {
+		if ((title != exclude) && element.getAttribute("dirty") != "true")
+			this.closeTiddler(title);
+	});
+	window.scrollTo(0, ensureVisible(this.container));
+	config.options.chkAutoSyncAddress = chkState;
+	if (chkState)
+		story.permaView();
 };
 
 Story.prototype.isEmpty = function() {
@@ -8033,8 +8038,9 @@ config.macros.menu = {
 	openTiddler: function(ev)
 	{
 		var target = resolveTarget(ev || window.event);
-		var data = target.getAttribute("data");
+		var data = target.getAttribute('data');
 		story.displayTiddler(null,data);
+		story.focusTiddler(data,'text');
 	}
 };
 
