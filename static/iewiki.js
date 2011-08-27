@@ -7817,14 +7817,20 @@ function SiteMapEntry(place,m,level,dir)
 	for (var i=0; i < m.length; i++) {
 		var lc = 0;
 		var path = m[i].path;
-		var p; var r;
-		for (p = 0;(r = path.indexOf('/',p+1)) >= 0; p = r)
-			lc++; 
-		if (path != "/" && p + 1 == path.length) {
-			lc--; var img = "/static/plusFolder36.png";
+		if (path == undefined) {
+			var img = "/static/plusSite36.png";
+			path = path = m[i].prefix;
 		}
-		else
-			var img = "/static/plusDoc36.png";
+		else {
+			var p; var r;
+			for (p = 0;(r = path.indexOf('/',p+1)) >= 0; p = r)
+				lc++; 
+			if (path != "/" && p + 1 == path.length) {
+				lc--; var img = "/static/plusFolder36.png";
+			}
+			else
+				var img = "/static/plusDoc36.png";
+		}
 		if (lc == level) {
 			AddIconPlusLink(place,img,m[i].title,path,m[i].tags);
 			dir[lc] = { l: level + 1, ca: [], d: dir };

@@ -1627,6 +1627,20 @@ class MainPage(webapp.RequestHandler):
 			xd.add(xpage,'title',p.title)
 			if p.tags != None:
 				xd.add(xpage,'tags',p.tags)
+	cu = users.get_current_user()
+	if not cu is None:
+		namespace_manager.set_namespace(None)
+		u = UserProfile.all().filter('user', cu).get()
+		if not u is None:
+			prjs = u.Projects(self.subdomain).split(' ')
+			for p in prjs:
+				if len(p) > 0:
+					# urls.append(p if p.endswith('appspot.com') else p + host)
+					xpage = xd.createElement('project')
+					xroot.appendChild(xpage)
+					xd.add(xpage,'prefix','http://' + p + '.' + '.'.join(self.request.host.split('.')[-3:]))
+					xd.add(xpage,'title',p)
+
 	self.sendXmlResponse(xd)
 
   def createPage(self):
@@ -1664,8 +1678,16 @@ class MainPage(webapp.RequestHandler):
 			'group': Page.access[pad.groupAccess],
 			'updateaccess': True })
 
-	url = parent + self.request.get("address")
-	page = Page.all().filter('path =',url).get()
+	url = parent + self.request.get('address').strip()
+	if url.find(self.request.path) != 0:
+		return self.fail("Address is not below path")
+	rurl = url[len(self.request.path):]
+	if rurl == '/':
+		return self.fail("Invalid address: " + rurl)
+	if rurl.find('/',0,-1) >= 0:
+		return self.fail("A / is allowed only to end the address")
+		
+	page = Page.all().filter('path',url).get()
 	if page == None:
 		page = Page()
 		page.gwversion = giewikiVersion
@@ -1673,12 +1695,12 @@ class MainPage(webapp.RequestHandler):
 		page.tags = ''
 		page.owner = user
 		page.ownername = getUserPenName(user)
-		page.title = self.request.get("title")
-		page.subtitle = self.request.get("subtitle")
+		page.title = self.request.get('title')
+		page.subtitle = self.request.get('subtitle')
 		page.locked = False
-		page.anonAccess = Page.access[self.request.get("anonymous")]
-		page.authAccess = Page.access[self.request.get("authenticated")]
-		page.groupAccess = Page.access[self.request.get("group")]
+		page.anonAccess = Page.access[self.request.get('anonymous')]
+		page.authAccess = Page.access[self.request.get('authenticated')]
+		page.groupAccess = Page.access[self.request.get('group')]
 		reqTemplate = self.request.get('template')
 		if reqTemplate != '':
 			for at in PageTemplate.all().filter('current',True):
@@ -1690,7 +1712,7 @@ class MainPage(webapp.RequestHandler):
 		page.viewbutton = pad.viewbutton
 		page.viewprior = pad.viewprior
 		page.put()
-		self.reply( {"Url": url, "Success": True })
+		self.reply( {'Url': url, 'Success': True })
 	else:
 		self.fail("Page already exists: " + page.path)
 		

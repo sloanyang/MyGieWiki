@@ -16,7 +16,7 @@ handlers:
 
 - url: /index.xml
   script: index.py
-  
+
 - url: /config.js
   script: config.py
 
