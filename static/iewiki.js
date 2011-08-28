@@ -4074,11 +4074,13 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		delete tiddler.from;
 		delete tiddler.readOnly;
 	}
+	var atags = tags.readBracketedList();
 	var m = {
 		tiddlerId: tiddler.id,
 		tiddlerName: newTitle,
 		text: newBody,
 		tags: tags,
+		atag: atags,
 		currentVer: tiddler.currentVer,
 		modifier: modifier,
 		fromVer: fromVersion,
@@ -4112,7 +4114,7 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 	if (result.title !== undefined)
 		newTitle = result.title;
 
-	tiddler.set(newTitle, newBody, modifier, modified || tiddler.modified, tags, created, fields);
+	tiddler.set(newTitle, newBody, modifier, modified || tiddler.modified, atags, created, fields);
 	if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
 		window.location.reload();
 
@@ -7457,7 +7459,16 @@ function HttpGet(args, method) {
 		for (var a in args) {
 			var v = args[a];
 			if (!(v == undefined || typeof(v) == "function"))
-				fields.push(a + "=" + encodeURIComponent(v));
+			{
+				if (typeof(v) == "object") {
+					for (var avn in v) {
+						if (!isNaN(parseInt(avn)))
+							fields.push(a + "=" + encodeURIComponent(v[avn]));
+					}
+				}
+				else
+					fields.push(a + "=" + encodeURIComponent(v));
+			}
 		}
 		var rs = HttpRequest(fields.join("&"));
 	}
