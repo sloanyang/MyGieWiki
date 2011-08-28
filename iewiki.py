@@ -647,6 +647,7 @@ class MainPage(webapp.RequestHandler):
 	tiddlerName = self.request.get('tiddlerName',None)
 	title = str(datetime.datetime.today())[0:23] if tiddlerName is None else tiddlerName
 	tlrId = self.request.get('tiddlerId')
+	taglist = self.request.get_all('atag')
 	minorEdit = False
 	if tlr == None:
 		reply = True # called directly
@@ -766,7 +767,6 @@ class MainPage(webapp.RequestHandler):
 
 		tlr.current = True
 
-	taglist = [] if tlr.tags == None else tlr.tags.split()
 	crons = []
 	for tag in taglist:
 		if tag.startswith('@'):
@@ -831,8 +831,10 @@ class MainPage(webapp.RequestHandler):
 			tlr.text = ''
 		tlr.public = page.anonAccess > page.NoAccess
 		tlr.put() #  <-- This is where it gets put()
-		atags = self.request.get_all('atag')
-		for atg in atags:
+		for tl in TagLink.all().filter('tlr',tlr.id):
+			if tl.tag not in taglist:
+				tl.delete()
+		for atg in taglist:
 			if TagLink.all().filter('tag',atg).filter('tlr',tlr.id).get() == None:
 				ntl = TagLink()
 				ntl.tag = atg
@@ -917,8 +919,9 @@ class MainPage(webapp.RequestHandler):
 	list = []
 	for tl in TagLink.all().filter('tag',self.request.get('tag')):
 		t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
-		pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
-		list.append({ 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
+		if not t is None:
+			pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
+			list.append({ 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
 	return self.reply({'tl': list})
 	
   def tiddlerHistory(self):
@@ -1145,6 +1148,8 @@ class MainPage(webapp.RequestHandler):
 	ctlr = Tiddler.all().filter('id', tid).filter('current',True).get()
 	if ctlr != None:
 		ctlr.current = False
+		for tl in TagLink.all().filter('tlr',ctlr.id):
+			tl.delete()
 		# setattr(ctlr,'isRecycled',True)
 		DeletionLog().Log(ctlr,self.request.remote_addr,self.request.get('comment'))
 		ctlr.put()
