@@ -55,6 +55,10 @@ class Tiddler(db.Expando):
 	else:
 		return Tiddler.all(keys_only=True).filter('id',self.id).count()
 
+class TagLink(db.Model):
+  tag = db.StringProperty()
+  tlr = db.StringProperty()
+
 class SiteInfo(db.Model):
   title = db.StringProperty()
   description = db.StringProperty()

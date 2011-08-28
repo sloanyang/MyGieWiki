@@ -29,7 +29,7 @@ from google.appengine.api import urlfetch
 from google.appengine.api import mail
 from google.appengine.api import namespace_manager
 
-from giewikidb import Tiddler,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
+from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, noSuchTiddlers
 
 from javascripts import javascriptDict
@@ -831,6 +831,14 @@ class MainPage(webapp.RequestHandler):
 			tlr.text = ''
 		tlr.public = page.anonAccess > page.NoAccess
 		tlr.put() #  <-- This is where it gets put()
+		atags = self.request.get_all('atag')
+		for atg in atags:
+			if TagLink.all().filter('tag',atg).filter('tlr',tlr.id).get() == None:
+				ntl = TagLink()
+				ntl.tag = atg
+				ntl.tlr = tlr.id
+				ntl.put()
+				
 		for cj in crons:
 			cj.save(tlr)
 
@@ -904,7 +912,15 @@ class MainPage(webapp.RequestHandler):
 	tlr.tags = tlr.tags + " " + newTags
 	tlr.put()
 	return self.reply({'tags': tlr.tags})
-
+	
+  def listTiddlersTagged(self):
+	list = []
+	for tl in TagLink.all().filter('tag',self.request.get('tag')):
+		t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
+		pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
+		list.append({ 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
+	return self.reply({'tl': list})
+	
   def tiddlerHistory(self):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
@@ -1635,7 +1651,6 @@ class MainPage(webapp.RequestHandler):
 			prjs = u.Projects(self.subdomain).split(' ')
 			for p in prjs:
 				if len(p) > 0:
-					# urls.append(p if p.endswith('appspot.com') else p + host)
 					xpage = xd.createElement('project')
 					xroot.appendChild(xpage)
 					xd.add(xpage,'prefix','http://' + p + '.' + '.'.join(self.request.host.split('.')[-3:]))

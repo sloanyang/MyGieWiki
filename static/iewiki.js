@@ -1891,6 +1891,17 @@ config.macros.tagging.handler = function(place, macroName, params, wikifier, par
         if (t < tagged.length - 1)
             createTiddlyText(ul, sep);
     }
+	createTiddlyButton(createTiddlyElement(ul, "li"),"Sitewide..?","Server-side search",
+		function(ev) {
+			var ttr = http.listTiddlersTagged({ tag: title });
+			if (ttr.Success) {
+				for (var etl = 0; etl < ttr.tl.length; etl++) {
+					createTiddlyText(createExternalLink(createTiddlyElement(ul, "li"), ttr.tl[etl].link),ttr.tl[etl].page + ": " + ttr.tl[etl].title);
+				}
+				var tli = resolveTarget(ev || window.event).parentNode;
+				tli.parentNode.removeChild(tli);
+			}
+		});
 };
 
 config.macros.closeAll.handler = function(place) {

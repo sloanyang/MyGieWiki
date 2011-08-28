@@ -52,6 +52,7 @@ getNotes\n\
 getMessages\n\
 getTiddler\n\
 getTiddlers\n\
+listTiddlersTagged\n\
 fileList\n\
 replaceExistingFile\n\
 recycleBin\n\
