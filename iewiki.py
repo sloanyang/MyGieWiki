@@ -917,12 +917,25 @@ class MainPage(webapp.RequestHandler):
 	
   def listTiddlersTagged(self):
 	list = []
-	for tl in TagLink.all().filter('tag',self.request.get('tag')):
-		t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
-		if not t is None:
-			pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
-			list.append({ 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
-	return self.reply({'tl': list})
+	rply = {'tl': list}
+	tag = self.request.get('tag',None)
+	tags = self.request.get_all('tags')
+	if len(tags):
+		rply['mt'] = True
+		for tl in TagLink.all():
+			if tl.tag in tags:
+				t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
+				if not t is None:
+					pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
+					list.append({ 'tag': tl.tag, 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
+	elif tag:
+		rply['mt'] = False
+		for tl in TagLink.all().filter('tag',tag):
+			t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
+			if not t is None:
+				pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
+				list.append({ 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
+	return self.reply(rply)
 	
   def tiddlerHistory(self):
 	"http tiddlerId"

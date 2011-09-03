@@ -559,6 +559,17 @@ config.macros.list.orphans.prompt = "Tiddlers that are not linked to from any ot
 config.macros.list.shadowed.prompt = "Special purpose tiddlers with default contents";
 config.macros.list.touched.prompt = "Tiddlers that have been modified locally";
 
+config.tagLinks = {};
+config.tagLinksAdd = function(tag,link) {
+	if (link.page == window.location.pathname)
+		return;
+	if (config.tagLinks[tag] === undefined)
+		config.tagLinks[tag] = [];
+	for (var i = 0; i < config.tagLinks[tag].length; i++)
+		if (config.tagLinks[tag][i].link == link.link)
+			return;
+	config.tagLinks[tag].push(link);
+};
 //--
 //-- Main
 //--
@@ -1869,8 +1880,10 @@ config.macros.tags.handler = function (place, macroName, params, wikifier, param
 				createTiddlyText(ul, sep);
 		}
 	}
-	if (nts > 0)
+	if (nts > 0) {
 		place.appendChild(ul);
+		OfferServersideTagSearch(ul,null,tiddler.tags);
+	}
 	else
 		removeNode(place);
 };
@@ -1891,18 +1904,55 @@ config.macros.tagging.handler = function(place, macroName, params, wikifier, par
         if (t < tagged.length - 1)
             createTiddlyText(ul, sep);
     }
-	createTiddlyButton(createTiddlyElement(ul, "li"),"Sitewide..?","Server-side search",
-		function(ev) {
-			var ttr = http.listTiddlersTagged({ tag: title });
-			if (ttr.Success) {
-				for (var etl = 0; etl < ttr.tl.length; etl++) {
-					createTiddlyText(createExternalLink(createTiddlyElement(ul, "li"), ttr.tl[etl].link),ttr.tl[etl].page + ": " + ttr.tl[etl].title);
-				}
-				var tli = resolveTarget(ev || window.event).parentNode;
-				tli.parentNode.removeChild(tli);
-			}
-		});
+	OfferServersideTagSearch(ul,title);
 };
+
+function DoServerSideTagSearch(ev) {
+	var tli = resolveTarget(ev || window.event).parentNode;
+	var ulp = tli.parentNode;
+	var tags = tli.getAttribute('tags');
+	var lta = {};
+	if (tags)
+		lta.tags = tags.split('\n');
+	else
+		lta.tag = tli.getAttribute('tag');
+	var ttr = http.listTiddlersTagged(lta);
+	if (ttr.Success) {
+		if (ttr.mt) {
+			for (var te = tli.parentNode.firstChild; te; te = te.nextSibling) {
+				if (te.nodeType != 1 || te.firstChild == null)
+					continue;
+				var tec = te.firstChild;
+				if (tec.nodeType == 1 && tec.getAttribute('class') == 'button') {
+					for (var i = 0; i < ttr.tl.length; i++)
+						if (ttr.tl[i].tag == tec.firstChild.nodeValue) {
+							createTiddlyText(tec,"*");
+							config.tagLinksAdd(tec.firstChild.nodeValue, ttr.tl[i]);
+						}
+				}
+			}
+		}
+		else
+			for (var etl = 0; etl < ttr.tl.length; etl++) {
+				createTiddlyText(createExternalLink(createTiddlyElement(ulp, "li"), ttr.tl[etl].link),ttr.tl[etl].page + ": " + ttr.tl[etl].title);
+			}
+		tli.parentNode.removeChild(tli);
+	}
+}
+
+function OfferServersideTagSearch(pl,tag,tags)
+{
+	var swli = createTiddlyElement(pl, "li");
+	var tt = "Server-side search for ";
+	if (tags) {
+		swli.setAttribute('tags',tags.join('\n'));
+		tt = tt + "tags";
+	} else {
+		swli.setAttribute('tag',tag);
+		tt = tt + "tag '" + tag + "'";
+	}
+	createTiddlyButton(swli,"Sitewide..?", tt, DoServerSideTagSearch);
+}
 
 config.macros.closeAll.handler = function(place) {
     createTiddlyButton(place, this.label, this.prompt, this.onClick);
@@ -5684,14 +5734,21 @@ function onClickTag(ev) {
             if (tagged[r].title != title)
                 titles.push(tagged[r].title);
         }
+		var tla = config.tagLinks[tag];
         var lingo = config.views.wikified.tag;
-        if (titles.length > 0) {
+        if (titles.length > 0 || tla) {
             var openAll = createTiddlyButton(createTiddlyElement(popup, "li"), lingo.openAllText.format([tag]), lingo.openAllTooltip, onClickTagOpenAll);
             openAll.setAttribute("tag", tag);
             createTiddlyElement(createTiddlyElement(popup, "li", null, "listBreak"), "div");
             for (r = 0; r < titles.length; r++) {
                 createTiddlyLink(createTiddlyElement(popup, "li"), titles[r], true);
             }
+			if (tla) {
+				if (titles.length > 0)
+					createTiddlyElement(createTiddlyElement(popup, "li", null, "listBreak"), "div");
+				for (r = 0; r < tla.length; r++)
+					createTiddlyText(createExternalLink(createTiddlyElement(popup, "li"), tla[r].link),tla[r].page + ": " + tla[r].title);
+			}
         } else {
             createTiddlyText(createTiddlyElement(popup, "li", null, "disabled"), lingo.popupNone.format([tag]));
         }
