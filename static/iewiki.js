@@ -809,14 +809,21 @@ function isPluginEnabled(plugin) {
 function invokeMacro(place, macro, params, wikifier, tiddler) {
     try {
         var m = config.macros[macro];
+		if (m === undefined && store.getTiddler(macro)) // possible source not yet loaded
+			m = config.macros[macro];
+		else if (m && m.handler === undefined) {
+			if (m.tiddler) {
+				if (!store.getTiddler(m.tiddler))
+					return createTiddlyError(place, config.messages.macroError.format([macro]), "Cannot get resource tiddler");
+			}
+		}
         if (m && m.handler) {
         	var tiddlerElem = story.findContainingTiddler(place);
         	window.tiddler = tiddlerElem ? store.getTiddler(tiddlerElem.getAttribute("tiddler")) : null;
         	window.place = place;
-        	m.handler(place, macro, params.readMacroParams(), wikifier, params, tiddler);
-        } else {
-        	createTiddlyError(place, config.messages.macroError.format([macro]), config.messages.macroErrorDetails.format([macro, config.messages.missingMacro]));
+        	return m.handler(place, macro, params.readMacroParams(), wikifier, params, tiddler);
         }
+       	createTiddlyError(place, config.messages.macroError.format([macro]), config.messages.macroErrorDetails.format([macro, config.messages.missingMacro]));
     } catch (ex) {
 		var msg = ex.message || ex.toString();
         createTiddlyError(place, config.messages.macroError.format([macro]), config.messages.macroErrorDetails.format([macro, msg]));
@@ -3122,8 +3129,12 @@ function KeepTiddlers(st,title) {
 		loadPlugins();
 		return rt;
 	}
-	loadPlugins();
-	return keeper(st);
+	else {
+		var rt = keeper(st);
+		if (rt.tags.contains('systemConfig'))
+			loadPlugins();
+		return rt;
+	}
 }
 
 var tryGetWhatTiddler = null;
