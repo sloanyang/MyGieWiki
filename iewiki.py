@@ -98,7 +98,33 @@ def templateAttribute(page, default_rv, attr = None):
 			return default_rv
 	except:
 		return default_rv
-		
+
+def parseToken(m, p):
+	if m.group(p): # Double quoted
+		n = m.group(p)
+	elif m.group(p + 1): # Single quoted
+		n = m.group(p + 1)
+	elif m.group(p + 2): # Double-square-bracket quoted
+		n = m.group(p + 2)
+	elif m.group(p + 3): # Double-brace quoted
+		n = m.group(p + 3)
+	elif m.group(p + 4): # Unquoted
+		n = m.group(p + 4)
+	elif m.group(p + 5): # empty quote
+		n = ""
+	return n
+
+def paramParser(a):
+	dblQuote = "(?:\"((?:(?:\\\\\")|[^\"])+)\")"
+	sngQuote = "(?:'((?:(?:\\\\\')|[^'])+)')"
+	dblSquare = "(?:\\[\\[((?:\\s|\\S)*?)\\]\\])"
+	dblBrace = "(?:\\{\\{((?:\\s|\\S)*?)\\}\\})"
+	unQuoted = "([^\"'\\s]\\S*)"
+	emptyQuote = "((?:\"\")|(?:''))"
+	token = "(?:" + dblQuote + "|" + sngQuote + "|" + dblSquare + "|" + dblBrace + "|" + unQuoted + "|" + emptyQuote + ")"
+	mx = re.compile(token)
+	return mx.finditer(a)
+
 def AddTagsToList(slist,tags):
 	list = slist.split(' ') # TODO: proper parsing of [[such tags]]
 	changes = False
@@ -1097,8 +1123,13 @@ class MainPage(webapp.RequestHandler):
 	tpc = Tiddler.all().filter('id', tid).filter('version',cv).get()
 	tpl = Tiddler.all().filter('id', tid).filter('version',lv).get()
 	tpl.current = True
+	addTL = False
 	if users.is_current_user_admin() == False or version != cv:
 		tpc.current = False
+		if tpc.tags != tpl.tags:
+			for tl in TagLink.all().filter('tlr',tpc.id):
+				tl.delete()
+			addTL = True
 		if tpl.reverted != None:
 			tpc.modified = tpl.reverted
 			tpc.reverted = None
@@ -1115,6 +1146,11 @@ class MainPage(webapp.RequestHandler):
 	tpl.reverted_by = users.get_current_user()
 	tpl.modified = datetime.datetime.now()
 	tpl.put()
+	if addTL:
+		ts = []
+		for am in paramParser(tpl.tags):
+			ts.append(parseToken(am, 1))
+		addTagLinks(tpl,ts)
 	return tpl
 
   def deleteVersions(self):
