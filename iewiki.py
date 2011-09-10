@@ -233,6 +233,15 @@ def tagInFilter(tags,filter):
 			if t == f:
 				return True
 	return False
+	
+def addTagLinks(tlr,taglist):
+	for atg in taglist:
+		if TagLink.all().filter('tag',atg).filter('tlr',tlr.id).get() == None:
+			ntl = TagLink()
+			ntl.tag = atg
+			ntl.tlr = tlr.id
+			ntl.put()
+
 
 def xmlArrayOfStrings(xd,te,text,name):
 	if isinstance(text,basestring):
@@ -834,12 +843,7 @@ class MainPage(webapp.RequestHandler):
 		for tl in TagLink.all().filter('tlr',tlr.id):
 			if tl.tag not in taglist:
 				tl.delete()
-		for atg in taglist:
-			if TagLink.all().filter('tag',atg).filter('tlr',tlr.id).get() == None:
-				ntl = TagLink()
-				ntl.tag = atg
-				ntl.tlr = tlr.id
-				ntl.put()
+		addTagLinks(tlr,taglist)
 				
 		for cj in crons:
 			cj.save(tlr)
@@ -910,9 +914,14 @@ class MainPage(webapp.RequestHandler):
 		return self.fail("Tiddler not found")
 	if tlr.version != int(self.request.get('version')):
 		return self.fail("Tiddler not current")
-	newTags = self.request.get('tags')
-	tlr.tags = tlr.tags + " " + newTags
+	taglist = self.request.get_all('atag')
+	for atg in taglist:
+		if not atg in tlr.tags:
+			if ' ' in atg:
+				atg = '[[' + atg + ']]'
+			tlr.tags = tlr.tags + " " + atg
 	tlr.put()
+	addTagLinks(tlr,taglist)
 	return self.reply({'tags': tlr.tags})
 	
   def listTiddlersTagged(self):

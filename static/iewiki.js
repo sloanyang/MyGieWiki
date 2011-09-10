@@ -2010,7 +2010,7 @@ function onAddTagClick(ev) {
 		var tg = resolveTarget(e || window.event);
 		var afi = [];
 		if (getElementsByClassName('commentArea',null,where,afi)) {
-			var ars = http.addTags({id: st.id, version: st.version, tags: afi[0].value });
+			var ars = http.addTags({id: st.id, version: st.version, atag: afi[0].value.readBracketedList() });
 			if (ars.Success) {
 				st.tags = ars.tags.readBracketedList();
 				store.notify(title,true);
