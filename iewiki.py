@@ -125,8 +125,14 @@ def paramParser(a):
 	mx = re.compile(token)
 	return mx.finditer(a)
 
+def tagStringToList(tags):
+	ts = []
+	for am in paramParser(tags):
+		ts.append(parseToken(am, 1))
+	return ts
+
 def AddTagsToList(slist,tags):
-	list = slist.split(' ') # TODO: proper parsing of [[such tags]]
+	list = tagStringToList(slist)
 	changes = False
 	for t in tags:
 		if not t in list:
@@ -1147,10 +1153,7 @@ class MainPage(webapp.RequestHandler):
 	tpl.modified = datetime.datetime.now()
 	tpl.put()
 	if addTL:
-		ts = []
-		for am in paramParser(tpl.tags):
-			ts.append(parseToken(am, 1))
-		addTagLinks(tpl,ts)
+		addTagLinks(tpl,tagStringToList(tpl.tags))
 	return tpl
 
   def deleteVersions(self):
