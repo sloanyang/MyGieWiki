@@ -166,8 +166,7 @@ config.views = {
         dateFormat: "DD MMM YYYY",
         createdPrompt: "created",
         tag: {
-            labelNoTags: "no tags",
-            labelTags: "tags: ",
+            labelTags: "tags",
             openTag: "Open tag '%0'",
             tooltip: "Show tiddlers tagged with '%0'",
             openAllText: "Open all",
@@ -1876,8 +1875,8 @@ config.macros.tags.handler = function (place, macroName, params, wikifier, param
 		tiddler = store.getTiddler(title);
 	var sep = getParam(params, "sep", " ");
 	var lingo = config.views.wikified.tag;
-	var prompt = tiddler.tags.length == 0 ? lingo.labelNoTags : lingo.labelTags;
-	createTiddlyElement(ul, "li", null, "listTitle", prompt.format([tiddler.title]));
+	var lt = createTiddlyElement(ul, "li", null, "listTitle");
+	OfferServersideTagSearch(lingo.labelTags, lt, null, tiddler.tags);
 	var nts = 0;
 	for (var t = 0; t < tiddler.tags.length; t++) {
 		if (visibleTag(tiddler.tags[t])) {
@@ -1887,31 +1886,30 @@ config.macros.tags.handler = function (place, macroName, params, wikifier, param
 				createTiddlyText(ul, sep);
 		}
 	}
-	if (nts > 0) {
+	if (nts > 0)
 		place.appendChild(ul);
-		OfferServersideTagSearch(ul,null,tiddler.tags);
-	}
 	else
 		removeNode(place);
 };
 
 config.macros.tagging.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
-    params = paramString.parseParams("anon", null, true, false, false);
-    var ul = createTiddlyElement(place, "ul");
-    var title = getParam(params, "anon", "");
-    if (title == "" && tiddler instanceof Tiddler)
-        title = tiddler.title;
-    var sep = getParam(params, "sep", " ");
-    ul.setAttribute("title", this.tooltip.format([title]));
-    var tagged = store.getTaggedTiddlers(title);
-    var prompt = tagged.length == 0 ? this.labelNotTag : this.label;
-    createTiddlyElement(ul, "li", null, "listTitle", prompt.format([title, tagged.length]));
-    for (var t = 0; t < tagged.length; t++) {
-        createTiddlyLink(createTiddlyElement(ul, "li"), tagged[t].title, true);
-        if (t < tagged.length - 1)
-            createTiddlyText(ul, sep);
-    }
-	OfferServersideTagSearch(ul,title);
+	params = paramString.parseParams('anon', null, true, false, false);
+	var ul = createTiddlyElement(place, 'ul');
+	var title = getParam(params, 'anon', "");
+	if (title == "" && tiddler instanceof Tiddler)
+		title = tiddler.title;
+	var sep = getParam(params, 'sep', " ");
+	ul.setAttribute('title', this.tooltip.format([title]));
+	var tagged = store.getTaggedTiddlers(title);
+	var prompt = tagged.length == 0 ? this.labelNotTag : this.label;
+	createTiddlyElement(ul, 'li', null, 'listTitle', prompt.format([title, tagged.length]));
+	for (var t = 0; t < tagged.length; t++) {
+		createTiddlyLink(createTiddlyElement(ul, 'li'), tagged[t].title, true);
+		if (t < tagged.length - 1)
+			createTiddlyText(ul, sep);
+	}
+	var lt = createTiddlyElement(ul, "li", null, "listTitle");
+	OfferServersideTagSearch("Site-wide..", ul, title);
 };
 
 function DoServerSideTagSearch(ev) {
@@ -1947,9 +1945,8 @@ function DoServerSideTagSearch(ev) {
 	}
 }
 
-function OfferServersideTagSearch(pl,tag,tags)
+function OfferServersideTagSearch(label, swli, tag, tags)
 {
-	var swli = createTiddlyElement(pl, "li");
 	var tt = "Server-side search for ";
 	if (tags) {
 		swli.setAttribute('tags',tags.join('\n'));
@@ -1958,7 +1955,7 @@ function OfferServersideTagSearch(pl,tag,tags)
 		swli.setAttribute('tag',tag);
 		tt = tt + "tag '" + tag + "'";
 	}
-	createTiddlyButton(swli,"Sitewide..?", tt, DoServerSideTagSearch);
+	createTiddlyButton(swli,label, tt, DoServerSideTagSearch, 'tagmenu');
 }
 
 config.macros.closeAll.handler = function(place) {
