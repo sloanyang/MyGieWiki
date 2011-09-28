@@ -123,6 +123,7 @@ merge(config.options, {
     txtExternalLibrary: "",
     txtTheme: "",
     txtEmptyTiddlyWiki: "empty.html", // Template for stand-alone export
+    txtAutoSave: "",
     txtLockDuration: "60"},
     true);
 
@@ -144,6 +145,7 @@ config.optionsDesc = {
     txtMaxEditRows: "Maximum number of visible lines in edit boxes",
     txtEmail: "Email for receiving messages",
     txtExternalLibrary: "Source of tiddlers listed via Libraries/other..",
+	txtAutoSave: "Autosave rate (s)",
     txtLockDuration: "Lock for edit (if so, duration in minutes) - leave blank to disable edit locking"
 };
 
@@ -3061,7 +3063,8 @@ config.commands.editTiddler.handler = function (event, src, title) {
 				editVer = st.version;
 		}
 		if (config.options.txtLockDuration != "") {
-			var reply = http.editTiddler({ id: st.id, version: editVer, hasVersion: st.version, duration: config.options.txtLockDuration });
+			var eta = { id: st.id, version: editVer, hasVersion: st.version, duration: config.options.txtLockDuration };
+			var reply = http.editTiddler(eta);
 			st.key = reply.key;
 			config.editLocks[st.key] = title;
 			if (reply.Success) {
@@ -3258,19 +3261,32 @@ config.commands.copyTiddler.isEnabled =  function(tlr) {
 };
 
 config.commands.cancelTiddler.handler = function (event, src, title) {
-	if (story.hasChanges(title) && !readOnly) {
+	var t = store.getTiddler(title);
+	var autoSaved = t && t.autoSavedAsVer;
+	if ((story.hasChanges(title) || autoSaved)  && !readOnly) {
 		if (!confirm(this.warning.format([title])))
 			return false;
 	}
-	var t = store.getTiddler(title);
 	if (t && t.key && t.until) {
 		http.unlockTiddler({ "key": t.key });
 		delete config.editLocks[t.key];
 		delete t.key;
 	}
+	if (autoSaved) {
+		var dtr = http.dropTiddlerEdit({tiddlerId: t.id, autoSavedAsVer: t.autoSavedAsVer});
+		if (dtr.Success && t.autoSavedAsVer == 1)
+			store.deleteTiddler(t.title);
+		else if (t.ovs) {
+			var pvs = t.ovs.pop();
+			if (pvs)
+				merge(t,pvs);
+			t.versions = dtr.versions;
+		}
+		delete t.autoSavedAsVer;
+	}
 	story.setDirty(title, false);
 	if (title)
-		story.displayTiddler(null, title);
+		story.displayTiddler(null, t.title || title);
 	else
 		story.closeTiddler(title);
 	return false;
@@ -3854,10 +3870,8 @@ function TiddlyWiki() {
     	return t instanceof Tiddler && (real ? t.id : true);
     };
     this.fetchTiddler = function (title,co) {
-		if (!title)
-			return null;
     	var t = tiddlers[title];
-    	if (!t)
+    	if (!t && title)
 			if (this.fetchFromServer && !co)
     			t = TryGetTiddler(title);
     	return t instanceof Tiddler ? t : null;
@@ -3871,6 +3885,10 @@ function TiddlyWiki() {
         delete this.slices[tiddler.title];
         tiddlers[tiddler.title] = tiddler;
     };
+	this.addTiddlerAs = function(t,n) {
+		delete this.slices[n];
+		tiddlers[n] = t;
+	};
     this.forEachTiddler = function(callback) {
 		var ffs = this.fetchFromServer;
 		this.fetchFromServer = false; // performance forbids iterative fetching
@@ -4121,7 +4139,7 @@ TiddlyWiki.prototype.addTiddlerFields = function(title, fields) {
     this.setDirty(true);
 };
 
-TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier, modified, tags, fields) {
+TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier, modified, tags, fields, autoSave) {
 	var tiddler = this.fetchTiddler(title);
 	tags = (typeof (tags) == "string") ? tags : String.encodeTiddlyLinkList(tags);
 	if (tiddler) {
@@ -4153,15 +4171,19 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		currentVer: tiddler.currentVer,
 		modifier: modifier,
 		fromVer: fromVersion,
+		autoSave: autoSave || false,
 		shadow: tiddler.hasShadow ? 1 : 0
+	}
+	if (!(tiddler.autoSavedAsVer === undefined)) {
+		m.autoSavedAsVer = tiddler.autoSavedAsVer;
+		delete tiddler.autoSavedAsVer;
 	}
 	if (modified === undefined)
 		m.minorEdit = true; 
 	if (tags) {
-		var tl = tags.readBracketedList();
-		if (tl.indexOf('isPrivate') > -1)
+		if (atags.indexOf('isPrivate') > -1)
 			m.isPrivate = 'true';
-		if (tl.indexOf('isDeprecated') > -1)
+		if (atags.indexOf('isDeprecated') > -1)
 			m.deprecated = 'true';
 	}
 	for (fn in fields) {
@@ -4174,26 +4196,34 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		delete m.tiddlerName; // ie. get a server-generated title
 
 	var result = http.saveTiddler(m);
-	if (result.Success == false)
+	if (result.Success)
+		delete result.Success
+	else
 		throw (TIDDLER_NOT_SAVED);
-	else if (tiddler.key) {
+	if (tiddler.key && !autoSave) {
 		delete config.editLocks[m.key];
 		delete tiddler.key;
 	}
-	if (result.title !== undefined)
+	if (!(result.title === undefined))
 		newTitle = result.title;
-
+	if (!(result.tags === undefined)) {
+		atags = result.tags;
+		delete result.tags;
+	}
 	tiddler.set(newTitle, newBody, modifier, modified || tiddler.modified, atags, created, fields);
-	if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
-		window.location.reload();
-
+	delete result.tags;
 	merge(tiddler, result);
-	tiddler.version = result.currentVer;
+	if (result.currentVer)
+		tiddler.version = result.currentVer;
 	tiddler.fromversion = fromVersion;
 	tiddler.fields['vercnt'] = result.vercnt;
+	
 	if (et)
 		this.deleteTiddler(title);
-	this.addTiddler(tiddler);
+	this.addTiddlerAs(tiddler,autoSave ? title : newTitle);
+	if (autoSave)
+		return tiddler;
+
 	if (title != newTitle)
 		this.notify(title, true);
 	this.notify(newTitle, true);
@@ -4631,8 +4661,8 @@ Story.prototype.displayDefaultTiddlers = function() {
 	var dts = store.filterTiddlers(store.getTiddlerText("DefaultTiddlers"));
 	if (dts.length > 0 && dts[0].title == 'PageSetup' && config.access != 'admin')
 		dts.pop();
-	if (dts.length == 0)
-		dts.push(store.getTiddler('NoAccessMessage'));
+	//if (dts.length == 0)
+	//	dts.push(store.getTiddler('NoAccessMessage'));
     this.displayTiddlers(null, dts);
 };
 
@@ -4742,13 +4772,14 @@ Story.prototype.refreshTiddler = function (title, template, force, customFields,
 		template = this.chooseTemplateForTiddler(title, template);
 		var currTemplate = tiddlerElem.getAttribute("template");
 		if ((template != currTemplate) || force) {
+			var isEdit = template == "EditTemplate";
 			var tiddler = tdlr || store.getTiddler(title);
 			if (!tiddler) {
 				tiddler = new Tiddler();
 				if (store.isShadowTiddler(title)) {
 					tiddler.set(title, store.getTiddlerText(title), config.views.wikified.shadowModifier, version.date, [], version.date);
 				} else {
-					var text = template == "EditTemplate" ?
+					var text =  isEdit ?
 								config.views.editor.defaultText.format([title]) :
 								config.views.wikified.defaultText.format([title]);
 					text = defaultText || text;
@@ -4783,7 +4814,8 @@ Story.prototype.refreshTiddler = function (title, template, force, customFields,
 			}
 			if (customFields)
 				this.addCustomFields(tiddlerElem, customFields);
-			if (template == "EditTemplate") {
+			if (isEdit) {
+				this.setTimer(parseInt(config.options.txtAutoSave));
 				var atf = [];
 				if (getElementsByClassName('tagFrame', 'fieldset', tiddlerElem, atf))
 					atf[0].style.display = tiddler.tags.length > 0 ? "block" : "none";
@@ -5036,15 +5068,61 @@ Story.prototype.hasChanges = function(title) {
 		}
 		else {
 			for (var n in fields) {
-				if (store.getValue(title, n) != fields[n])
+				if (store.getValue(title, n) != fields[n]) { // displayMessage("The " + n + " of " + title + " changed");
 					return true;
+				}
 			}
 		}
     }
     return false;
 };
 
-Story.prototype.saveTiddler = function(title, minorUpdate, newTemplate) {
+function doAutoSave()
+{
+	delete story.timerId;
+	if (story.autoSave())
+		story.setTimer();
+}
+
+Story.prototype.setTimer = function(ai)
+{
+	if (ai === undefined) {
+		if (config.autoSaveInterval && this.timerId === undefined)
+			this.timerId = window.setTimeout(doAutoSave,config.autoSaveInterval * 1000);
+	}
+	else if (isNaN(ai)) {
+		config.autoSaveInterval = 0;
+		if (!(this.timerId === undefined)) {
+			window.clearTimeout(this.timerId);
+			delete this.timerId;
+		}
+	}
+	else {
+		config.autoSaveInterval = ai;
+		this.setTimer();
+	}
+};
+
+Story.prototype.autoSave = function()
+{
+	var r = false;
+	this.forEachTiddler(function(title,element) {
+		try {
+			r = true;
+			if(title != "PageSetup" && this.hasChanges(title)) {
+				this.saveTiddler(title,false,null,true);
+				displayMessage("autoSaved " + title);
+			}
+		}
+		catch (x) {
+				displayMessage("autoSaving " + title + " failed: " + exceptionText(x));
+			
+		}
+	});
+	return r;
+};
+
+Story.prototype.saveTiddler = function(title, minorUpdate, newTemplate, autoSave) {
     var tiddlerElem = this.getTiddler(title);
     if (tiddlerElem) {
         var fields = {};
@@ -5052,30 +5130,35 @@ Story.prototype.saveTiddler = function(title, minorUpdate, newTemplate) {
         var newTitle = fields.title || title;
         if (!store.tiddlerExists(newTitle))
             newTitle = newTitle.trim();
-        if (store.tiddlerExists(newTitle) && newTitle != title) {
-            if (!confirm(config.messages.overwriteWarning.format([newTitle.toString()])))
-                return null;
-        }
-        if (newTitle != title)
-            this.closeTiddler(newTitle, false);
-        tiddlerElem.id = this.tiddlerId(newTitle);
-        tiddlerElem.setAttribute("tiddler", newTitle);
+		if (store.tiddlerExists(newTitle) && newTitle != title) {
+			if (autoSave || !confirm(config.messages.overwriteWarning.format([newTitle.toString()])))
+				return null;
+		}
+		if (newTitle != title)
+			this.closeTiddler(newTitle, false);
+		if (!autoSave) {
+			tiddlerElem.id = this.tiddlerId(newTitle);
+			tiddlerElem.setAttribute("tiddler", newTitle);
+		}
 		if (newTemplate === undefined)
 			newTemplate = DEFAULT_VIEW_TEMPLATE;
 		if (newTemplate != null)
 			tiddlerElem.setAttribute("template", newTemplate);
-        tiddlerElem.setAttribute("dirty", "false");
-        if (config.options.chkForceMinorUpdate)
-            minorUpdate = !minorUpdate;
-        if (!store.tiddlerExists(newTitle))
-            minorUpdate = false;
-        var newDate = new Date();
-        var extendedFields = store.tiddlerExists(newTitle) ? store.fetchTiddler(newTitle).fields : (newTitle != title && store.tiddlerExists(title) ? store.fetchTiddler(title).fields : config.defaultCustomFields);
-        for (var n in fields) {
-            if (!TiddlyWiki.isStandardField(n))
-                extendedFields[n] = fields[n];
-        }
-        var tiddler = store.saveTiddler(title, newTitle, fields.text, minorUpdate ? undefined : config.options.txtUserName, minorUpdate ? undefined : newDate, fields.tags, extendedFields);
+		tiddlerElem.setAttribute("dirty", "false");
+		if (config.options.chkForceMinorUpdate)
+			minorUpdate = !minorUpdate;
+		if (!store.tiddlerExists(newTitle))
+			minorUpdate = false;
+		var newDate = new Date();
+		var extendedFields = store.tiddlerExists(newTitle) ? store.fetchTiddler(newTitle).fields : (newTitle != title && store.tiddlerExists(title) ? store.fetchTiddler(title).fields : config.defaultCustomFields);
+		for (var n in fields) {
+			if (!TiddlyWiki.isStandardField(n))
+				extendedFields[n] = fields[n];
+		}
+
+		var tiddler = store.saveTiddler(title, newTitle, fields.text, minorUpdate ? undefined : config.options.txtUserName, minorUpdate ? undefined : newDate, fields.tags, extendedFields, autoSave);
+		if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
+			window.location.reload();
         return newTitle || tiddler.title;
     }
     return null;

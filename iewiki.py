@@ -131,6 +131,15 @@ def tagStringToList(tags):
 		ts.append(parseToken(am, 1))
 	return ts
 
+def tagStringFromList(tl):
+	qtl = []
+	for t in tl:
+		if ' ' in t:
+			qtl.append('[[' + t + ']]')
+		else:
+			qtl.append(t)
+	return ' '.join(qtl)
+
 def AddTagsToList(slist,tags):
 	list = tagStringToList(slist)
 	changes = False
@@ -621,7 +630,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			hasit = t.version == hasVer
 			usr = users.get_current_user()
-			el = EditLock().all().filter("id",t.id).get() # get existing lock, if any
+			el = EditLock.all().filter("id",t.id).get() # get existing lock, if any
 			if el == None: # tiddler is not locked
 				return self.reply(self.lock(t,usr,hasit))
 			until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
@@ -689,23 +698,42 @@ class MainPage(webapp.RequestHandler):
 	title = str(datetime.datetime.today())[0:23] if tiddlerName is None else tiddlerName
 	tlrId = self.request.get('tiddlerId')
 	taglist = self.request.get_all('atag')
+	autoSave = self.request.get('autoSave') == 'true'
+	autoSavedAsVer = self.request.get('autoSavedAsVer',None)
+	key = self.request.get("key")
+	elr = None
 	minorEdit = False
-	if tlr == None:
+	sameVersion = False
+	nCh = 0
+	if tlr is None:
 		reply = True # called directly
-		
-		if self.request.get('minorEdit', False):
+		if tlrId and autoSavedAsVer is None and "autoSaved" in taglist:
+			for pt in Tiddler.all().filter('id',tlrId):
+				if (pt.author == users.get_current_user() if userWho() else pt.author_ip == self.request.remote_addr) and 'autoSaved' in tagStringToList(pt.tags): # verify by proper check
+					tlr = pt
+					sameVersion = True
+		if tlr is None and tlrId and autoSavedAsVer:
+			tlr = Tiddler.all().filter('id', tlrId).filter('version',int(autoSavedAsVer)).get()
+		elif self.request.get('minorEdit', False):
 			tlr = Tiddler.all().filter('id',tlrId).filter('current',True).get()
 			if tlr != None and (tlr.author == self.user or users.is_current_user_admin()): #only the author or an admin is allowed to do this
 				minorEdit = True
-		if minorEdit == False:
+			else:
+				tlr = None
+		if tlr is None:
 			tlr = Tiddler()
 			tlr.page = self.path
+			autoSavedAsVer = None
+
 		tlr.title = title
 		if self.request.get('isPrivate',False) != False:
 			tlr.private = 'true'
 		for ra in self.request.arguments():
-			if not ra in ('method','tiddlerId','tiddlerName','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','vercnt','key','reverted','reverted_by','links','linksUpdated'):
+			if not ra in ('method','tiddlerId','tiddlerName','atag','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','currentver','vercnt','key','reverted','reverted_by','links','linksUpdated','autoSave','autoSavedAsVer'):
 				setattr(tlr,ra,self.request.get(ra))
+		if not autoSave and "autoSaved" in taglist:
+			taglist.remove("autoSaved")
+			tlr.tags = tagStringFromList(taglist)
 		tlr.id = tlrId
 	else:
 		reply = False # called from authenticateAndSaveUploadedTiddlers
@@ -750,35 +778,38 @@ class MainPage(webapp.RequestHandler):
 		if t == None:
 			error = "Tiddler does not exist"
 		else:
-			# Check if there are any changes at all
-			nCh = 0
-			for apn in (Tiddler.properties().keys() + tlr.dynamic_properties()):
-				if apn in ['author','author_ip','created','modified','comments','public','current','version','vercnt','currentver','currentVer']:
-					continue
-				if hasattr(t,apn):
-					if not getattr(t,apn) == getattr(tlr,apn):
-						if minorEdit:
-							logging.info("The " + apn + " property of " + tlr.title + " has changed")
-						nCh = nCh + 1
-						# break
-			if nCh == 0:
-				return self.fail("No changes to save (use cancel or [Esc] to close)")
-			if minorEdit == False:
-				tlr.version = t.version + 1
-				tlr.vercnt = t.vercnt + 1 if hasattr(t,'vercnt') and t.vercnt != None else tlr.version
-			key = self.request.get("key")
-			if key != "":
-				if self.unlock(key) == False:
-					return
-			else:
-				el = EditLock().all().filter('id',tlr.id).get() # locked by someone else?
-				if el != None:
-					error = t.title + " locked by " + userNameOrAddress(el.user,el.user_ip)
-				elif hasattr(tlr,'currentVer'):
-					sv = getattr(tlr, 'currentVer')
-					v = eval(sv)
-					if v != t.version:
-						error = "Edit conflict: '" +  t.title + "' version " + sv + " is not the current version (" + unicode(t.version) + " is)"
+			if not (autoSavedAsVer or sameVersion):
+				# Check if there are any changes at all
+				for apn in (Tiddler.properties().keys() + tlr.dynamic_properties()):
+					if apn in ['author','author_ip','created','modified','comments','public','current','version','vercnt','currentver','currentVer']:
+						continue
+					if hasattr(t,apn):
+						if not getattr(t,apn) == getattr(tlr,apn):
+							if minorEdit:
+								logging.info("The " + apn + " property of " + tlr.title + " has changed")
+							nCh = nCh + 1
+							# break
+				if nCh == 0:
+					return self.fail("No changes to save (use cancel or [Esc] to close)")
+				if minorEdit == False and nCh > 0:
+					tlr.version = t.version + 1
+					tlr.vercnt = t.vercnt + 1 if hasattr(t,'vercnt') and t.vercnt != None else tlr.version
+			if not autoSave:
+				if key != '':
+					if self.unlock(key) == False:
+						return
+				else:
+					el = EditLock().all().filter('id',tlr.id).get() # locked by someone else?
+					if el != None:
+						if (el.user == users.get_current_user() if userWho else el.user_ip == self.request.remote_addr):
+							pass # warn..?
+						else:
+							error = t.title + " locked by " + userNameOrAddress(el.user,el.user_ip)
+					elif hasattr(tlr,'currentVer'):
+						sv = getattr(tlr, 'currentVer')
+						v = eval(sv)
+						if v != t.version:
+							error = "Edit conflict: '" +  t.title + "' version " + sv + " is not the current version (" + unicode(t.version) + " is)"
 			
 	if error != None:
 		detail['version'] = tlr.version
@@ -788,25 +819,53 @@ class MainPage(webapp.RequestHandler):
 		tlr.comments = 0
 	if (tlr.id == ""):
 		tlr.id = unicode(uuid.uuid4())
+		if autoSave:
+			tlr.current = True
+			tlr.private = 'true'
+			autoSavedAsVer = tlr.version
+	else:
+		if autoSave and key == '':
+			el = EditLock.all().filter("id",t.id).get() # get existing lock, if any
+			if el == None: # tiddler is not locked
+				elr = self.lock(tlr,users.get_current_user(),True)
+				if not elr['Success']:
+					return elr
+			else:
+				return self.fail("You already have a lock on this since " + str(el.time) if el.user == users.get_current_user() else "Already locked by " + el.user.nickname())
+
 	if users.get_current_user():
 		tlr.author = users.get_current_user()
 	tlr.author_ip = self.AuthorIP() # ToDo: Get user's sig in stead
 	if minorEdit == False:
 		tls = Tiddler.all().filter('id', tlr.id).filter('version >=',tlr.version - 1)
-
 		# At this point it's too late to cancel the save cuz we begin to update the prior versions, something that might, conceiveably be relegated to a task queue
 		for atl in tls:
-			if atl.version >= tlr.version:
+			if atl.version >= tlr.version and not (autoSavedAsVer or sameVersion):
 				tlr.version = atl.version + 1
 				tlr.comments = atl.comments
 			if atl.current:
-				tlr.vercnt = atl.versionCount() + 1
-				atl.current = False
-				tlr.comments = atl.comments
-				atl.put()
-				dropCronJob(atl)
+				if autoSave:
+					setattr(atl,'autoSaved',True)
+					atl.put()
+				else:
+					if not (autoSavedAsVer or sameVersion):
+						tlr.vercnt = atl.versionCount() + 1
+					atl.current = False
+					tlr.comments = atl.comments
+					atl.put()
+					dropCronJob(atl)
 
-		tlr.current = True
+		if autoSave:
+			if not "autoSaved" in taglist:
+				taglist.append("autoSaved")
+			tlr.tags = tagStringFromList(taglist)
+			autoSavedAsVer = tlr.version
+		else:
+			tlr.current = True
+			setattr(tlr,'currentVer',tlr.version)
+			if not self.request.get('isPrivate',False):
+				if hasattr(tlr,'private'):
+					delattr(tlr,'private')
 
 	crons = []
 	for tag in taglist:
@@ -904,27 +963,65 @@ class MainPage(webapp.RequestHandler):
 		we.appendChild(xd.createTextNode(tlr.modified.strftime("%Y%m%d%H%M%S")))
 		ide = xd.createElement('id')
 		ide.appendChild(xd.createTextNode(unicode(tlr.id)))
-		vne = xd.createElement('currentVer')
-		vne.appendChild(xd.createTextNode(unicode(tlr.version)))
 		aue = xd.createElement('modifier')
 		aue.appendChild(xd.createTextNode(getAuthor(tlr)))
 		vce = xd.createElement('vercnt')
 		vce.appendChild(xd.createTextNode(unicode(tlr.vercnt)))
-		if tiddlerName is None: # not provided
+		if tiddlerName is None and not autoSave: # not provided
 			tne = xd.createElement('title')
 			tne.appendChild(xd.createTextNode(title))
 			esr.appendChild(tne)
+		if not autoSave:
+			tte = xd.createElement('tags')
+			tte.appendChild(xd.createTextNode(tlr.tags))
+			esr.appendChild(tte)
 			
 		esr.appendChild(we)
 		esr.appendChild(ide)
-		esr.appendChild(vne)
 		esr.appendChild(aue)
 		esr.appendChild(vce)
 		fromVer = self.request.get('fromVer', None)
 		if fromVer != None:
 			esr.appendChild(getTiddlerVersions(xd,unicode(tlr.id),eval(fromVer)))
+		if autoSave:
+			if elr:
+				lke = xd.createElement('key')
+				lke.appendChild(xd.createTextNode(elr['key']))
+				esr.appendChild(lke)
+				lue = xd.createElement('until')
+				lue.setAttribute('type','datetime')
+				lue.appendChild(xd.createTextNode(elr['until'].strftime("%Y%m%d%H%M%S")))
+				esr.appendChild(lue)
+			if autoSavedAsVer:
+				ase = xd.createElement('autoSavedAsVer')
+				ase.appendChild(xd.createTextNode(str(autoSavedAsVer)))
+				esr.appendChild(ase)
+		else:
+			vne = xd.createElement('currentVer')
+			vne.appendChild(xd.createTextNode(unicode(tlr.version)))
+			esr.appendChild(vne)
+		
 		self.response.out.write(xd.toxml())
-	
+
+  def dropTiddlerEdit(self):
+	tlrId = self.request.get('tiddlerId')
+	autoSavedAsVer = self.request.get('autoSavedAsVer',None)
+	if tlrId and autoSavedAsVer:
+		dtlr = Tiddler.all().filter('id',tlrId).filter('version',int(autoSavedAsVer)).get()
+		if dtlr is None:
+			return self.fail("Tiddler " + tlrId + " version " + autoSavedAsVer + " not found!")
+		if dtlr.current:
+			if autoSavedAsVer == "1":
+				dtlr.delete()
+				return self.reply()
+			else:
+				return self.fail("This is now the current version!")
+		else:
+			dtlr.delete()
+			return self.tiddlerHistory()
+	else:
+		return self.fail("Missing argument")
+
   def changeTags(self):
 	id = self.request.get('tiddlerId')
 	version = self.request.get('version')
@@ -1230,7 +1327,10 @@ class MainPage(webapp.RequestHandler):
 		da = []
 		for t in DeletionLog.all():
 			if t.page.startswith(self.request.path):
-				da.append({'title': t.tiddler.title, 'page': t.page, 'key': t.tiddler.key(), 'by': t.deletedByUser, 'at': t.deletedAt, 'comment': t.deletionComment })
+				try:
+					da.append({'title': t.tiddler.title, 'page': t.page, 'key': t.tiddler.key(), 'by': t.deletedByUser, 'at': t.deletedAt, 'comment': t.deletionComment })
+				except Exception, x:
+					logging.warn("DeletionLog/list() error: " + str(x))
 		return self.reply({ 'tiddlers': da })
 	rescue = self.request.get('rescue')
 	if rescue:
@@ -1249,9 +1349,12 @@ class MainPage(webapp.RequestHandler):
 		return self.reply()
 	if self.request.get('empty') and users.is_current_user_admin():
 		for dle in DeletionLog.all():
-			id = dle.tiddler.id
-			for dte in Tiddler.all().filter('id',id):
-				KillTiddlerVersion(dte)
+			try:
+				id = dle.tiddler.id
+				for dte in Tiddler.all().filter('id',id):
+					KillTiddlerVersion(dte)
+			except Exception, x:
+				logging.warn("DeletionLog/empty() error: " + str(x))
 			dle.delete()
 		return self.reply()
 	self.fail("Invalid args")
@@ -3088,7 +3191,18 @@ class MainPage(webapp.RequestHandler):
 		def filter(t):
 			return False
 	else:
-		own = users.get_current_user() == page.owner
+		ttiddlers = list()
+		for at in tiddlers:
+			ata = at
+			if hasattr(at,'autoSaved'):
+				for pt in Tiddler.all().filter('id',at.id):
+					if pt.version > at.version and 'autoSaved' in pt.tags:
+						if (pt.author == users.get_current_user() if userWho() else pt.author_ip == self.request.remote_addr) and 'autoSaved' in tagStringToList(pt.tags): # verify by proper check
+							ata = pt
+							# setattr(pt,'autoSavedAsVer',pt.version)
+			ttiddlers.append(ata)
+		tiddlers = ttiddlers
+
 		getdts = self.request.get('deprecated',None)
 		def filter(t):
 			if readAccess:
@@ -3099,7 +3213,7 @@ class MainPage(webapp.RequestHandler):
 					if deprecated:
 						return False						#   leave 'em out
 				priv = hasattr(t,'private')
-				if own:
+				if t.author == users.get_current_user():
 					if priv:
 						delattr(t,'private')
 					return True
