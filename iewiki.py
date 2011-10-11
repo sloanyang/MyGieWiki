@@ -608,6 +608,14 @@ class MainPage(webapp.RequestHandler):
 		re["tags"] = t.tags
 	return re
 
+  def getAutoSavedVersion(self,at):
+	rt = at
+	for pt in Tiddler.all().filter('id',at.id):
+		if pt.version > rt.version and 'autoSaved' in pt.tags:
+			if (pt.author == users.get_current_user() if userWho() else pt.author_ip == self.request.remote_addr) and 'autoSaved' in tagStringToList(pt.tags): # verify by proper check
+				rt = pt
+	return rt
+
   def editTiddler(self):
 	"http version tiddlerId"
 	page = Page.all().filter("path",self.path).get()
@@ -623,6 +631,8 @@ class MainPage(webapp.RequestHandler):
 			return self.fail("Included from " + tid[8:])
 		if version == -1:
 			t = Tiddler.all().filter('id',tid).filter('current',True).get()
+			if t and hasattr(t,'autosaved_by'):
+				t = self.getAutoSavedVersion()
 		else:
 			t = Tiddler.all().filter('id',tid).filter('version',version).get()
 		if t == None:
@@ -845,7 +855,7 @@ class MainPage(webapp.RequestHandler):
 				tlr.comments = atl.comments
 			if atl.current:
 				if autoSave:
-					setattr(atl,'autoSaved',True)
+					setattr(atl,'autosaved_by',userNameOrAddress(users.get_current_user(),self.request.remote_addr))
 					atl.put()
 				else:
 					if not (autoSavedAsVer or sameVersion):
@@ -1018,6 +1028,10 @@ class MainPage(webapp.RequestHandler):
 				return self.fail("This is now the current version!")
 		else:
 			dtlr.delete()
+			t = Tiddler.all().filter('id', tlrId).filter('current',True).get()
+			if hasattr(t,'autosaved_by'):
+				delattr(t,'autosaved_by')
+				t.put()
 			return self.tiddlerHistory()
 	else:
 		return self.fail("Missing argument")
@@ -1256,7 +1270,7 @@ class MainPage(webapp.RequestHandler):
   def deleteVersions(self):
 	tlrs = Tiddler.all().filter('id',self.request.get('tiddlerId'))
 	for t in tlrs:
-		if t.version < self.request.get('version') and t.current == False and (t.author == users.get_current_user() or users.is_current_user_admin()):
+		if t.version < self.request.get('version') and (not t.current) and (t.author == users.get_current_user() or users.is_current_user_admin()):
 			KillTiddlerVersion(t)
 
 	tlc = Tiddler.all().filter('id', self.request.get('tiddlerId')).filter('current',True).get()
@@ -1863,7 +1877,7 @@ class MainPage(webapp.RequestHandler):
 			'updateaccess': True })
 
 	url = parent + self.request.get('address').strip()
-	if url.find(self.request.path) != 0:
+	if self.request.path[-1] == '/' and url.find(self.request.path) != 0:
 		return self.fail("Address is not below path")
 	rurl = url[len(self.request.path):]
 	if rurl == '/':
@@ -2999,6 +3013,8 @@ class MainPage(webapp.RequestHandler):
 				div.setAttribute(m,tavm)
 			elif type(tavm) == unicode:
 				div.setAttribute(m,tavm)
+			elif type(tavm) == bool and tavm:
+				div.setAttribute(m,"true")
 			else: # if type(tavm) != instancemethod:
 				pass # logging.info("Attr " + m + " is a " + unicode(type(tavm)) + ": " + unicode(tavm))
 		except Exception, x:
@@ -3146,6 +3162,8 @@ class MainPage(webapp.RequestHandler):
 	return tl
 
   def getText(self, page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
+	if message:
+		self.warnings.append(message);
 	if page != None:
 		try:
 			refTemplate = page.template
@@ -3192,16 +3210,18 @@ class MainPage(webapp.RequestHandler):
 			return False
 	else:
 		ttiddlers = list()
+		nast = 0
 		for at in tiddlers:
 			ata = at
-			if hasattr(at,'autoSaved'):
-				for pt in Tiddler.all().filter('id',at.id):
-					if pt.version > at.version and 'autoSaved' in pt.tags:
-						if (pt.author == users.get_current_user() if userWho() else pt.author_ip == self.request.remote_addr) and 'autoSaved' in tagStringToList(pt.tags): # verify by proper check
-							ata = pt
-							# setattr(pt,'autoSavedAsVer',pt.version)
+			if at and hasattr(at,'autosaved_by'):
+				asv = self.getAutoSavedVersion(at)
+				if not asv == ata:
+					ata = asv
+					nast = nast + 1
 			ttiddlers.append(ata)
 		tiddlers = ttiddlers
+		if nast:
+			self.warnings.append(str(nast) + (" tiddlers have" if nast > 1 else " tiddler has") + " been auto-saved (see tags)!")
 
 		getdts = self.request.get('deprecated',None)
 		def filter(t):

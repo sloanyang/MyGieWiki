@@ -83,6 +83,7 @@ http = {\n\
 http._init = function(ms) { for (var i=0; i < ms.length; i++) http._addMethod(ms[i]); }\n\
 var config = {\n\
 	animDuration: 400,\n\
+	autoSaveAfter: 20,\n\
 	cascadeFast: 20,\n\
 	cascadeSlow: 60,\n\
 	cascadeDepth: 5,\n\

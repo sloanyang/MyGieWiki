@@ -102,6 +102,7 @@ config.messages = {
 // Options that can be set in the options panel and/or cookies
 merge(config.options, {
     chkAutoSyncAddress: false,
+    chkAutoSave: false,
     chkAutoReloadOnSystemConfigSave: true,
     chkRegExpSearch: false,
     chkCaseSensitiveSearch: false,
@@ -123,13 +124,13 @@ merge(config.options, {
     txtExternalLibrary: "",
     txtTheme: "",
     txtEmptyTiddlyWiki: "empty.html", // Template for stand-alone export
-    txtAutoSave: "",
     txtLockDuration: "60"},
     true);
 
 config.optionsDesc = {
     // Options that can be set in the options panel and/or cookies
-    chkAutoSyncAddress: "Auto sync adress bar with displayed tiddlers",
+    chkAutoSyncAddress: "Auto-sync adress bar with displayed tiddlers",
+	chkAutoSave: "Auto-save changes while editing",
     chkAutoReloadOnSystemConfigSave: "Auto reload on saving systemConfig tiddlers",
     chkRegExpSearch: "Enable regular expressions for searches",
     chkCaseSensitiveSearch: "Case-sensitive searching",
@@ -145,7 +146,6 @@ config.optionsDesc = {
     txtMaxEditRows: "Maximum number of visible lines in edit boxes",
     txtEmail: "Email for receiving messages",
     txtExternalLibrary: "Source of tiddlers listed via Libraries/other..",
-	txtAutoSave: "Autosave rate (s)",
     txtLockDuration: "Lock for edit (if so, duration in minutes) - leave blank to disable edit locking"
 };
 
@@ -3062,6 +3062,9 @@ config.commands.editTiddler.handler = function (event, src, title) {
 			else
 				editVer = st.version;
 		}
+		if (st.fields.autosaved_by)
+			if (!confirm("This has been autosaved by " + st.fields.autosaved_by + " - proceed anyway?"))
+				return;
 		if (config.options.txtLockDuration != "") {
 			var eta = { id: st.id, version: editVer, hasVersion: st.version, duration: config.options.txtLockDuration };
 			var reply = http.editTiddler(eta);
@@ -3267,11 +3270,6 @@ config.commands.cancelTiddler.handler = function (event, src, title) {
 		if (!confirm(this.warning.format([title])))
 			return false;
 	}
-	if (t && t.key && t.until) {
-		http.unlockTiddler({ "key": t.key });
-		delete config.editLocks[t.key];
-		delete t.key;
-	}
 	if (autoSaved) {
 		var dtr = http.dropTiddlerEdit({tiddlerId: t.id, autoSavedAsVer: t.autoSavedAsVer});
 		if (dtr.Success && t.autoSavedAsVer == 1)
@@ -3283,6 +3281,12 @@ config.commands.cancelTiddler.handler = function (event, src, title) {
 			t.versions = dtr.versions;
 		}
 		delete t.autoSavedAsVer;
+	}
+	if (t && t.key && t.until) {
+		http.unlockTiddler({ "key": t.key });
+		delete config.editLocks[t.key];
+		delete t.key;
+		delete t.until;
 	}
 	story.setDirty(title, false);
 	if (title)
@@ -3376,6 +3380,7 @@ config.commands.truncateTiddler.handler = function(event,src,title) {
 			delete tiddler.key;
 		var res = http.deleteVersions({ tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version});
 		tiddler.versions = res.versions;
+		delete tiddler.key;
 		tiddler.fields.vercnt = res.vercnt;
 		story.setDirty(tiddler.title, false);
 		story.refreshTiddler(tiddler.title,null,true);
@@ -4815,7 +4820,8 @@ Story.prototype.refreshTiddler = function (title, template, force, customFields,
 			if (customFields)
 				this.addCustomFields(tiddlerElem, customFields);
 			if (isEdit) {
-				this.setTimer(parseInt(config.options.txtAutoSave));
+				if (config.options.chkAutoSave)
+					this.setTimer(config.autoSaveAfter);
 				var atf = [];
 				if (getElementsByClassName('tagFrame', 'fieldset', tiddlerElem, atf))
 					atf[0].style.display = tiddler.tags.length > 0 ? "block" : "none";
@@ -4878,6 +4884,7 @@ Story.prototype.onTiddlerDblClick = function(ev) {
 Story.prototype.onTiddlerKeyPress = function(ev) {
     var e = ev || window.event;
     clearMessage();
+	story.keyPressTime = new Date();
     var consume = false;
     var title = this.getAttribute("tiddler");
     var target = resolveTarget(e);
@@ -5080,33 +5087,28 @@ Story.prototype.hasChanges = function(title) {
 function doAutoSave()
 {
 	delete story.timerId;
-	if (story.autoSave())
+	var kpt = story.keyPressTime;
+	if (kpt && (new Date()).getTime() - kpt.getTime() < Math.min(5000,story.saveDelay) && story.saveDelay > 1000) {
+		story.saveDelay = story.saveDelay / 2;
+		window.setTimeout(doAutoSave, story.saveDelay);
+	}
+	else if (story.autoSave())
 		story.setTimer();
 }
 
 Story.prototype.setTimer = function(ai)
 {
-	if (ai === undefined) {
-		if (config.autoSaveInterval && this.timerId === undefined)
-			this.timerId = window.setTimeout(doAutoSave,config.autoSaveInterval * 1000);
-	}
-	else if (isNaN(ai)) {
-		config.autoSaveInterval = 0;
-		if (!(this.timerId === undefined)) {
-			window.clearTimeout(this.timerId);
-			delete this.timerId;
-		}
-	}
-	else {
+	if (ai)
 		config.autoSaveInterval = ai;
-		this.setTimer();
-	}
+
+	if (config.autoSaveInterval && this.timerId === undefined)
+		this.timerId = window.setTimeout(doAutoSave, story.saveDelay = config.autoSaveInterval * 1000);
 };
 
 Story.prototype.autoSave = function()
 {
 	var r = false;
-	this.forEachTiddler(function(title,element) {
+	if (config.options.chkAutoSave) this.forEachTiddler(function(title,element) {
 		try {
 			r = true;
 			if(title != "PageSetup" && this.hasChanges(title)) {
