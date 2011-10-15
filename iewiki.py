@@ -632,7 +632,7 @@ class MainPage(webapp.RequestHandler):
 		if version == -1:
 			t = Tiddler.all().filter('id',tid).filter('current',True).get()
 			if t and hasattr(t,'autosaved_by'):
-				t = self.getAutoSavedVersion()
+				t = self.getAutoSavedVersion(t)
 		else:
 			t = Tiddler.all().filter('id',tid).filter('version',version).get()
 		if t == None:
