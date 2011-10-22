@@ -114,7 +114,7 @@ config.PageProperties = {
 			tl.push(tag)
 		else if (tag == 'template') {
 			if (window.confirm(&quot;Update template?&quot;)) {
-				if (http.updateTemplate({ 'tags': forms.PageProperties.tags }).Success)
+				if (http.updateTemplate({ 'tags': forms.PageProperties.tags }).success)
 					displayMessage(&quot;Template updated&quot;);
 			}
 			return;
@@ -142,7 +142,7 @@ config.PageProperties.save = function () {
 	forms.PageProperties.scripts = news.join('|');
 
 	var resp = http.pageProperties(forms.PageProperties);
-	if (resp.Success &amp;&amp; config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties'))) {
+	if (resp.success &amp;&amp; config.macros.importTiddlers.importSelected(null, story.getTiddler('PageProperties'))) {
 		if (config.PageProperties.tryingUpgrade())
 			window.location.search = &quot;&quot;;
 		else {
@@ -209,7 +209,7 @@ config.PageProperties.promptForUpload = function() {
 
 config.PageProperties.promptToDeletePage = function() {
 	if (!confirm(&quot;Do you really want to delete this page?&quot;)) return;
-	if (http.deletePage(window.location.href).Success) {
+	if (http.deletePage(window.location.href).success) {
 		story.closeAllTiddlers();
 		story.displayTiddler(null, &quot;SiteMap&quot;);
 		displayMessage(&quot;This page has now been deleted&quot;);

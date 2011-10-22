@@ -1924,7 +1924,7 @@ function DoServerSideTagSearch(ev) {
 	else
 		lta.tag = tli.getAttribute('tag');
 	var ttr = http.listTiddlersTagged(lta);
-	if (ttr.Success) {
+	if (ttr.success) {
 		if (ttr.mt) {
 			for (var te = tli.parentNode.firstChild; te; te = te.nextSibling) {
 				if (te.nodeType != 1 || te.firstChild == null)
@@ -2013,7 +2013,7 @@ function onAddTagClick(ev) {
 		var afi = [];
 		if (getElementsByClassName('commentArea',null,where,afi)) {
 			var ars = http.addTags({id: st.id, version: st.version, atag: afi[0].value.readBracketedList() });
-			if (ars.Success) {
+			if (ars.success) {
 				st.tags = ars.tags.readBracketedList();
 				store.notify(title,true);
 			}
@@ -2289,7 +2289,7 @@ config.macros.comments.onSaveClick = function (ev, type, cp) {
 	var tna = tidlr.getAttribute("tiddler");
 	var t = store.getTiddler(tna);
 	var sr = t.addComment(tnv, type);
-	if (sr && sr.Success) {
+	if (sr && sr.success) {
 		var sarr = [];
 		if (getElementsByClassName('commentToolbar',null,tidlr,sarr) == 1) {
 			var cte = sarr[0];
@@ -2325,7 +2325,7 @@ config.macros.comments.onSaveReplyClick = function (ev) {
 	var td = config.macros.comments.removeCommentPrompt(ev);
 	var tr = td.parentNode;
 	var sr = http.submitComment({ text: tnv, tiddler: t.id, version: t.currentVer, ref: td.id });
-	if (sr.Success) {
+	if (sr.success) {
 		CommentList[t.title][sr.id] = sr;
 		tr.setAttribute('id', sr.id);
 		tr.firstChild.firstChild.innerText = config.macros.comments.formatDateTime(sr.created);
@@ -2378,7 +2378,7 @@ config.macros.comments.purgeHandler = function(ev,tiddler) {
 		var tn = ct.getAttribute('tiddler');
 		var t = store.fetchTiddler(tn);
 		var dcr = http.deleteComment({comment: tre.id, tiddlerId: t.id });
-		if (dcr.Success) {
+		if (dcr.success) {
 			t.comments--;
 			var sarr = [];
 			if (getElementsByClassName('commentToolbar',null,ct,sarr) == 1)
@@ -3070,7 +3070,7 @@ config.commands.editTiddler.handler = function (event, src, title) {
 			var reply = http.editTiddler(eta);
 			st.key = reply.key;
 			config.editLocks[st.key] = title;
-			if (reply.Success) {
+			if (reply.success) {
 				st.lock = reply.now;
 				st.until = reply.until;
 				if (reply.title) {
@@ -3113,12 +3113,17 @@ function KeepTiddlers(st,title) {
 		t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewTemplate;
 		t.id = st.id;
 		for (a in st) {
-			if (t[a] === undefined && t.fields[a] === undefined)
+			if (a != 'success' && t[a] === undefined && t.fields[a] === undefined)
 				t.fields[a] = st[a];
 		}
 		store.addTiddler(t);
 		if (config.NoSuchTiddlers.contains(st.title))
 			delete config.NoSuchTiddlers[st.title];
+		for (var i = 0; i < t.tags.length; i++) {
+			var lztl = lazyLoadTags[t.tags[i]];
+			if (lztl)
+				lztl.remove(title);
+		}
 		return t;
 	};
 	if (st.tiddlers) {
@@ -3148,7 +3153,7 @@ function TryGetTiddler(title) {
 	if (config.NoSuchTiddlers.contains(title))
 		return null;
 	st = http.getTiddler({'title': title});
-	if (st && st.Success)
+	if (st && st.success)
 		return KeepTiddlers(st,title);
 	else
 		config.NoSuchTiddlers.push(title);
@@ -3223,7 +3228,7 @@ config.commands.lockTiddler.handler = function(event, src, title) {
     var t = store.getTiddler(title);
     if (t) {
 		tr  = http.lockTiddler({tiddlerId: t.id, lock: !t.readOnly})
-		if (tr.Success) {
+		if (tr.success) {
 			t.readOnly = !t.readOnly;
 			story.setDirty(title, false);
 			story.displayTiddler(null, title);
@@ -3240,7 +3245,7 @@ config.commands.excludeTiddler.isEnabled = function(tdlr) {
 config.commands.cutTiddler.handler = function(event, src, title, cbaction) {
 	var t = store.getTiddler(title);
 	var ctr = http.clipboard({ action: cbaction || 'cut', tiddler: t.id }); // copy or cut
-	if (ctr.Success) {
+	if (ctr.success) {
 		if (ctr.act == 'cut') {
 			delete t.id;
 			store.removeTiddler(title);
@@ -3272,7 +3277,7 @@ config.commands.cancelTiddler.handler = function (event, src, title) {
 	}
 	if (autoSaved) {
 		var dtr = http.dropTiddlerEdit({tiddlerId: t.id, autoSavedAsVer: t.autoSavedAsVer});
-		if (dtr.Success && t.autoSavedAsVer == 1)
+		if (dtr.success && t.autoSavedAsVer == 1)
 			store.deleteTiddler(t.title);
 		else if (t.ovs) {
 			var pvs = t.ovs.pop();
@@ -3290,7 +3295,7 @@ config.commands.cancelTiddler.handler = function (event, src, title) {
 	}
 	story.setDirty(title, false);
 	if (title)
-		story.displayTiddler(null, t.title || title);
+		story.displayTiddler(null, (t && t.title) || title);
 	else
 		story.closeTiddler(title);
 	return false;
@@ -3322,7 +3327,7 @@ config.commands.rescueTiddler.isEnabled = function(tlr) {
 
 config.commands.rescueTiddler.handler = function(event, src, title) {
 	var tiddler = config.commands.rescueTiddler.bin[title];
-	if (http.recycleBin({ rescue: tiddler.key }).Success) {
+	if (http.recycleBin({ rescue: tiddler.key }).success) {
 		tiddler.key = null;
 		if (tiddler.path == window.location.pathname) {
 			store.addTiddler(tiddler);
@@ -3467,6 +3472,7 @@ config.commands.attributes.handlePopup = function(popup, title) {
 	};
 	if (config.owner == config.loginName)
 		add("private",'isPrivate');
+	add("lazy-load",'lazyLoad')
 	add("deprecated",'isDeprecated');
 	add("exclude from index",'excludeLists');
 	add("exclude from search",'excludeSearch');
@@ -3620,7 +3626,7 @@ Tiddler.prototype.getComments = function(forceRead,gcr) {
 
 Tiddler.prototype.addComment = function (text, type) {
 	var sr = http.submitComment({ text: text, type: type, tiddler: this.id, version: this.currentVer, receiver: this.modifier });
-	if (sr && sr.Success) {
+	if (sr && sr.success) {
 		if (!this.commentList) {
 			this.commentList = [];
 			this.commentList.incomplete = true;
@@ -4094,7 +4100,7 @@ TiddlyWiki.prototype.removeTiddler = function(title) {
 	if (tiddler) {
 		if (tiddler.id) {
 			var result = http.deleteTiddler({ tiddlerId: tiddler.id, comment: tiddler._deleteReason });
-			if (!result.Success)
+			if (!result.success)
 				return false;
 		}
 		if (tiddler.hasShadow) {
@@ -4201,8 +4207,8 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		delete m.tiddlerName; // ie. get a server-generated title
 
 	var result = http.saveTiddler(m);
-	if (result.Success)
-		delete result.Success
+	if (result.success)
+		delete result.success
 	else
 		throw (TIDDLER_NOT_SAVED);
 	if (tiddler.key && !autoSave) {
@@ -4283,6 +4289,9 @@ TiddlyWiki.prototype.search = function(searchRegExp, sortField, excludeTag, matc
 TiddlyWiki.prototype.getTags = function (excludeTag, results) {
 	if (results === undefined)
 		var results = [];
+	for (var tn in lazyLoadTags) {
+		results.push([tn,lazyLoadTags[tn].length]);
+	}
 	this.forEachTiddler(function (title, tiddler) {
 		for (var g = 0; g < tiddler.tags.length; g++) {
 			var tag = tiddler.tags[g];
@@ -4310,7 +4319,13 @@ TiddlyWiki.prototype.getTags = function (excludeTag, results) {
 
 // Return an array of the tiddlers that are tagged with a given tag
 TiddlyWiki.prototype.getTaggedTiddlers = function(tag, sortField) {
-    return this.reverseLookup("tags", tag, true, sortField);
+	var results = [];
+	var lztl = lazyLoadTags[tag];
+	if (lztl) {
+		for (var i = 0; i < lztl.length; i++)
+			results.push({ title: lztl[i] });
+	}
+	return this.reverseLookup("tags", tag, true, sortField, results);
 };
 
 // Return an array of the tiddlers that link to a given tiddler
@@ -4322,8 +4337,9 @@ TiddlyWiki.prototype.getReferringTiddlers = function(title, unusedParameter, sor
 
 // Return an array of the tiddlers that do or do not have a specified entry in the specified storage array (ie, "links" or "tags")
 // lookupMatch == true to match tiddlers, false to exclude tiddlers
-TiddlyWiki.prototype.reverseLookup = function(lookupField, lookupValue, lookupMatch, sortField) {
-    var results = [];
+TiddlyWiki.prototype.reverseLookup = function(lookupField, lookupValue, lookupMatch, sortField, results) {
+	if (!results)
+		var results = [];
     this.forEachTiddler(function(title, tiddler) {
         var f = !lookupMatch;
         for (var lookup = 0; lookup < tiddler[lookupField].length; lookup++) {
@@ -5075,7 +5091,8 @@ Story.prototype.hasChanges = function(title) {
 		}
 		else {
 			for (var n in fields) {
-				if (store.getValue(title, n) != fields[n]) { // displayMessage("The " + n + " of " + title + " changed");
+				if (store.getValue(title, n) != fields[n]) { 
+					//displayMessage("The " + n + " of " + title + " changed from '" + store.getValue(title, n) + "' to '" + fields[n] + "'");
 					return true;
 				}
 			}
@@ -7513,7 +7530,7 @@ function RetryInDebugger(e,m) {
 
 function ListMyNotes(ar) {
 	var nca = document.getElementById('myNotesArea');
-	if (ar.Success && nca) {
+	if (ar.success && nca) {
 		listViewTemplate = {
 			columns: [
 				{ name: 'Created', field: 'created', title: "Created", type: 'Date', dateFormat: 'YYYY-0MM-0DD' },
@@ -7532,7 +7549,7 @@ function ListMyNotes(ar) {
 
 function ConfirmIfMessage(status)
 {
-	if (!status.Success)
+	if (!status.success)
 		return false;
 	else if (status.Message)
 		return window.confirm(status.Message);
@@ -7639,8 +7656,8 @@ function HttpGet(args, method) {
 			if (rp) {
 				if (rp.Message)
 					displayMessage(rp.Message);
-				else if (rp.Success === undefined)
-					rp.Success = true;
+				else if (rp.success === undefined)
+					rp.success = true;
 			}
 			return rp || rs;
 		}
@@ -7788,7 +7805,7 @@ config.macros.revision = {
 
 function CheckNewAddress(title) {
 	r = http.getNewAddress({title:title});
-	if (r.Success)
+	if (r.success)
 	    return r.Address;
 }
 
@@ -8291,7 +8308,7 @@ function trace(f) {
 
 function OnCreatePage(reply)
 {
-    if (reply.Success)
+    if (reply.success)
         window.location = reply.Url;
     else
         displayMessage(reply.Message);
@@ -8325,7 +8342,7 @@ function OnSavePageProperties()
 
 function OnCommitCloseForm(fn,reply)
 {
-	if (reply.Success) {
+	if (reply.success) {
 		story.closeTiddler(fn);
 		return reply;
 	}
@@ -8342,7 +8359,7 @@ config.macros.defineGroup = {
 
 function OnCreateGroup(reply)
 {
-	if (!reply.Success) return;
+	if (!reply.success) return;
 	listOfAllGroups = listOfAllGroups + "|" + reply.Group;
 	setFormFieldValue(forms.DefineGroup,"groupname",reply.Group,listOfAllGroups);
 	setFormFieldValue(forms.DefineGroup,"name","");
@@ -8413,7 +8430,7 @@ config.macros.recentChanges = {
 		var rcl = config.macros.recentChanges.cache[off];
 		if (!rcl)
 			rcl = http.getRecentChanges({ offset: off, limit: max });
-		if (rcl.Success) {
+		if (rcl.success) {
 			config.macros.recentChanges.cache[off] = rcl;
 			for (var i = 0; i < rcl.changes.length; i++) {
 				var c = rcl.changes[i];
@@ -8456,7 +8473,7 @@ config.macros.recentComments = {
 	,
 	fill: function (tbody, off, max) {
 		var rcl = http.getRecentComments({ offset: off, limit: max });
-		if (rcl.Success) {
+		if (rcl.success) {
 			var tiddlers = rcl.tiddlers;
 			var tiddict = [];
 			for (var j = 0; j < tiddlers.length; j++)
@@ -8507,7 +8524,7 @@ config.macros.fileList = {
 	handler: function(place,macro,params,w,ps,tiddler)
 	{
 		var fl = http.fileList();
-		if (fl.Success) {
+		if (fl.success) {
 			this.fn = tiddler.title;
 			forms[this.fn] = {};
 			var flt = "|!Path|!Date|!Type|"
@@ -8526,7 +8543,7 @@ config.macros.fileList = {
 			for (var path in fls) {
 				if (path != 'controls' && fls[path]) {
 					dr = http.deleteFile({url:path})
-					if (dr.Success) {
+					if (dr.success) {
 						displayMessage("Deleted " + path);
 						delete fls[path];
 					}
@@ -8556,7 +8573,7 @@ config.macros.pasteTiddler = {
 	onClickPaste: function()
 	{
 		var ptr = http.clipboard({ action: 'paste' });
-		if (ptr.Success) {
+		if (ptr.success) {
 			KeepTiddlers(ptr);
 			store.notify(ptr.title,true);
 			story.displayTiddler(null, ptr.title);
@@ -8582,7 +8599,7 @@ config.macros.recycleBin = {
 		}
 		if (config.admin) {
 			var emptor = function() {
-				if (http.recycleBin({ empty: '*' }).Success)
+				if (http.recycleBin({ empty: '*' }).success)
 					config.macros.recycleBin.close();
 			};
 			createTiddlyButton(place,"Empty bin","Lose what's in here",emptor);
@@ -8800,7 +8817,7 @@ function InsertTiddlerText(title, text, message) {
 
 function availableTemplates() {
 	var tl = http.getTemplates({ template: forms.PageProperties && forms.PageProperties.tags && forms.PageProperties.tags.indexOf('template') >= 0 ? forms.PageProperties.title : "" } );
-	if (tl.Success)
+	if (tl.success)
 		return tl.templates.join('|');
 }
 
@@ -8808,7 +8825,7 @@ config.macros.confirm_replace = {
 	handler: function (place, macroName, params) {
 		var doReplace = function() {
 			var rpres = http.replaceExistingFile({ filename: params[0] });
-			if (rpres.Success) {
+			if (rpres.success) {
 				clearMessage();
 				displayMessage("Replaced " + params[0]);
 			}
@@ -9091,7 +9108,7 @@ config.macros.importTiddlers = {
 			}
 		}
 		return true;
-		if (result.Success)
+		if (result.success)
 			if (window.confirm(result.Message))
 				window.location.reload();
 	}

@@ -170,7 +170,8 @@ class ConfigJs(webapp.RequestHandler):
 	'Dynamically construct file "/config.js"'
 	user = users.get_current_user()
 	self.getSubdomain()
-	page = memcache.get(self.request.remote_addr)
+	mcpage = memcache.get(self.request.remote_addr)
+	page = mcpage.page
 	warnings = memcache.get("W:" + self.request.remote_addr)
 	userGroups = ''
 	pages = []
@@ -206,7 +207,7 @@ class ConfigJs(webapp.RequestHandler):
 		siteTitle = page.title
 		subTitle = page.subtitle
 		locked = page.locked
-		deprecatedCount = page.deprecatedCount
+		deprecatedCount = mcpage.deprecatedCount
 		if hasattr(page,noSuchTiddlers):
 			noSuchTdlrs = page.noSuchTiddlers
 
@@ -282,7 +283,15 @@ class ConfigJs(webapp.RequestHandler):
 		self.AppendConfigOption(optlist,'txtUserName',jsEncodeStr(user.nickname()))
 
 	self.response.out.write(',\n\t\t'.join(optlist))
-	self.response.out.write('\n\t}\n};\nhttp._init(["')
+	self.response.out.write('\n\t}\n};\nvar lazyLoadTags = {};\n')
+	if not (mcpage is None or mcpage.lazyLoadTags is None):
+		for (altag,altit) in mcpage.lazyLoadTags.iteritems():
+			self.response.out.write('lazyLoadTags[' + jsEncodeStr(altag) + '] = [')
+			while len(altit):
+				self.response.out.write(jsEncodeStr(altit.pop()))
+				self.response.out.write(',' if len(altit) else '];\n')
+			
+	self.response.out.write('http._init(["')
 	self.response.out.write('","'.join(HttpMethods.split('\n')))
 	self.response.out.write('"]);')
 

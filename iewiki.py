@@ -29,7 +29,7 @@ from google.appengine.api import urlfetch
 from google.appengine.api import mail
 from google.appengine.api import namespace_manager
 
-from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
+from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, noSuchTiddlers
 
 from javascripts import javascriptDict
@@ -601,7 +601,7 @@ class MainPage(webapp.RequestHandler):
 	el = EditLock( id = t.id, user = usr, user_ip = self.request.remote_addr, duration = minutes)
 	ek = el.put()
 	until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
-	re = {"Success": True, "now": el.time, "until": until, "key": str(ek) }
+	re = {"success": True, "now": el.time, "until": until, "key": str(ek) }
 	if not hasit:
 		re["title"] = t.title
 		re["text"] = t.text
@@ -677,7 +677,7 @@ class MainPage(webapp.RequestHandler):
 	if t != None:
 		t.locked = self.request.get("lock") == 'true'
 		t.put()
-		self.reply({"Success": True})
+		self.reply({"success": True})
 	else:
 		self.fail('no such tiddler')
 
@@ -744,6 +744,10 @@ class MainPage(webapp.RequestHandler):
 		if not autoSave and "autoSaved" in taglist:
 			taglist.remove("autoSaved")
 			tlr.tags = tagStringFromList(taglist)
+		if "lazyLoad" in taglist:
+			setattr(tlr,'lazyLoad',True)
+		elif hasattr(tlr,'lazyLoad'):
+			delattr(tlr,'lazyLoad')
 		tlr.id = tlrId
 	else:
 		reply = False # called from authenticateAndSaveUploadedTiddlers
@@ -782,7 +786,7 @@ class MainPage(webapp.RequestHandler):
 		if tlr.id.startswith('include-'):
 			# break the link and create a new tiddler
 			nt = self.SaveNewTiddler(tlr.page, title, self.request.get("text"))
-			return self.reply({"Success": True, "id": nt.id})
+			return self.reply({'success': True, "id": nt.id})
 		if t == None:
 			t = Tiddler.all().filter('id', tlr.id).filter('current',True).get()
 		if t == None:
@@ -838,7 +842,7 @@ class MainPage(webapp.RequestHandler):
 			el = EditLock.all().filter("id",t.id).get() # get existing lock, if any
 			if el == None: # tiddler is not locked
 				elr = self.lock(tlr,users.get_current_user(),True)
-				if not elr['Success']:
+				if not elr['success']:
 					return elr
 			else:
 				return self.fail("You already have a lock on this since " + str(el.time) if el.user == users.get_current_user() else "Already locked by " + el.user.nickname())
@@ -1374,7 +1378,7 @@ class MainPage(webapp.RequestHandler):
 	self.fail("Invalid args")
 
   def add(self):
-	self.reply({"Success": True, "result": int(self.request.get("a")) + int(self.request.get("b"))})
+	self.reply({'success': True, "result": int(self.request.get("a")) + int(self.request.get("b"))})
 
   def emailSubTemplate(self,comment,tls,txt):
 	return txt.replace('<tiddler_name>',tls.title)\
@@ -1401,7 +1405,7 @@ class MainPage(webapp.RequestHandler):
   def submitComment(self):
 	tls = Tiddler.all().filter('id', self.request.get("tiddler")).filter('current',True).get()
 	if tls == None:
-		return self.reply({"Success": False, "Message": "No such tiddler!"})
+		return self.reply({'success': False, "Message": "No such tiddler!"})
 	t = self.request.get("type")
 	if t == "N":
 		ani = Note()
@@ -1431,7 +1435,7 @@ class MainPage(webapp.RequestHandler):
 		tls.notes = tls.notes + '|' + au if tls.notes != None else au
 		
 	tls.save()
-	self.reply({'Success': True, 
+	self.reply({'success': True, 
 		'id': ani.key().id(), 'Comments': tls.comments, 'author': users.get_current_user(), 'text': ani.text,'created': str(ani.created), 'mail': ms })
 
   def deleteComment(self):
@@ -1613,7 +1617,7 @@ class MainPage(webapp.RequestHandler):
 			page.put()
 			if saveTemplate:
 				self.saveTemplate(page)
-			self.reply({'Success': True })
+			self.reply({'success': True })
 	else: # Get
 		tiddlertags = page.tiddlertags if hasattr(page,'tiddlertags') else ''
 		if tiddlertags == '' and refTemplate != None:
@@ -1651,7 +1655,7 @@ class MainPage(webapp.RequestHandler):
 	act = self.request.get('action')
 	page = self.CurrentPage()
 	if act == u'copy' or act == u'cut':
-		reply = { 'act': act, 'Success': True }
+		reply = { 'act': act, 'success': True }
 		if self.subdomain != None:
 			namespace_manager.set_namespace(None)
 		u = UserProfile.all().filter('user', cu).get()
@@ -1707,6 +1711,8 @@ class MainPage(webapp.RequestHandler):
 			return self.fail("No user profile found")
 		if hasattr(u,'clipTiddler'):
 			ct = getattr(u,'clipTiddler')
+			if ct == None:
+				return self.fail("Clipboard is empty")
 			cd = getattr(u,'clipDomain')
 			cxt = Tiddler.all().filter('page', self.path).filter('title',ct.title).filter('current', True).get()
 			if not cxt is None:
@@ -1785,7 +1791,7 @@ class MainPage(webapp.RequestHandler):
 
   def updateTemplate(self):
 	self.saveTemplate(self.CurrentPage(),True, self.request.get('tags'))
-	self.reply({'Success': True })
+	self.reply({'success': True })
 
   def getTemplates(self):
 	this_template = self.request.get('template')
@@ -1798,7 +1804,7 @@ class MainPage(webapp.RequestHandler):
 		for at in PageTemplate.all().filter('current',True):
 			if not at.title in dt:
 				dt.append(at.title)
-	self.reply({'Success': True, 'templates': dt})
+	self.reply({'success': True, 'templates': dt})
 
   def getNewAddress(self):
 	path = self.path
@@ -1812,7 +1818,7 @@ class MainPage(webapp.RequestHandler):
 	prex = Page.all().filter('path',parent + '/' + npt).get()
 	if prex != None:
 		self.fail("Page already exists")
-	self.reply({'Success': True, 'Address': npt })
+	self.reply({'success': True, 'Address': npt })
 	
   def siteMap(self):
 	pal = Page.all().order('path')
@@ -1861,7 +1867,7 @@ class MainPage(webapp.RequestHandler):
 				pad.authAccess = Page.access[self.request.get("authenticated")]
 				pad.groupAccess = Page.access[self.request.get("group")]
 				pad.put()
-				return self.reply( { "Success": True })
+				return self.reply( { 'success': True })
 			else:
 				return self.fail("Root folder not created")
 		else:
@@ -1910,7 +1916,7 @@ class MainPage(webapp.RequestHandler):
 		page.viewbutton = pad.viewbutton
 		page.viewprior = pad.viewprior
 		page.put()
-		self.reply( {'Url': url, 'Success': True })
+		self.reply( {'Url': url, 'success': True })
 	else:
 		self.fail("Page already exists: " + page.path)
 		
@@ -1926,9 +1932,9 @@ class MainPage(webapp.RequestHandler):
 			p = p[0:lsi]
 			
 	if users.get_current_user() is None:
-		self.reply( {"Url": users.create_login_url(p), "Success": True })
+		self.reply( {"Url": users.create_login_url(p), 'success': True })
 	else:
-		self.reply( {"Url": users.create_logout_url(p), "Success": True })
+		self.reply( {"Url": users.create_logout_url(p), 'success': True })
 
   def deletePage(self):
 	path = self.path
@@ -1938,7 +1944,7 @@ class MainPage(webapp.RequestHandler):
 		KillTiddlerVersion(result)
 	for result in prex:
 		result.delete()
-	self.reply({"Success": True})
+	self.reply({'success': True})
 	
   def getUserName(self):
 	self.initXmlResponse()
@@ -1955,7 +1961,7 @@ class MainPage(webapp.RequestHandler):
 		aux = {}
 	if msg != None:
 		aux["Message"] = msg
-	aux["Success"] = False
+	aux['success'] = False
 	self.reply(aux)
 	return False
 
@@ -1963,7 +1969,7 @@ class MainPage(webapp.RequestHandler):
 	if aux == None:
 		aux = {}
 	aux["Message"] = msg
-	aux["Success"] = True
+	aux['success'] = True
 	self.reply(aux)
 	return True
 
@@ -2002,7 +2008,7 @@ class MainPage(webapp.RequestHandler):
 		if v != None:
 			av.appendChild(xd.createTextNode(unicode(v)))
 
-  def reply(self, values = { 'Success': True }, de = 'reply', versions = False):
+  def reply(self, values = { 'success': True }, de = 'reply', versions = False):
 	self.initXmlResponse()
 	xd = xml.dom.minidom.Document()
 	tr = xd.createElement(de)
@@ -2150,7 +2156,7 @@ class MainPage(webapp.RequestHandler):
 		self.reply(presentTiddler(t,withKey))
 		return True
 	else:
-		self.reply({"Success": False, "Message": "No access" })
+		self.reply({'success': False, "Message": "No access" })
 		return False
 
   def getGroups(self):
@@ -2191,7 +2197,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			offset += limit
 			limit = extra
-	xd.add(re,'Success',True)
+	xd.add(re,'success',True)
 	self.sendXmlResponse(xd)
 
   def getRecentComments(self):
@@ -2219,7 +2225,7 @@ class MainPage(webapp.RequestHandler):
 		xd.add(ti,"page",tn.page)
 		xd.add(ti,"title",tn.title)
 		xd.add(ti,"id",id)
-	xd.add(re,"Success",True)
+	xd.add(re,'success',True)
 	self.sendXmlResponse(xd)
 
   def createGroup(self):
@@ -2229,9 +2235,9 @@ class MainPage(webapp.RequestHandler):
 		g.name = name
 		g.admin = users.get_current_user()
 		g.put()
-		self.reply({"Group": name, "Success": True})
+		self.reply({"Group": name, 'success': True})
 	else:
-		self.reply({"Message": "A group named " + name + " already exists", "Success": False})
+		self.reply({"Message": "A group named " + name + " already exists", 'success': False})
 		
   def getGroupMembers(self):
 	grp = self.request.get("groupname")
@@ -2256,16 +2262,16 @@ class MainPage(webapp.RequestHandler):
 		nm.group = grp
 		nm.name = user
 		nm.put()
-		self.reply({"Success": True})
+		self.reply({'success': True})
 	else:
-		self.reply({"Message": user + " is already a member of " + grp,"Success":False})
+		self.reply({"Message": user + " is already a member of " + grp,'success':False})
 
   def removeGroupMember(self):
 	user = self.request.get("user")
 	grp = self.request.get("groupname")
 	gmu = GroupMember.all().filter("group =",grp).filter("name =",user).get()
 	gmu.delete()
-	self.reply({"Success": True})
+	self.reply({'success': True})
 
   def tiddlerChanged(self,et,nt):
 	if et.tags != nt.tags:
@@ -2812,7 +2818,7 @@ class MainPage(webapp.RequestHandler):
 			if len(p) > 0:
 				urls.append(p if p.endswith('appspot.com') else p + host)
 		self.reply({ \
-			'Success': True, \
+			'success': True, \
 			'txtUserName': NoneIsBlank(u.txtUserName),
 			'txtEmail': u.txtEmail if hasattr(u,'txtEmail') else cu.email(), 
 			'aboutme': NoneIsBlank(u.aboutme),
@@ -2823,7 +2829,7 @@ class MainPage(webapp.RequestHandler):
 			'updateaccess': True })
 	elif cu != None:
 		self.reply({ \
-			'Success': True, \
+			'success': True, \
 			'txtUserName': cu.nickname(),
 			'txtEmail': cu.email(),
 			'tmsg_subject': default_subject,
@@ -2860,7 +2866,7 @@ class MainPage(webapp.RequestHandler):
 	ev = SubDomain.all().filter('preurl',sd).get()
 	if ev == None:
 		if self.request.get('confirmed',False) == False:
-			return self.reply({'Success': 'true'})
+			return self.reply({'success': 'true'})
 		ev = SubDomain( \
 			preurl = sd, \
 			ownerprofile = up, \
@@ -2961,7 +2967,7 @@ class MainPage(webapp.RequestHandler):
 			return self.fail("Ups!\n" + unicode(dir(x)))
 
 ############################################################################
-  def BuildTiddlerDiv(self,xd,id,t,user):
+  def BuildTiddlerDiv(self,xd,id,t,user,xsvr=False):
 	div = xd.createElement('div')
 	div.setAttribute('id',  unicode(t.id) if t.id != None else unicode(t.title))
 	div.setAttribute('title', unicode(t.title))
@@ -3006,19 +3012,21 @@ class MainPage(webapp.RequestHandler):
 	td = t.dynamic_properties()
 	#logging.info(unicode(len(td)) + " dps")
 	for m in td:
-		# logging.info("DP " + m)
-		try:
-			tavm = getattr(t,m)
-			if type(tavm) == str:
-				div.setAttribute(m,tavm)
-			elif type(tavm) == unicode:
-				div.setAttribute(m,tavm)
-			elif type(tavm) == bool and tavm:
-				div.setAttribute(m,"true")
-			else: # if type(tavm) != instancemethod:
-				pass # logging.info("Attr " + m + " is a " + unicode(type(tavm)) + ": " + unicode(tavm))
-		except Exception, x:
-			logging.warn("X: " + unicode(x))
+		if xsvr and m[:7] == 'server.': 
+			pass # the 'server:..' fields should not have been saved in the first place, but
+		else:
+			try:
+				tavm = getattr(t,m)
+				if type(tavm) == str:
+					div.setAttribute(m,tavm)
+				elif type(tavm) == unicode:
+					div.setAttribute(m,tavm)
+				elif type(tavm) == bool and tavm:
+					div.setAttribute(m,"true")
+				else: # if type(tavm) != instancemethod:
+					pass # logging.info("Attr " + m + " is a " + unicode(type(tavm)) + ": " + unicode(tavm))
+			except Exception, x:
+				logging.warn("X: " + unicode(x))
 
 	pre = xd.createElement('pre')
 	if t.text != None:
@@ -3161,7 +3169,7 @@ class MainPage(webapp.RequestHandler):
 			tiddict[tdo.title] = tdo
 	return tl
 
-  def getText(self, page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None):
+  def getText(self, page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None, mcpage = None):
 	if message:
 		self.warnings.append(message);
 	if page != None:
@@ -3205,6 +3213,7 @@ class MainPage(webapp.RequestHandler):
 						' has been deleted! <a href="', self.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
 
 	tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
+	lazyLoadTags = dict()
 	if page == None:
 		def filter(t):
 			return False
@@ -3224,14 +3233,22 @@ class MainPage(webapp.RequestHandler):
 			self.warnings.append(str(nast) + (" tiddlers have" if nast > 1 else " tiddler has") + " been auto-saved (see tags)!")
 
 		getdts = self.request.get('deprecated',None)
-		def filter(t):
+		def inclusionFilter(t):
 			if readAccess:
 				deprecated = hasattr(t,'deprecated')	# Check if this tiddler is deprecated
-				if page != None and deprecated:
-					page.deprecatedCount = page.deprecatedCount + 1
+				if mcpage != None and deprecated:
+					mcpage.deprecatedCount = mcpage.deprecatedCount + 1
 				if getdts == None:							# Unless you want the deprecated tiddlers
 					if deprecated:
 						return False						#   leave 'em out
+				if hasattr(t,'lazyLoad'):				# - or lazyLoad only
+					lztl = tagStringToList(t.tags)
+					for alzt in lztl:
+						if alzt in lazyLoadTags:
+							lazyLoadTags[alzt].append(t.title)
+						else:
+							lazyLoadTags[alzt] = [ t.title ]
+					return False
 				priv = hasattr(t,'private')
 				if t.author == users.get_current_user():
 					if priv:
@@ -3244,7 +3261,7 @@ class MainPage(webapp.RequestHandler):
 			else:
 				return False
 
-	mergeDict(tiddict, tiddlers, filter)
+	mergeDict(tiddict, tiddlers, inclusionFilter)
 	
 	if page != None:
 		includes = Include.all().filter("page", self.path)
@@ -3263,6 +3280,10 @@ class MainPage(webapp.RequestHandler):
 						tiddict[id] = t
 				else:
 					tiddict[id] = t
+	if mcpage:
+		mcpage.page = page
+		if len(lazyLoadTags):
+			mcpage.lazyLoadTags = lazyLoadTags
 
 	httpMethodTiddler = None
 	for id, t in tiddict.iteritems():
@@ -3333,7 +3354,7 @@ class MainPage(webapp.RequestHandler):
 					except Exception, x:
 						t.text = unicode(x)
 
-			antd = self.BuildTiddlerDiv(xd,id,t,self.user)
+			antd = self.BuildTiddlerDiv(xd,id,t,self.user,metaData)
 			if t.tags != None and 'shadowTiddler' in t.tags.split():
 				if t.page != self.path: # remove tag and make it a shadowTiddler if not the source page
 					tags = t.tags.split()
@@ -3418,13 +3439,14 @@ class MainPage(webapp.RequestHandler):
 					globalPatch.append('\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
 			serverHost = self.request.url.replace('.html?','?')
 			globalPatch.append('\n<script type="text/javascript">' \
-							 + '\nconfig.options.rat = ' + ( ('"' + self.readAccessToken(page,readAccess) + '"') if users.get_current_user() != None else 'false') \
-							 + ';\nconfig.defaultCustomFields["server.host"] = "' \
-							 + serverHost \
-							 + '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
+							 + '\nconfig.options.rat = ' + ( ('"' + self.readAccessToken(page,readAccess) + '"') if users.get_current_user() != None else 'false') + ';\n')
 			if metaData:
+				globalPatch.append('</script>\n')
 				for k in scripts:
 					globalPatch.append('\n<script src="/dynamic/js' + self.request.path + "/" + k + '" type="text/javascript"></script>')
+			else:
+				globalPatch.append('config.defaultCustomFields["server.host"] = "' + serverHost \
+									+ '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
 
 			cssa = '<div id="shadowArea">'
 			mysa = elShArea.toxml()
@@ -3585,9 +3607,9 @@ class MainPage(webapp.RequestHandler):
 			return
 
 	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
-	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message)
-	if not page is None:
-		memcache.set(self.request.remote_addr,page) # used by config.js request
+	mcpage = MCPage()
+	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message,mcpage)
+	memcache.set(self.request.remote_addr,mcpage) # used by config.js request
 		
 	# last, but no least
 	self.response.headers['Cache-Control'] = 'no-cache'
