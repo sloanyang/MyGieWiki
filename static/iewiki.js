@@ -1764,7 +1764,10 @@ config.macros.list.handler = function(place, macroName, params) {
 };
 
 config.macros.list.all.handler = function(params) {
-    return store.reverseLookup("tags", "excludeLists", false, "title");
+	var lazies = [];
+	for (at in lazyLoadAll)
+		lazies.push({ title: at });
+	return store.reverseLookup("tags", "excludeLists", false, "title", lazies);
 };
 
 config.macros.list.missing.handler = function(params) {
@@ -1812,7 +1815,11 @@ config.macros.allTags.handler = function(place, macroName, params) {
 
 config.macros.timeline.handler = function(place, macroName, params) {
     var field = params[0] || "modified";
-    var tiddlers = store.reverseLookup("tags", "excludeLists", false, field);
+	var lazies = [];
+	for (at in lazyLoadAll)
+		lazies.push({ title: at, modified: Date.convertFromYYYYMMDDHHMM(lazyLoadAll[at]) });
+
+    var tiddlers = store.reverseLookup("tags", "excludeLists", false, field, lazies);
     var lastDay = "";
     var last = params[1] ? tiddlers.length - Math.min(tiddlers.length, parseInt(params[1])) : 0;
     var dateFormat = params[2] || this.dateFormat;
@@ -3117,6 +3124,8 @@ function KeepTiddlers(st,title) {
 				t.fields[a] = st[a];
 		}
 		store.addTiddler(t);
+		if (lazyLoadAll[title])
+			delete lazyLoadAll[title];
 		if (config.NoSuchTiddlers.contains(st.title))
 			delete config.NoSuchTiddlers[st.title];
 		for (var i = 0; i < t.tags.length; i++) {
@@ -5748,10 +5757,13 @@ function getTiddlyLinkInfo(title, currClasses) {
     var classes = currClasses ? currClasses.split(" ") : [];
     var link;
     classes.pushUnique("tiddlyLink");
-    var tiddler = store.fetchTiddler(title);
-    var subTitle;
-    if (tiddler) { //  && tiddler.id ???
-        subTitle = tiddler.getSubtitle();
+	var subTitle = lazyLoadAll[title] === undefined ? null : "info not loaded";
+	if (subTitle == null) {
+		var tiddler = store.fetchTiddler(title);
+		if (tiddler)
+			subTitle = tiddler.getSubtitle();
+	}
+	if (subTitle) {
         classes.pushUnique("tiddlyLinkExisting");
         classes.remove("tiddlyLinkNonExisting");
         classes.remove("shadow");

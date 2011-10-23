@@ -185,7 +185,8 @@ class Page(db.Expando):
 
 class MCPage():
   page = None
-  lazyLoadTags = None
+  lazyLoadAll = dict()
+  lazyLoadTags = dict()
   deprecatedCount = 0
 
 class DeletionLog(db.Model):

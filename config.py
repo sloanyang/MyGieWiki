@@ -283,14 +283,18 @@ class ConfigJs(webapp.RequestHandler):
 		self.AppendConfigOption(optlist,'txtUserName',jsEncodeStr(user.nickname()))
 
 	self.response.out.write(',\n\t\t'.join(optlist))
-	self.response.out.write('\n\t}\n};\nvar lazyLoadTags = {};\n')
-	if not (mcpage is None or mcpage.lazyLoadTags is None):
-		for (altag,altit) in mcpage.lazyLoadTags.iteritems():
-			self.response.out.write('lazyLoadTags[' + jsEncodeStr(altag) + '] = [')
-			while len(altit):
-				self.response.out.write(jsEncodeStr(altit.pop()))
-				self.response.out.write(',' if len(altit) else '];\n')
-			
+	self.response.out.write('\n\t}\n};\nvar lazyLoadTags = {};\nvar lazyLoadAll = {};\n')
+	if mcpage:
+		if mcpage.lazyLoadTags:
+			for (altag,altit) in mcpage.lazyLoadTags.iteritems():
+				self.response.out.write('lazyLoadTags[' + jsEncodeStr(altag) + '] = [')
+				while len(altit):
+					self.response.out.write(jsEncodeStr(altit.pop()))
+					self.response.out.write(',' if len(altit) else '];\n')
+		if mcpage.lazyLoadAll:
+			for (altitle,altime) in mcpage.lazyLoadAll.iteritems():
+				self.response.out.write('lazyLoadAll[' + jsEncodeStr(altitle) + '] = "' + altime.strftime('%Y%m%d%H%M%S') + '";\n')
+
 	self.response.out.write('http._init(["')
 	self.response.out.write('","'.join(HttpMethods.split('\n')))
 	self.response.out.write('"]);')

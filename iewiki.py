@@ -3213,7 +3213,6 @@ class MainPage(webapp.RequestHandler):
 						' has been deleted! <a href="', self.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
 
 	tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
-	lazyLoadTags = dict()
 	if page == None:
 		def filter(t):
 			return False
@@ -3241,13 +3240,16 @@ class MainPage(webapp.RequestHandler):
 				if getdts == None:							# Unless you want the deprecated tiddlers
 					if deprecated:
 						return False						#   leave 'em out
-				if hasattr(t,'lazyLoad'):				# - or lazyLoad only
-					lztl = tagStringToList(t.tags)
-					for alzt in lztl:
-						if alzt in lazyLoadTags:
-							lazyLoadTags[alzt].append(t.title)
-						else:
-							lazyLoadTags[alzt] = [ t.title ]
+				if metaData and hasattr(t,'lazyLoad'):		# - or lazyLoad only
+					if mcpage:
+						ttl = tagStringToList(t.tags)
+						if not 'excludeLists' in ttl:
+							for alzt in ttl:
+								if alzt in mcpage.lazyLoadTags:
+									mcpage.lazyLoadTags[alzt].append(t.title)
+								else:
+									mcpage.lazyLoadTags[alzt] = [ t.title ]
+							mcpage.lazyLoadAll[t.title] = t.modified
 					return False
 				priv = hasattr(t,'private')
 				if t.author == users.get_current_user():
@@ -3282,8 +3284,6 @@ class MainPage(webapp.RequestHandler):
 					tiddict[id] = t
 	if mcpage:
 		mcpage.page = page
-		if len(lazyLoadTags):
-			mcpage.lazyLoadTags = lazyLoadTags
 
 	httpMethodTiddler = None
 	for id, t in tiddict.iteritems():
