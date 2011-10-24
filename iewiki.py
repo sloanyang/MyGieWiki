@@ -3214,7 +3214,7 @@ class MainPage(webapp.RequestHandler):
 
 	tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
 	if page == None:
-		def filter(t):
+		def inclusionFilter(t):
 			return False
 	else:
 		ttiddlers = list()
