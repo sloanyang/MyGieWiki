@@ -1080,10 +1080,11 @@ class MainPage(webapp.RequestHandler):
 		rply['mt'] = True
 		for tl in TagLink.all():
 			if tl.tag in tags:
-				t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
-				if not t is None:
-					pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
-					list.append({ 'tag': tl.tag, 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
+				if tl.tlr != self.request.get('excl'):
+					t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
+					if not t is None:
+						pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
+						list.append({ 'tag': tl.tag, 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
 	elif tag:
 		rply['mt'] = False
 		for tl in TagLink.all().filter('tag',tag):
@@ -3505,21 +3506,18 @@ class MainPage(webapp.RequestHandler):
 		return self.task(method)
 	elif self.path == "/_export.xml" and users.is_current_user_admin():
 		return self.export()
-	else:
-		rootpath = self.path == '/'
 
+	rootpath = self.path == '/'
+	message = None
 	twd = self.request.get('twd',None)
 	xsl = self.request.get('xsl',None)
 	if twd == None and xsl == None:	# Unless a TiddlyWiki is required or a style sheet is specified
 		twd = TWComp # xsl = "/static/iewiki.xsl"	# use the default,
 		metaData = True
-		message = "You have successfully installed giewiki" if rootpath else ""
 	elif twd == TWComp:
 		metaData = True
-		message = None
 	else:
 		metaData = xsl != None
-		message = None
 
 	defaultTiddlers = None
 	self.template_tags = ['fromTemplate']
@@ -3552,7 +3550,9 @@ class MainPage(webapp.RequestHandler):
 		# self.user = None # read-only!
 
 	if page == None:
-		if twd != None and self.path.endswith('.html'):
+		if rootpath:
+			message = "You have successfully installed giewiki"
+		elif twd != None and self.path.endswith('.html'):
 			self.path = self.path[0:-5]
 			page = self.CurrentPage()
 		elif xsl != None and self.path.endswith('.xml'):

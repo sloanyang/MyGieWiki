@@ -1923,9 +1923,13 @@ config.macros.tagging.handler = function(place, macroName, params, wikifier, par
 
 function DoServerSideTagSearch(ev) {
 	var tli = resolveTarget(ev || window.event).parentNode;
+	var tiddlerElem = story.findContainingTiddler(place);
+	var tn = tiddlerElem.getAttribute("tiddler");
+	var st = store.getTiddler(tn);
+
 	var ulp = tli.parentNode;
 	var tags = tli.getAttribute('tags');
-	var lta = {};
+	var lta = { excl: st.id };
 	if (tags)
 		lta.tags = tags.split('\n');
 	else

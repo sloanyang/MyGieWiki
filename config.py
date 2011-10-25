@@ -287,7 +287,8 @@ class ConfigJs(webapp.RequestHandler):
 	if mcpage:
 		if mcpage.lazyLoadTags:
 			for (altag,altit) in mcpage.lazyLoadTags.iteritems():
-				self.response.out.write('lazyLoadTags[' + jsEncodeStr(altag) + '] = [')
+				if len(altit):
+					self.response.out.write('lazyLoadTags[' + jsEncodeStr(altag) + '] = [')
 				while len(altit):
 					self.response.out.write(jsEncodeStr(altit.pop()))
 					self.response.out.write(',' if len(altit) else '];\n')
