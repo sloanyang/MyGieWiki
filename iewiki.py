@@ -346,31 +346,62 @@ def KillTiddlerVersion(t):
 			u.put()
 	t.delete()
 
-def initHist(shadowTitle):
-	versions = '|When|Who|V#|Title|\n'
+def initHist(shadowTitle,format):
+	if format:
+		caps = []
+		for fe in format.split('|'):
+			form = fe.split(None,1)
+			if len(form) > 1:
+				caps.append( form[1] )
+			else:
+				caps.append('')
+		versions = '|' + '|'.join(caps) + '|\n'
+	else:
+		versions = '|When|Who|V#|Title|\n'
 	if shadowTitle != None: # self.request.get("shadow") == '1':
 		versions += "|>|Default content|<<diff 0 " + shadowTitle + '>>|<<revision "' + shadowTitle + '" 0>>|\n'
 	return versions
   
-def getTiddlerVersions(xd,tid,startFrom):
+def getTiddlerVersions(xd,tid,startFrom,format=None):
 	text = u""
 	for tlr in Tiddler.all().filter('id', tid).order('version'):
 		if text == "":
-			text = initHist(tlr.title if startFrom == 0 else None)
+			text = initHist(tlr.title if startFrom == 0 else None,format)
 		if tlr.version >= startFrom:
 			modified = tlr.modified
 			if hasattr(tlr,'reverted') and tlr.reverted != None:
 				modified = tlr.reverted
-			text += u'|' + BoldCurrent(tlr) + modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
-				 + u'|<<author "' + getAuthor(tlr) + u'">>' \
-				 + u'|<<diff ' + str(tlr.version) + u' ' + tid + u'>>' \
-				 + u'|<<revision "' + htmlEncode(tlr.title) + u'" ' + str(tlr.version) + u'>>|\n'
+			if format:
+				histline = []
+				for afe in format.split('|'):
+					afs = afe.split(None,1)
+					if len(afs):
+						fe = afs[0]
+						if fe[:9] == 'modified:':
+							histline.append(BoldCurrent(tlr) + modified.strftime(str(fe[9:])) + BoldCurrent(tlr))
+						elif fe == 'version':
+							histline.append(u'<<diff ' + unicode(tlr.version) + u' ' + tid + u'>>')
+						elif fe == 'author':
+							histline.append(u'<<author "' + getAuthor(tlr) + u'">>')
+						elif fe == 'revision':
+							histline.append(u'<<revision "' + htmlEncode(tlr.title) + u'" ' + unicode(tlr.version) + u'>>')
+						elif fe[:6] == 'field:':
+							attrname = fe[6:]
+							histline.append(unicode(getattr(tlr,attrname)).strip() if hasattr(tlr,attrname) else '')
+					else:
+						histline.append('?')
+				text += '|' + '|'.join(histline) + '|\n'
+			else:
+				text += u'|' + BoldCurrent(tlr) + modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
+					 + u'|<<author "' + getAuthor(tlr) + u'">>' \
+					 + u'|<<diff ' + str(tlr.version) + u' ' + tid + u'>>' \
+					 + u'|<<revision "' + htmlEncode(tlr.title) + u'" ' + str(tlr.version) + u'>>|\n'
 	eVersions = xd.createElement('versions')
 	eVersions.appendChild(xd.createTextNode(text))
 	return eVersions
 
 def BoldCurrent(tlr):
-	return "''" if tlr.current else ""
+	return u"''" if tlr.current else u""
 
 def FixTWSyntaxAndParse(html):
 	return xml.dom.minidom.parseString(html.replace('<br>','<br/>'))
@@ -1098,7 +1129,7 @@ class MainPage(webapp.RequestHandler):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
 	eHist = xd.add(xd,'Hist')
-	eHist.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1))
+	eHist.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1,self.request.get('historyView',None)))
 	self.response.out.write(xd.toxml())
 
   def tiddlerVersion(self):

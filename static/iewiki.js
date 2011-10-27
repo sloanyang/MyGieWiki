@@ -7753,7 +7753,7 @@ function onClickTiddlerHistory(e) {
     var t = theTarget.getAttribute("tiddler");
     var tiddler = store.fetchTiddler(t);
     if (!t) return;
-    var res = http.tiddlerHistory({ tiddlerId: tiddler.id, shadow: store.isShadowTiddler(t) ? 1 : 0 });
+    var res = http.tiddlerHistory({ tiddlerId: tiddler.id, shadow: store.isShadowTiddler(t) ? 1 : 0, historyView: tiddler.fields.historyview });
 
     if (res.error)
         displayMessage(res.error);
