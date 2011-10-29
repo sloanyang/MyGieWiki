@@ -383,11 +383,13 @@ def getTiddlerVersions(xd,tid,startFrom,format=None):
 							histline.append(u'<<diff ' + unicode(tlr.version) + u' ' + tid + u'>>')
 						elif fe == 'author':
 							histline.append(u'<<author "' + getAuthor(tlr) + u'">>')
-						elif fe == 'revision':
+						elif fe == 'title':
 							histline.append(u'<<revision "' + htmlEncode(tlr.title) + u'" ' + unicode(tlr.version) + u'>>')
 						elif fe[:6] == 'field:':
 							attrname = fe[6:]
 							histline.append(unicode(getattr(tlr,attrname)).strip() if hasattr(tlr,attrname) else '')
+						else:
+							histline.append(fe + '?')
 					else:
 						histline.append('?')
 				text += '|' + '|'.join(histline) + '|\n'

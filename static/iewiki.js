@@ -4803,11 +4803,11 @@ Story.prototype.refreshTiddler = function (title, template, force, customFields,
 	if (tiddlerElem) {
 		if (tiddlerElem.getAttribute("dirty") == "true" && !force)
 			return tiddlerElem;
-		template = this.chooseTemplateForTiddler(title, template);
+		var tpln = this.chooseTemplateForTiddler(title, template);
 		var currTemplate = tiddlerElem.getAttribute("template");
-		if ((template != currTemplate) || force) {
-			var isEdit = template == "EditTemplate";
+		if ((tpln != currTemplate) || force) {
 			var tiddler = tdlr || store.getTiddler(title);
+			var isEdit = template == DEFAULT_EDIT_TEMPLATE ||(tiddler && template == tiddler.fields["EditTemplate"]);
 			if (!tiddler) {
 				tiddler = new Tiddler();
 				if (store.isShadowTiddler(title)) {
@@ -4829,12 +4829,12 @@ Story.prototype.refreshTiddler = function (title, template, force, customFields,
 			}
 			tiddlerElem.setAttribute("tags", tiddler.tags.join(" "));
 			tiddlerElem.setAttribute("tiddler", title);
-			tiddlerElem.setAttribute("template", template);
+			tiddlerElem.setAttribute("template", tpln);
 			tiddlerElem.onmouseover = this.onTiddlerMouseOver;
 			tiddlerElem.onmouseout = this.onTiddlerMouseOut;
 			tiddlerElem.ondblclick = this.onTiddlerDblClick;
 			tiddlerElem[window.event ? "onkeydown" : "onkeypress"] = this.onTiddlerKeyPress;
-			tiddlerElem.innerHTML = this.getTemplateForTiddler(title, template, tiddler);
+			tiddlerElem.innerHTML = this.getTemplateForTiddler(title, tpln, tiddler);
 			applyHtmlMacros(tiddlerElem, tiddler);
 			if (store.getTaggedTiddlers(title).length > 0)
 				addClass(tiddlerElem, "isTag");
@@ -7501,6 +7501,7 @@ TW21Loader.prototype.internalizeTiddler = function(tiddler, title, node) {
     try { tiddler.includedFrom = node.getAttribute("includedFrom"); } catch (e) { }
     try { tiddler.templates[DEFAULT_VIEW_TEMPLATE] = node.getAttribute("viewTemplate"); } catch (e) { }
     try { tiddler.templates[DEFAULT_EDIT_TEMPLATE] = node.getAttribute("editTemplate"); } catch (e) { }
+    try { tiddler.templates[SPECIAL_EDIT_TEMPLATE] = node.getAttribute("editTemplateSpecial"); } catch (e) { }
 
     var fields = {};
     var attrs = node.attributes;
@@ -7753,7 +7754,17 @@ function onClickTiddlerHistory(e) {
     var t = theTarget.getAttribute("tiddler");
     var tiddler = store.fetchTiddler(t);
     if (!t) return;
-    var res = http.tiddlerHistory({ tiddlerId: tiddler.id, shadow: store.isShadowTiddler(t) ? 1 : 0, historyView: tiddler.fields.historyview });
+	var view = tiddler.fields.historyview;
+	if (!view) {
+		var cte = story.findContainingTiddler(theTarget);
+		var tpt = store.fetchTiddler(cte.getAttribute('template'));
+		if (tpt) {
+			var tphv = tpt.fields.historyview;
+			if (tphv)
+				view = tphv;
+		}
+	}
+    var res = http.tiddlerHistory({ tiddlerId: tiddler.id, shadow: store.isShadowTiddler(t) ? 1 : 0, historyView: view });
 
     if (res.error)
         displayMessage(res.error);
