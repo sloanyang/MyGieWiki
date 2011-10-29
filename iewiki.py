@@ -350,7 +350,7 @@ def initHist(shadowTitle,format):
 	if format:
 		caps = []
 		for fe in format.split('|'):
-			form = fe.split(None,1)
+			form = fe.split(';',1)
 			if len(form) > 1:
 				caps.append( form[1] )
 			else:
@@ -374,7 +374,7 @@ def getTiddlerVersions(xd,tid,startFrom,format=None):
 			if format:
 				histline = []
 				for afe in format.split('|'):
-					afs = afe.split(None,1)
+					afs = afe.split(';',1)
 					if len(afs):
 						fe = afs[0]
 						if fe[:9] == 'modified:':
@@ -772,7 +772,7 @@ class MainPage(webapp.RequestHandler):
 		if self.request.get('isPrivate',False) != False:
 			tlr.private = 'true'
 		for ra in self.request.arguments():
-			if not ra in ('method','tiddlerId','tiddlerName','atag','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','currentver','vercnt','key','reverted','reverted_by','links','linksUpdated','autoSave','autoSavedAsVer'):
+			if not ra in ('method','tiddlerId','tiddlerName','atag','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','currentver','vercnt','key','reverted','reverted_by','links','linksUpdated','autoSave','autoSavedAsVer','historyView'):
 				setattr(tlr,ra,self.request.get(ra))
 		if not autoSave and "autoSaved" in taglist:
 			taglist.remove("autoSaved")
@@ -1029,7 +1029,7 @@ class MainPage(webapp.RequestHandler):
 		esr.appendChild(vce)
 		fromVer = self.request.get('fromVer', None)
 		if fromVer != None:
-			esr.appendChild(getTiddlerVersions(xd,unicode(tlr.id),eval(fromVer)))
+			esr.appendChild(getTiddlerVersions(xd,unicode(tlr.id),eval(fromVer),self.request.get('historyView',None)))
 		if autoSave:
 			if elr:
 				lke = xd.createElement('key')
@@ -1178,7 +1178,7 @@ class MainPage(webapp.RequestHandler):
 		tv.appendChild(err)
 		err.appendChild(xd.createTextNode(self.request.get('tiddlerId') + ': ' + self.request.get("version") + ' found ' + unicode(found)))
 	if hist:
-		tv.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1))
+		tv.appendChild(getTiddlerVersions(xd,self.request.get('tiddlerId'), 0 if self.request.get("shadow") == '1' else 1, self.request.get('historyView',None)))
 	self.response.out.write(xd.toxml())
 	
   def tiddlerDiff(self):

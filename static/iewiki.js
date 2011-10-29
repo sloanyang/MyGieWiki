@@ -3362,7 +3362,7 @@ config.commands.revertTiddler.handler = function(event, src, title) {
 			revertIt = confirm(this.warning.format([title,tiddler.version]));
 	}
 	if (revertIt) {
-		var pt = http.revertTiddler( { tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version } );
+		var pt = http.revertTiddler( { tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version, historyView: story.getHistoryView(tiddler) } );
 		if (pt) {
 			tiddler.set(pt.title,pt.text,pt.modifier,pt.modified,pt.tags,pt.created);
 			tiddler.versions = pt.versions;
@@ -3396,7 +3396,7 @@ config.commands.truncateTiddler.handler = function(event,src,title) {
 	if (doit) {
 		if (newTitle)
 			delete tiddler.key;
-		var res = http.deleteVersions({ tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version});
+		var res = http.deleteVersions({ tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version, historyView: story.getHistoryView(tiddler)});
 		tiddler.versions = res.versions;
 		delete tiddler.key;
 		tiddler.fields.vercnt = res.vercnt;
@@ -4196,6 +4196,7 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		modifier: modifier,
 		fromVer: fromVersion,
 		autoSave: autoSave || false,
+		historyView: story.getHistoryView(tiddler),
 		shadow: tiddler.hasShadow ? 1 : 0
 	}
 	if (!(tiddler.autoSavedAsVer === undefined)) {
@@ -4793,6 +4794,19 @@ Story.prototype.chooseTemplateForTiddler = function(title, template) {
 Story.prototype.getTemplateForTiddler = function(title, template, tiddler) {
     return store.getRecursiveTiddlerText(template, null, 10);
 };
+
+Story.prototype.getHistoryView = function(tiddler) {
+	var view = tiddler.fields.historyview;
+	if (!view) {
+		var tpt = store.fetchTiddler(this.chooseTemplateForTiddler(tiddler.title));
+		if (tpt) {
+			var tphv = tpt.fields.historyview;
+			if (tphv)
+				view = tphv;
+		}
+	}
+	return view;
+}
 
 Story.prototype.refreshTiddler = function (title, template, force, customFields, defaultText, tdlr) {
 	if (title == "" && template == DEFAULT_VIEW_TEMPLATE) {
@@ -7749,29 +7763,19 @@ config.macros.history = {
 }
 
 function onClickTiddlerHistory(e) {
-    if (!e) var e = window.event;
-    var theTarget = resolveTarget(e);
-    var t = theTarget.getAttribute("tiddler");
-    var tiddler = store.fetchTiddler(t);
-    if (!t) return;
-	var view = tiddler.fields.historyview;
-	if (!view) {
-		var cte = story.findContainingTiddler(theTarget);
-		var tpt = store.fetchTiddler(cte.getAttribute('template'));
-		if (tpt) {
-			var tphv = tpt.fields.historyview;
-			if (tphv)
-				view = tphv;
-		}
-	}
-    var res = http.tiddlerHistory({ tiddlerId: tiddler.id, shadow: store.isShadowTiddler(t) ? 1 : 0, historyView: view });
+	if (!e) var e = window.event;
+	var theTarget = resolveTarget(e);
+	var t = theTarget.getAttribute("tiddler");
+	var tiddler = store.fetchTiddler(t);
+	if (!t) return;
+	var res = http.tiddlerHistory({ tiddlerId: tiddler.id, shadow: store.isShadowTiddler(t) ? 1 : 0, historyView: story.getHistoryView(tiddler) });
 
-    if (res.error)
-        displayMessage(res.error);
-    else {
-        tiddler.versions = res.versions;
-        story.refreshTiddler(t, null, true);
-    }
+	if (res.error)
+		displayMessage(res.error);
+	else {
+		tiddler.versions = res.versions;
+		story.refreshTiddler(t, null, true);
+	}
 }
 
 function RequestVersion(t, v) {
