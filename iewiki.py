@@ -802,7 +802,7 @@ class MainPage(webapp.RequestHandler):
 			detail['id'] = tlr.id
 	t = Tiddler.all().filter('page',self.request.path).filter('current',True).filter('title',title).get()
 	if t != None:
-		if t.id != tlrId:
+		if tlrId and t.id != tlrId:
 			return self.fail("Tiddler name conflict, cannot save by this name")
 	if tlr.id == '' or tlr.version == 0:
 		tlr.version = 1
@@ -1022,7 +1022,7 @@ class MainPage(webapp.RequestHandler):
 		esr.appendChild(aue)
 		esr.appendChild(vce)
 		fromVer = self.request.get('fromVer', None)
-		if fromVer != None:
+		if fromVer != None and not autoSave:
 			esr.appendChild(getTiddlerVersions(xd,unicode(tlr.id),eval(fromVer),self.request.get('historyView',None)))
 		if autoSave:
 			if elr:
