@@ -5203,7 +5203,7 @@ Story.prototype.saveTiddler = function(title, minorUpdate, newTemplate, autoSave
 		}
 
 		var tiddler = store.saveTiddler(title, newTitle, fields.text, minorUpdate ? undefined : config.options.txtUserName, minorUpdate ? undefined : newDate, fields.tags, extendedFields, autoSave);
-		if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave)
+		if ((tiddler.isTagged("systemConfig") || tiddler.isTagged("systemScript")) && config.options.chkAutoReloadOnSystemConfigSave && !autoSave)
 			window.location.reload();
         return newTitle || tiddler.title;
     }
