@@ -347,59 +347,53 @@ def KillTiddlerVersion(t):
 	t.delete()
 
 def initHist(shadowTitle,format):
-	if format:
-		caps = []
-		for fe in format.split('|'):
-			form = fe.split(';',1)
-			if len(form) > 1:
-				caps.append( form[1] )
-			else:
-				caps.append('')
-		versions = '|' + '|'.join(caps) + '|\n'
-	else:
-		versions = '|When|Who|V#|Title|\n'
-	if shadowTitle != None: # self.request.get("shadow") == '1':
+	caps = []
+	for fe in format.split('|'):
+		form = fe.split(';',1)
+		if len(form) > 1:
+			caps.append( form[1] )
+		else:
+			caps.append('')
+	versions = '|'.join(caps)
+	if shadowTitle != None:
 		versions += "|>|Default content|<<diff 0 " + shadowTitle + '>>|<<revision "' + shadowTitle + '" 0>>|\n'
 	return versions
   
 def getTiddlerVersions(xd,tid,startFrom,format=None):
 	text = u""
+	lines = []
+	if not format:
+		format = "modified:%Y-%m-%d %H:%M;When|author;Who|version;V#|title;Title|field:tags;Tags"
 	for tlr in Tiddler.all().filter('id', tid).order('version'):
-		if text == "":
-			text = initHist(tlr.title if startFrom == 0 else None,format)
+		if len(lines) == 0:
+			lines.append(initHist(tlr.title if startFrom == 0 else None,format))
 		if tlr.version >= startFrom:
 			modified = tlr.modified
 			if hasattr(tlr,'reverted') and tlr.reverted != None:
 				modified = tlr.reverted
-			if format:
-				histline = []
-				for afe in format.split('|'):
-					afs = afe.split(';',1)
-					if len(afs):
-						fe = afs[0]
-						if fe[:9] == 'modified:':
-							histline.append(BoldCurrent(tlr) + modified.strftime(str(fe[9:])) + BoldCurrent(tlr))
-						elif fe == 'version':
-							histline.append(u'<<diff ' + unicode(tlr.version) + u' ' + tid + u'>>')
-						elif fe == 'author':
-							histline.append(u'<<author "' + getAuthor(tlr) + u'">>')
-						elif fe == 'title':
-							histline.append(u'<<revision "' + htmlEncode(tlr.title) + u'" ' + unicode(tlr.version) + u'>>')
-						elif fe[:6] == 'field:':
-							attrname = fe[6:]
-							histline.append(unicode(getattr(tlr,attrname)).strip() if hasattr(tlr,attrname) else '')
-						else:
-							histline.append(fe + '?')
+			histline = []
+			for afe in format.split('|'):
+				afs = afe.split(';',1)
+				if len(afs):
+					fe = afs[0]
+					if fe[:9] == 'modified:':
+						histline.append(BoldCurrent(tlr) + modified.strftime(str(fe[9:])) + BoldCurrent(tlr))
+					elif fe == 'version':
+						histline.append(u'<<diff ' + unicode(tlr.version) + u' ' + tid + u'>>')
+					elif fe == 'author':
+						histline.append(u'<<author "' + getAuthor(tlr) + u'">>')
+					elif fe == 'title':
+						histline.append(u'<<revision "' + htmlEncode(tlr.title) + u'" ' + unicode(tlr.version) + u'>>')
+					elif fe[:6] == 'field:':
+						attrname = fe[6:]
+						histline.append(unicode(getattr(tlr,attrname)).strip() if hasattr(tlr,attrname) else '')
 					else:
-						histline.append('?')
-				text += '|' + '|'.join(histline) + '|\n'
-			else:
-				text += u'|' + BoldCurrent(tlr) + modified.strftime('%Y-%m-%d %H:%M') + BoldCurrent(tlr) \
-					 + u'|<<author "' + getAuthor(tlr) + u'">>' \
-					 + u'|<<diff ' + str(tlr.version) + u' ' + tid + u'>>' \
-					 + u'|<<revision "' + htmlEncode(tlr.title) + u'" ' + str(tlr.version) + u'>>|\n'
+						histline.append(fe + '?')
+				else:
+					histline.append('?')
+			lines.append('|'.join(histline))
 	eVersions = xd.createElement('versions')
-	eVersions.appendChild(xd.createTextNode(text))
+	eVersions.appendChild(xd.createTextNode('|' + '|\n|'.join(lines) + '|'))
 	return eVersions
 
 def BoldCurrent(tlr):
