@@ -766,7 +766,7 @@ class MainPage(webapp.RequestHandler):
 		if self.request.get('isPrivate',False) != False:
 			tlr.private = 'true'
 		for ra in self.request.arguments():
-			if not ra in ('method','tiddlerId','tiddlerName','atag','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','currentver','vercnt','key','reverted','reverted_by','links','linksUpdated','autoSave','autoSavedAsVer','historyView'):
+			if not ra in ('method','tiddlerId','detachId','tiddlerName','atag','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','currentver','vercnt','key','reverted','reverted_by','links','linksUpdated','autoSave','autoSavedAsVer','historyView'):
 				setattr(tlr,ra,self.request.get(ra))
 		if not autoSave and "autoSaved" in taglist:
 			taglist.remove("autoSaved")
@@ -980,6 +980,8 @@ class MainPage(webapp.RequestHandler):
 		for cj in crons:
 			cj.save(tlr)
 
+		self.updateRequires(self.request.get('detachId'),tlr.id)
+
 	if page != None:
 		page.Update(tlr)
 
@@ -1043,6 +1045,16 @@ class MainPage(webapp.RequestHandler):
 			esr.appendChild(vne)
 		
 		self.response.out.write(xd.toxml())
+
+  def updateRequires(self,oldId,newId):
+	if oldId:
+		checklist = Tiddler.all().filter('page', self.request.path).filter('current', True)
+		attn = 'requires_id'
+		for tlr in checklist:
+			if hasattr(tlr,attn):
+				if getattr(tlr,attn) == oldId:
+					setattr(tlr,attn,newId)
+					tlr.put()
 
   def dropTiddlerEdit(self):
 	tlrId = self.request.get('tiddlerId')
@@ -2146,6 +2158,10 @@ class MainPage(webapp.RequestHandler):
 	t = Tiddler.all().filter('page', page).filter('title',title).filter('current', True).get()
 	if t is None:
 		try:
+			for st in ShadowTiddler.all():
+				if page.startswith(st.path) and st.tiddler.title == title:
+					return self.deliverTiddler(st.tiddler)
+				
 			xdt = xml.dom.minidom.parse(title + '.xml')
 			de = xdt.documentElement
 			if de.tagName == 'tiddler':
@@ -3231,15 +3247,6 @@ class MainPage(webapp.RequestHandler):
 									tdo.page = urlPath
 									tiddict[tdo.title] = tdo
 
-	for st in ShadowTiddler.all():
-		if self.path.startswith(st.path):
-			if readAccess or st.tiddler.title == 'NoAccessMessage':
-				try:
-					tiddict[st.tiddler.title] = st.tiddler
-				except Exception, x:
-					self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
-						' has been deleted! <a href="', self.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
-
 	tiddlers = Tiddler.all().filter("page", self.path).filter("current", True)
 	if page == None:
 		def inclusionFilter(t):
@@ -3278,6 +3285,8 @@ class MainPage(webapp.RequestHandler):
 								else:
 									mcpage.lazyLoadTags[alzt] = [ t.title ]
 							mcpage.lazyLoadAll[t.title] = t.modified
+					if t.title in tiddict.keys():
+						tiddict.pop(t.title)
 					return False
 				priv = hasattr(t,'private')
 				if t.author == users.get_current_user():
@@ -3290,6 +3299,15 @@ class MainPage(webapp.RequestHandler):
 				return True
 			else:
 				return False
+
+	for st in ShadowTiddler.all():
+		if self.path.startswith(st.path) and inclusionFilter(st.tiddler):
+			if readAccess or st.tiddler.title == 'NoAccessMessage':
+				try:
+					tiddict[st.tiddler.title] = st.tiddler
+				except Exception, x:
+					self.warnings.append(''.join(['The shadowTiddler with id ', st.id, \
+						' has been deleted! <a href="', self.path, '?method=deleteLink&id=', st.id, '">Remove link</a>']))
 
 	mergeDict(tiddict, tiddlers, inclusionFilter)
 	

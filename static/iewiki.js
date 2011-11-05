@@ -709,7 +709,7 @@ function loadShadowTiddlers(again) {
 function loadPlugins() {
     if (safeMode)
         return false;
-    var tiddlers = store.getTaggedTiddlers("systemConfig");
+    var tiddlers = store.getTaggedTiddlers("systemConfig",undefined,true);
     var toLoad = [];
     var nLoaded = 0;
     var map = {};
@@ -4179,12 +4179,6 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		tiddler = new Tiddler(null, 1);
 	}
 
-	if (tiddler.detach) {
-		tiddler.id = '';
-		delete tiddler.detach;
-		delete tiddler.from;
-		delete tiddler.readOnly;
-	}
 	var atags = tags.readBracketedList();
 	var m = {
 		tiddlerId: tiddler.id,
@@ -4199,6 +4193,14 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		historyView: story.getHistoryView(tiddler),
 		shadow: tiddler.hasShadow ? 1 : 0
 	}
+	if (tiddler.detach) {
+		m.detachId = tiddler.id;
+		m.tiddlerId = tiddler.id = '';
+		delete tiddler.detach;
+		delete tiddler.from;
+		delete tiddler.readOnly;
+	}
+
 	if (!(tiddler.autoSavedAsVer === undefined)) {
 		m.autoSavedAsVer = tiddler.autoSavedAsVer;
 		delete tiddler.autoSavedAsVer;
@@ -4332,12 +4334,14 @@ TiddlyWiki.prototype.getTags = function (excludeTag, results) {
 };
 
 // Return an array of the tiddlers that are tagged with a given tag
-TiddlyWiki.prototype.getTaggedTiddlers = function(tag, sortField) {
+TiddlyWiki.prototype.getTaggedTiddlers = function(tag, sortField,ltOnly) {
 	var results = [];
-	var lztl = lazyLoadTags[tag];
-	if (lztl) {
-		for (var i = 0; i < lztl.length; i++)
-			results.push({ title: lztl[i] });
+	if (!ltOnly) {
+		var lztl = lazyLoadTags[tag];
+		if (lztl) {
+			for (var i = 0; i < lztl.length; i++)
+				results.push({ title: lztl[i] });
+		}
 	}
 	return this.reverseLookup("tags", tag, true, sortField, results);
 };
