@@ -8926,8 +8926,7 @@ function DeprecatedTiddlers(place,a,b)
 }
 
 config.macros.importTiddlers = {
-	sortf: function(a,b)
-	{
+	sortf: function(a,b) {
 		a = a.title.toUpperCase();
 		b = b.title.toUpperCase();
 		if (a < b) return -1;
@@ -8964,6 +8963,8 @@ config.macros.importTiddlers = {
 		var nExcluded = 0;
 		if (libs) {
 			this.aurl = aurl;
+			this.tims = this.tims || {};
+			this.tims[aurl] = {};
 			this.libs = libs;
 			var wd = createTiddlyElement(place, "div", "wrdiv:" + aurl);
 			var hta = ['<input name="url" type="hidden" id="', aurl, '"/><table border="0" cellspacing="0" cellpadding="0"><tbody>'];
@@ -9021,7 +9022,8 @@ config.macros.importTiddlers = {
 				if (isNaN(t)) continue;
 				var chtid = 'cht' + t;
 				var chtel = document.getElementById(chtid);
-				chtel.onchange = function (ev) { config.macros.importTiddlers.onchange(resolveTarget(ev || window.event)); };
+				this.tims[aurl][chtid] = chtel;
+				chtel.onclick = function (ev) { config.macros.importTiddlers.onchange(resolveTarget(ev || window.event)); };
 				document.getElementById(links[t]).onclick = config.macros.importTiddlers.fetch;
 			}
 			if (custumUse)
@@ -9034,16 +9036,15 @@ config.macros.importTiddlers = {
 		var pel = target.parentNode;
 		removeChildren(pel);
 		config.macros.importTiddlers.serve(url, false, true, pel.id);
-		//var libs = http.tiddlersFromUrl({ url: url, filter: afilter || '' }).sort(config.macros.importTiddlers.sortf);
 	},
-	refresh: function(ev) {
+	refresh: function (ev) {
 		var target = resolveTarget(ev || window.event);
 		var aurl = target.getAttribute('aurl');
 		var filt = target.getAttribute('filter');
-		var wrd = document.getElementById( "wrdiv:" + aurl);
+		var wrd = document.getElementById("wrdiv:" + aurl);
 		var place = wrd.parentNode;
 		place.removeChild(wrd);
-		config.macros.importTiddlers.renderTL(place,aurl,filt,null,true);
+		config.macros.importTiddlers.renderTL(place, aurl, filt, null, true);
 		var libs = http.tiddlersFromUrl({ url: aurl, filter: filt || '', source: 'remote' }).sort(config.macros.importTiddlers.sortf);
 	},
 	onchange: function (target) {
@@ -9116,20 +9117,13 @@ config.macros.importTiddlers = {
 	},
 	importSelected: function (ev, tidlr) {
 		var importByMenu = function (url, tbl) {
-			var inputs = document.getElementsByTagName('input');
 			var selectList = [];
-			for (var i in inputs) {
-				var e = inputs[i];
-				if (isDescendant(e, tbl)) {
-					var id = e.getAttribute("id");
-					if (!id || id.length < 3)
-						continue;
-					if (id.startsWith('cht')) {
-						var tn = e.nextSibling.firstChild.nodeValue;
-						if (e.type == 'checkbox' && e.checked && tn)
-							selectList.push(tn);
-					}
-				}
+			var cls = config.macros.importTiddlers.tims[url];
+			for (var mn in cls) {
+				var e = cls[mn];
+				var tn = e.nextSibling.firstChild.nodeValue;
+				if (e.type == 'checkbox' && e.checked && tn)
+					selectList.push(tn);
 			}
 			var result = http.tiddlersFromUrl({ url: url, select: selectList.length ? selectList.join('||') : 'void' });
 		};
