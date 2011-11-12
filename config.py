@@ -81,6 +81,10 @@ http = {\n\
 }\n\
 \n\
 http._init = function(ms) { for (var i=0; i < ms.length; i++) http._addMethod(ms[i]); }\n\
+var lazyLoadTags = {};\n\
+var lazyLoadAll = {};\n'
+
+jsConfig ='\
 var config = {\n\
 	animDuration: 400,\n\
 	autoSaveAfter: 20,\n\
@@ -226,7 +230,22 @@ class ConfigJs(webapp.RequestHandler):
 	self.response.headers['Content-Type'] = 'application/x-javascript'
 	self.response.headers['Cache-Control'] = 'no-cache'
 	loginName = 'null' if user is None else jsEncodeStr(user.nickname())
-	self.response.out.write( jsProlog\
+	self.response.out.write( jsProlog)
+	nsts = [] if noSuchTdlrs is None else noSuchTdlrs.split('\n')
+	if mcpage:
+		if mcpage.lazyLoadTags:
+			for (altag,altit) in mcpage.lazyLoadTags.iteritems():
+				if len(altit):
+					self.response.out.write('lazyLoadTags[' + jsEncodeStr(altag) + '] = [')
+				while len(altit):
+					self.response.out.write(jsEncodeStr(altit.pop()))
+					self.response.out.write(',' if len(altit) else '];\n')
+		if mcpage.lazyLoadAll:
+			for (altitle,altime) in mcpage.lazyLoadAll.iteritems():
+				if altitle in nsts:
+					nsts.remove(altitle)
+				self.response.out.write('lazyLoadAll[' + jsEncodeStr(altitle) + '] = "' + altime.strftime('%Y%m%d%H%M%S') + '";\n')
+	self.response.out.write( jsConfig\
 		.replace('<project>',self.getSubdomain(),1)\
 		.replace('<sitetitle>',jsEncodeStr(siteTitle),1)\
 		.replace('<subtitle>',jsEncodeStr(subTitle),1)\
@@ -247,7 +266,7 @@ class ConfigJs(webapp.RequestHandler):
 		.replace('<clientIP>',self.request.remote_addr,1)\
 		.replace('<deprecatedCount>', str(deprecatedCount),1)\
 		.replace('<allWarnings>',jsEncodeStr(warnings),1)\
-		.replace('<noSuchTiddlers>',jsEncodeStr(noSuchTdlrs),1)\
+		.replace('<noSuchTiddlers>',jsEncodeStr('\n'.join(nsts)),1)\
 		.replace('<siblingPages>', ',\n'.join(pages),1)\
 		.replace('<timestamp>', unicode(datetime.datetime.now()),1)) # time.strftime("%Y-%m-%d-%H:%M:%S"),1))
 	if isLoggedIn:
@@ -283,18 +302,7 @@ class ConfigJs(webapp.RequestHandler):
 		self.AppendConfigOption(optlist,'txtUserName',jsEncodeStr(user.nickname()))
 
 	self.response.out.write(',\n\t\t'.join(optlist))
-	self.response.out.write('\n\t}\n};\nvar lazyLoadTags = {};\nvar lazyLoadAll = {};\n')
-	if mcpage:
-		if mcpage.lazyLoadTags:
-			for (altag,altit) in mcpage.lazyLoadTags.iteritems():
-				if len(altit):
-					self.response.out.write('lazyLoadTags[' + jsEncodeStr(altag) + '] = [')
-				while len(altit):
-					self.response.out.write(jsEncodeStr(altit.pop()))
-					self.response.out.write(',' if len(altit) else '];\n')
-		if mcpage.lazyLoadAll:
-			for (altitle,altime) in mcpage.lazyLoadAll.iteritems():
-				self.response.out.write('lazyLoadAll[' + jsEncodeStr(altitle) + '] = "' + altime.strftime('%Y%m%d%H%M%S') + '";\n')
+	self.response.out.write('\n\t}\n};\n')
 
 	self.response.out.write('http._init(["')
 	self.response.out.write('","'.join(HttpMethods.split('\n')))

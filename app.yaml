@@ -17,6 +17,9 @@ handlers:
 - url: /index.xml
   script: index.py
 
+- url: /build_tag_index
+  script: build_tag_index.py
+
 - url: /config.js
   script: config.py
 

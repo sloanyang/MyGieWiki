@@ -636,8 +636,8 @@ function main() {
     config.read();
     invokeParamifier(params, "onload");
 
-    var pluginProblem = loadPlugins();
     loadShadowTiddlers(true);
+    var pluginProblem = loadPlugins();
 	if (config.foldIndex) {
 		var pt = store.getTiddler('PageTemplate');
 		pt.text = pt.text.replace( config.patches.FixedIndex, config.patches.FoldOutIndex);
@@ -709,7 +709,7 @@ function loadShadowTiddlers(again) {
 function loadPlugins() {
     if (safeMode)
         return false;
-    var tiddlers = store.getTaggedTiddlers("systemConfig",undefined,true);
+    var tiddlers = store.getTaggedTiddlers("systemConfig",undefined,true,true);
     var toLoad = [];
     var nLoaded = 0;
     var map = {};
@@ -4334,7 +4334,7 @@ TiddlyWiki.prototype.getTags = function (excludeTag, results) {
 };
 
 // Return an array of the tiddlers that are tagged with a given tag
-TiddlyWiki.prototype.getTaggedTiddlers = function(tag, sortField,ltOnly) {
+TiddlyWiki.prototype.getTaggedTiddlers = function(tag,sortField,ltOnly,shadow) {
 	var results = [];
 	if (!ltOnly) {
 		var lztl = lazyLoadTags[tag];
@@ -4343,7 +4343,7 @@ TiddlyWiki.prototype.getTaggedTiddlers = function(tag, sortField,ltOnly) {
 				results.push({ title: lztl[i] });
 		}
 	}
-	return this.reverseLookup("tags", tag, true, sortField, results);
+	return this.reverseLookup("tags", tag, true, sortField, results, shadow);
 };
 
 // Return an array of the tiddlers that link to a given tiddler
@@ -4355,7 +4355,7 @@ TiddlyWiki.prototype.getReferringTiddlers = function(title, unusedParameter, sor
 
 // Return an array of the tiddlers that do or do not have a specified entry in the specified storage array (ie, "links" or "tags")
 // lookupMatch == true to match tiddlers, false to exclude tiddlers
-TiddlyWiki.prototype.reverseLookup = function(lookupField, lookupValue, lookupMatch, sortField, results) {
+TiddlyWiki.prototype.reverseLookup = function(lookupField, lookupValue, lookupMatch, sortField, results, shadow) {
 	if (!results)
 		var results = [];
     this.forEachTiddler(function(title, tiddler) {
@@ -4364,7 +4364,7 @@ TiddlyWiki.prototype.reverseLookup = function(lookupField, lookupValue, lookupMa
             if (tiddler[lookupField][lookup] == lookupValue)
                 f = lookupMatch;
         }
-        if (f && tiddler.currentVer > 0)
+        if (f && (tiddler.currentVer > 0 || shadow))
             results.push(tiddler);
     });
     if (!sortField)

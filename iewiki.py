@@ -985,17 +985,19 @@ class MainPage(webapp.RequestHandler):
 	if page != None:
 		page.Update(tlr)
 
-	isShared = True if ('shadowTiddler' in taglist or 'sharedTiddler' in taglist) else False
-	st = ShadowTiddler.all().filter('id',tlr.id).get()
-	if st != None:
-		if isShared:
-			st.tiddler = tlr
-		else:
-			st.delete()
+	if not autoSave:
+		isShared = True if ('shadowTiddler' in taglist or 'sharedTiddler' in taglist) else False
+		st = ShadowTiddler.all().filter('id',tlr.id).get()
+		if st != None:
+			if isShared:
+				st.tiddler = tlr
+				st.put()
+			else:
+				st.delete()
 		
-	if isShared and st == None and tlr.version > 0:
-		s = ShadowTiddler(tiddler = tlr, path = tlr.page, id = tlr.id)
-		s.put()
+		if isShared and st == None and tlr.version > 0:
+			s = ShadowTiddler(tiddler = tlr, path = tlr.page, id = tlr.id)
+			s.put()
 	if reply:
 		xd = self.initXmlResponse()
 		esr = xd.add(xd,'SaveResp')
@@ -1115,9 +1117,11 @@ class MainPage(webapp.RequestHandler):
 	rply = {'tl': list}
 	tag = self.request.get('tag',None)
 	tags = self.request.get_all('tags')
+	any = False
 	if len(tags):
 		rply['mt'] = True
 		for tl in TagLink.all():
+			any = True
 			if tl.tag in tags:
 				if tl.tlr != self.request.get('excl'):
 					t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
@@ -1127,11 +1131,15 @@ class MainPage(webapp.RequestHandler):
 	elif tag:
 		rply['mt'] = False
 		for tl in TagLink.all().filter('tag',tag):
+			any = True
 			t = Tiddler.all().filter('id', tl.tlr).filter('current',True).get()
 			if not t is None:
 				pl = '[[' + t.title + ']]' if ' ' in t.title else t.title
 				list.append({ 'page': t.page, 'title': t.title, 'link': t.page + '#' + urllib.quote(pl) })
-	return self.reply(rply)
+	if any:
+		return self.reply(rply)
+	else:
+		return self.warn("Tag index is empty; visit <a href='/build_tag_index'>/build_tag_index</a> to build it", rply)
 	
   def tiddlerHistory(self):
 	"http tiddlerId"
