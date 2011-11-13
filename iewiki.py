@@ -330,8 +330,8 @@ def presentTiddler(t,withKey):
 		'version': t.version,
 		'vercnt': t.vercnt
 		}
-	if hasattr(t,'viewTemplate'):
-		rp['viewTemplate'] = t.viewTemplate
+	for dpn in t.dynamic_properties():
+		rp[dpn] = str(getattr(t,dpn))
 	if withKey:
 		rp['key'] = t.key()
 		rp['path'] = t.page
@@ -766,7 +766,7 @@ class MainPage(webapp.RequestHandler):
 		if self.request.get('isPrivate',False) != False:
 			tlr.private = 'true'
 		for ra in self.request.arguments():
-			if not ra in ('method','tiddlerId','detachId','tiddlerName','atag','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','currentver','vercnt','key','reverted','reverted_by','links','linksUpdated','autoSave','autoSavedAsVer','historyView'):
+			if not ra in ('method','tiddlerId','tiddlerName','atag','fields','isPrivate','created','modifier','modified','minorEdit','fromVer','shadow','currentver','vercnt','key','reverted','reverted_by','links','linksUpdated','autoSave','autoSavedAsVer','historyView'):
 				setattr(tlr,ra,self.request.get(ra))
 		if not autoSave and "autoSaved" in taglist:
 			taglist.remove("autoSaved")
@@ -980,8 +980,6 @@ class MainPage(webapp.RequestHandler):
 		for cj in crons:
 			cj.save(tlr)
 
-		self.updateRequires(self.request.get('detachId'),tlr.id)
-
 	if page != None:
 		page.Update(tlr)
 
@@ -1047,16 +1045,6 @@ class MainPage(webapp.RequestHandler):
 			esr.appendChild(vne)
 		
 		self.response.out.write(xd.toxml())
-
-  def updateRequires(self,oldId,newId):
-	if oldId:
-		checklist = Tiddler.all().filter('page', self.request.path).filter('current', True)
-		attn = 'requires_id'
-		for tlr in checklist:
-			if hasattr(tlr,attn):
-				if getattr(tlr,attn) == oldId:
-					setattr(tlr,attn,newId)
-					tlr.put()
 
   def dropTiddlerEdit(self):
 	tlrId = self.request.get('tiddlerId')

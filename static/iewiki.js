@@ -3896,8 +3896,17 @@ function TiddlyWiki() {
     this.fetchTiddler = function (title,co) {
     	var t = tiddlers[title];
     	if (!t && title)
-			if (this.fetchFromServer && !co)
-    			t = TryGetTiddler(title);
+			if (this.fetchFromServer && !co) {
+				t = TryGetTiddler(title);
+				if (t && t.fields) {
+					var reqs = t.fields.requires;
+					if (reqs) {
+						reqs = reqs.readBracketedList();
+						for (var i = 0; i < reqs.length; i++)
+							store.fetchTiddler(reqs[i]);
+					}
+				}
+			}
     	return t instanceof Tiddler ? t : null;
     };
     this.deleteTiddler = function(title) {
