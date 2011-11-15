@@ -82,6 +82,7 @@ http = {\n\
 \n\
 http._init = function(ms) { for (var i=0; i < ms.length; i++) http._addMethod(ms[i]); }\n\
 var lazyLoadTags = {};\n\
+var lazyLoadSpecial = [];\n\
 var lazyLoadAll = {};\n'
 
 jsConfig ='\
@@ -240,6 +241,8 @@ class ConfigJs(webapp.RequestHandler):
 				while len(altit):
 					self.response.out.write(jsEncodeStr(altit.pop()))
 					self.response.out.write(',' if len(altit) else '];\n')
+		for atn in mcpage.lazyLoadSpecial:
+			self.response.out.write('lazyLoadSpecial.push(' + jsEncodeStr(atn) + ');\n')
 		if mcpage.lazyLoadAll:
 			for (altitle,altime) in mcpage.lazyLoadAll.iteritems():
 				if altitle in nsts:

@@ -3277,10 +3277,15 @@ class MainPage(webapp.RequestHandler):
 						if not 'excludeLists' in ttl:
 							for alzt in ttl:
 								if alzt in mcpage.lazyLoadTags:
-									mcpage.lazyLoadTags[alzt].append(t.title)
+									if not t.title in mcpage.lazyLoadTags[alzt]:
+										mcpage.lazyLoadTags[alzt].append(t.title)
 								else:
 									mcpage.lazyLoadTags[alzt] = [ t.title ]
-							mcpage.lazyLoadAll[t.title] = t.modified
+							if 'shadowTiddler' in ttl:
+								if not t.title in mcpage.lazyLoadSpecial:
+									mcpage.lazyLoadSpecial.append(t.title)
+							else:
+								mcpage.lazyLoadAll[t.title] = t.modified
 					if t.title in tiddict.keys():
 						tiddict.pop(t.title)
 					return False

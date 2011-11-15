@@ -4425,9 +4425,9 @@ TiddlyWiki.prototype.getOrphans = function() {
 
 // Return an array of names of all the shadow tiddlers
 TiddlyWiki.prototype.getShadowed = function() {
-    var results = [];
+    var results = lazyLoadSpecial.slice(0);
     this.forEachTiddler(function(title, tiddler) {
-        if (tiddler.hasShadow)
+        if (tiddler.hasShadow && lazyLoadSpecial.indexOf(title) == -1)
             results.push(tiddler.title);
     });
     results.sort();

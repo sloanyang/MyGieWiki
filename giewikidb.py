@@ -187,6 +187,7 @@ class MCPage():
   page = None
   lazyLoadAll = dict()
   lazyLoadTags = dict()
+  lazyLoadSpecial = []
   deprecatedCount = 0
 
 class DeletionLog(db.Model):
