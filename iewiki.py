@@ -317,7 +317,7 @@ def replyWithObjectList(cl,re,se,sl):
 	xmlArrayOfObjects(xd,tv,sl,se)
 	cl.response.out.write(xd.toxml())
 
-def presentTiddler(t,withKey):
+def presentTiddler(t,withKey=False):
 	rp = { \
 		'success': True, \
 		'id': t.id, \
@@ -983,6 +983,7 @@ class MainPage(webapp.RequestHandler):
 	if page != None:
 		page.Update(tlr)
 
+	warning = ""
 	if not autoSave:
 		isShared = True if ('shadowTiddler' in taglist or 'sharedTiddler' in taglist) else False
 		st = ShadowTiddler.all().filter('id',tlr.id).get()
@@ -996,11 +997,24 @@ class MainPage(webapp.RequestHandler):
 		if isShared and st == None and tlr.version > 0:
 			s = ShadowTiddler(tiddler = tlr, path = tlr.page, id = tlr.id)
 			s.put()
+		if hasattr(tlr,'requires'):
+			for rtn in tagStringToList(tlr.requires):
+				logging.info("Requires also " + rtn)
+				rqtok = False
+				for shtx in ShadowTiddler.all().filter('path',self.request.path):
+					if self.request.path.startswith(shtx.path) and shtx.tiddler.title == rtn:
+						rqtok = True
+				if not rqtok:
+					warning = "The required tiddler '" + rtn + "'<br>must also be marked with the 'include as special tiddler' attribute<br>"
+
 	if reply:
 		xd = self.initXmlResponse()
 		esr = xd.add(xd,'SaveResp')
 		xd.appendChild(esr)
-		
+		if warning:
+			we = xd.createElement('Message')
+			we.appendChild(xd.createTextNode(warning))
+			esr.appendChild(we)
 		we = xd.createElement('when')
 		we.setAttribute('type','datetime')
 		we.appendChild(xd.createTextNode(tlr.modified.strftime("%Y%m%d%H%M%S")))
@@ -2154,10 +2168,23 @@ class MainPage(webapp.RequestHandler):
 	t = Tiddler.all().filter('page', page).filter('title',title).filter('current', True).get()
 	if t is None:
 		try:
+			astd = {}
+			dtf = None
 			for st in ShadowTiddler.all():
+				if page == st.path or (page.startswith(st.path) and not st.tiddler.title in astd.keys()):
+					astd[st.tiddler.title] = st.tiddler
 				if page.startswith(st.path) and st.tiddler.title == title:
-					return self.deliverTiddler(st.tiddler)
-				
+					if hasattr(st.tiddler,'requires'):
+						dtf = st.tiddler
+					else:
+						return self.deliverTiddler(st.tiddler)
+			if dtf:
+				ts = [presentTiddler(dtf)]
+				for rtn in tagStringToList(dtf.requires):
+					if rtn in astd.keys():
+						ts.append(presentTiddler(astd[rtn]))
+				return self.reply({'tiddlers': ts})
+
 			xdt = xml.dom.minidom.parse(title + '.xml')
 			de = xdt.documentElement
 			if de.tagName == 'tiddler':
@@ -2620,6 +2647,8 @@ class MainPage(webapp.RequestHandler):
 				newel = {'title': t.title, 'tags': t.tags }
 				if fromUrl.count(t.title) > 0:
 					newel['current'] = 'true'
+				if hasattr(t,'requires'):
+					newel['requires'] = getattr(t,'requires')
 				newlist.append(newel)
 
 	replyWithObjectList(self,'Content','tnt',newlist)
