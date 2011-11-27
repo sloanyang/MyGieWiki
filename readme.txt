@@ -6,6 +6,7 @@ New features in this release:
 	* Site-wide tag links, retrieved via the 'tags' caption.
 	* User-defined template for the auto-generated mails.
 	* New option to Auto-save changes while editing.
+	* Allow custom revision history via the ViewTemplate.
 	* On demand-loading macro's assuming tiddler title = '<macro-name> macro'.
 	* Lazy-load tiddler attribute for generel load-on-demand.
 	* "requires" attribute for systemConfig tiddlers.
