@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.14.0
+   version:	1.15.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -128,7 +128,7 @@ merge(config.options, {
     true);
 
 config.optionsDesc = {
-    // Options that can be set in the options panel and/or cookies
+    // Options that can be set in the options panel
     chkAutoSyncAddress: "Auto-sync adress bar with displayed tiddlers",
 	chkAutoSave: "Auto-save changes while editing",
     chkAutoReloadOnSystemConfigSave: "Auto reload on saving systemConfig tiddlers",
@@ -603,6 +603,9 @@ config.read = function () {
 	st = store.getTiddler('SiteSubtitle');
 	if (!st || st.hasShadow)
 		this.shadowTiddlers.SiteSubtitle = this.subtitle;
+	if (config.admin)
+		if (!config.serverType.startsWith('Development'))
+			this.shadowTiddlers.UserMenu = this.shadowTiddlers.UserMenu.replace("/_ah/admin","https://appengine.google.com/datastore/explorer?app_id=" + config.appId);
 	if (this.noSuchTiddlers)
 		this.NoSuchTiddlers = this.NoSuchTiddlers.concat(this.noSuchTiddlers.split('\n'))
 }
@@ -619,7 +622,8 @@ function main() {
 	window.onbeforeunload = function (e) { if (window.confirmExit) return confirmExit(); };
 	window.onunload = function (e) {
 		for (var lock in config.editLocks)
-			http.unlockTiddler({ "key": lock });
+			if (lock)
+				http.unlockTiddler({ "key": lock });
 	};
     params = getParameters();
     if (params)
@@ -810,7 +814,7 @@ function isPluginEnabled(plugin) {
 function invokeMacro(place, macro, params, wikifier, tiddler) {
     try {
         var m = config.macros[macro];
-		if (m === undefined && store.getTiddler(macro)) // possible source not yet loaded
+		if (m === undefined && store.getTiddler(macro + " macro")) // possible source not yet loaded
 			m = config.macros[macro];
 		else if (m && m.handler === undefined) {
 			if (m.tiddler) {

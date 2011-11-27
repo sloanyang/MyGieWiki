@@ -1,7 +1,7 @@
 # this:	Config.py
 # by:	Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.14.0
+# ver.:	1.15.0
 
 import cgi
 import codecs
@@ -18,6 +18,7 @@ from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
 from google.appengine.api import memcache
 from google.appengine.api import namespace_manager
+from google.appengine.api import app_identity
 
 from giewikidb import UserProfile,Page,AccessToPage,noSuchTiddlers
 
@@ -88,6 +89,7 @@ var lazyLoadAll = {};\n'
 jsConfig ='\
 var config = {\n\
 	animDuration: 400,\n\
+	appId: "<appid>",\n\
 	autoSaveAfter: 20,\n\
 	cascadeFast: 20,\n\
 	cascadeSlow: 60,\n\
@@ -175,9 +177,11 @@ class ConfigJs(webapp.RequestHandler):
 	'Dynamically construct file "/config.js"'
 	user = users.get_current_user()
 	self.getSubdomain()
-	mcpage = memcache.get(self.request.remote_addr)
-	page = mcpage.page
-	warnings = memcache.get("W:" + self.request.remote_addr)
+	mckey = self.request.remote_addr + self.request.headers['referer'][len(self.request.url) - len(self.request.path):]
+	mcpage = memcache.get(mckey)
+	page = None if not mcpage else mcpage.page
+	logging.info("mckey : " + mckey)
+	warnings = memcache.get("W:" + mckey)
 	userGroups = ''
 	pages = []
 	noSuchTdlrs = None
@@ -249,6 +253,7 @@ class ConfigJs(webapp.RequestHandler):
 					nsts.remove(altitle)
 				self.response.out.write('lazyLoadAll[' + jsEncodeStr(altitle) + '] = "' + altime.strftime('%Y%m%d%H%M%S') + '";\n')
 	self.response.out.write( jsConfig\
+		.replace('<appid>', app_identity.get_application_id(),1)\
 		.replace('<project>',self.getSubdomain(),1)\
 		.replace('<sitetitle>',jsEncodeStr(siteTitle),1)\
 		.replace('<subtitle>',jsEncodeStr(subTitle),1)\

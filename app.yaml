@@ -1,5 +1,5 @@
-application: iewikiwiki
-version: 1-14-6
+application: giewiki
+version: 1-15-0
 runtime: python
 api_version: 1
 

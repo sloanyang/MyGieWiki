@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.14.0
+# ver.:	1.15.0
 
 import cgi
 import codecs
@@ -28,13 +28,15 @@ from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.api import mail
 from google.appengine.api import namespace_manager
+from google.appengine.api import app_identity
+
 
 from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, noSuchTiddlers
 
 from javascripts import javascriptDict
 
-giewikiVersion = '2.14'
+giewikiVersion = '2.15'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -667,7 +669,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			hasit = t.version == hasVer
 			usr = users.get_current_user()
-			el = EditLock.all().filter("id",t.id).get() # get existing lock, if any
+			el = EditLock.all().filter('id',t.id).get() # get existing lock, if any
 			if el == None: # tiddler is not locked
 				return self.reply(self.lock(t,usr,hasit))
 			until = el.time + datetime.timedelta(0,60*eval(unicode(el.duration)))
@@ -696,13 +698,13 @@ class MainPage(webapp.RequestHandler):
 		return self.fail("Lock was not held")
 	
   def unlockTiddler(self):
-	if self.unlock(self.request.get("key",None)):
+	if self.unlock(self.request.get('key',None)):
 		self.reply({})
 
   def lockTiddler(self):
 	t = Tiddler.all().filter('id',self.request.get('tiddlerId')).filter('current',True).get()
 	if t != None:
-		t.locked = self.request.get("lock") == 'true'
+		t.locked = self.request.get('lock') == 'true'
 		t.put()
 		self.reply({"success": True})
 	else:
@@ -3359,6 +3361,9 @@ class MainPage(webapp.RequestHandler):
 				else:
 					tiddict[id] = t
 	if mcpage:
+		mcpage.lazyLoadAll = dict()
+		mcpage.lazyLoadTags = dict()
+		mcpage.lazyLoadSpecial = []
 		mcpage.page = page
 
 	httpMethodTiddler = None
@@ -3452,11 +3457,11 @@ class MainPage(webapp.RequestHandler):
 			httpMethodTiddler.text = '\n'.join(httpMethods)
 			elStArea.appendChild(self.BuildTiddlerDiv(xd,httpMethodTiddler.id,httpMethodTiddler,self.user))
 
-	if metaData:
+	if metaData and hasattr(self,'pagekey'):
 		introMsg = self.request.get("introduce",None)
 		if not introMsg is None:
 			self.warnings.append(introMsg)
-		wmckey = "W:" + self.request.remote_addr
+		wmckey = "W:" + self.pagekey
 		if len(self.warnings) > 0:
 			memcache.set(wmckey,'<br>'.join(self.warnings))
 		else:
@@ -3554,6 +3559,7 @@ class MainPage(webapp.RequestHandler):
 	self.user = users.get_current_user()
 	self.path = self.request.path
 	self.warnings = []
+	self.pagekey = self.request.remote_addr + self.request.path
 	
 	trace = self.request.get('trace')
 	if trace == '':
@@ -3626,7 +3632,7 @@ class MainPage(webapp.RequestHandler):
 
 	if page == None:
 		if rootpath:
-			message = "You have successfully installed giewiki"
+			message = "You have successfully installed " + app_identity.get_application_id()
 		elif twd != None and self.path.endswith('.html'):
 			self.path = self.path[0:-5]
 			page = self.CurrentPage()
@@ -3684,7 +3690,7 @@ class MainPage(webapp.RequestHandler):
 	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
 	mcpage = MCPage()
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message,mcpage)
-	memcache.set(self.request.remote_addr,mcpage) # used by config.js request
+	memcache.set(self.pagekey,mcpage) # used by config.js request
 		
 	# last, but no least
 	self.response.headers['Cache-Control'] = 'no-cache'
