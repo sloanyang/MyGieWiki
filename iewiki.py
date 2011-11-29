@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.15.0
+# ver.:	1.15.1
 
 import cgi
 import codecs
@@ -1894,7 +1894,7 @@ class MainPage(webapp.RequestHandler):
 				if len(p) > 0:
 					xpage = xd.createElement('project')
 					xroot.appendChild(xpage)
-					xd.add(xpage,'prefix','http://' + p + '.' + '.'.join(self.request.host.split('.')[-3:]))
+					xd.add(xpage,'prefix','http://' + p ) # + '.' + '.'.join(self.request.host.split('.')[-3:]))
 					xd.add(xpage,'title',p)
 
 	self.sendXmlResponse(xd)

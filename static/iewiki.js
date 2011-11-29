@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.15.0
+   version:	1.15.1
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -640,8 +640,8 @@ function main() {
     config.read();
     invokeParamifier(params, "onload");
 
-    loadShadowTiddlers(true);
     var pluginProblem = loadPlugins();
+    loadShadowTiddlers(true);
 	if (config.foldIndex) {
 		var pt = store.getTiddler('PageTemplate');
 		pt.text = pt.text.replace( config.patches.FixedIndex, config.patches.FoldOutIndex);

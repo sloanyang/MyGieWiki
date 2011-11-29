@@ -32,7 +32,7 @@ def paramParser(a):
 	emptyQuote = "((?:\"\")|(?:''))"
 	token = "(?:" + dblQuote + "|" + sngQuote + "|" + dblSquare + "|" + dblBrace + "|" + unQuoted + "|" + emptyQuote + ")"
 	mx = re.compile(token)
-	return mx.finditer(a)
+	return mx.finditer(str(a))
 
 def tagStringToList(tags):
 	ts = []
@@ -54,9 +54,11 @@ def addTagLinks(tlr,taglist):
 class BuildTagIndex(webapp.RequestHandler):
   def get(self):
 	nt = 0
+	log = []
 	for tid in Tiddler.all().filter("current", True):
-		nt = nt + addTagLinks(tid,tagStringToList(tid.tags))
-	self.response.out.write(str(nt) + " tags found")
+		if not (tid.tags is None):
+			nt = nt + addTagLinks(tid,tagStringToList(tid.tags))
+	self.response.out.write(str(nt) + " tags found..")
 
 application = webapp.WSGIApplication( [('/build_tag_index', BuildTagIndex)], debug=True)
 
