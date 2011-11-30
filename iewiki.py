@@ -1894,7 +1894,12 @@ class MainPage(webapp.RequestHandler):
 				if len(p) > 0:
 					xpage = xd.createElement('project')
 					xroot.appendChild(xpage)
-					xd.add(xpage,'prefix','http://' + p ) # + '.' + '.'.join(self.request.host.split('.')[-3:]))
+					host = '.'.join(self.request.host.split('.')[-3:])
+					if host in p:
+						host = p
+					else:
+						host = p + '.' + host
+					xd.add(xpage,'prefix','http://' + host )
 					xd.add(xpage,'title',p)
 
 	self.sendXmlResponse(xd)
@@ -3641,7 +3646,6 @@ class MainPage(webapp.RequestHandler):
 			page = self.CurrentPage()
 	readAccess = ReadAccessToPage(page,self.user)
 	if rootpath and self.subdomain != None:
-		message = "Here is your new project"
 		if page == None:
 			if self.sdo == None:
 				self.response.set_status(404)
