@@ -98,7 +98,9 @@
     <Content Include="library\tiddlywiki.abego-software.xml">
       <SubType>Designer</SubType>
     </Content>
-    <Content Include="library\YouTube.xml" />
+    <Content Include="library\YouTube.xml">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="PageProperties.xml">
       <SubType>Designer</SubType>
     </Content>
@@ -132,6 +134,7 @@
       <SubType>Designer</SubType>
     </Content>
     <Content Include="page-setup-first.xml" />
+    <Content Include="UserProfile.xml" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
