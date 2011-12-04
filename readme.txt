@@ -1,8 +1,8 @@
-This is (or was) giewiki release 1.15.0.
+This is (or was) giewiki release 1.15.2.
  
 Primary starting point: About.html (requires a browser that allows Javascript).
 
-New features in this release:
+New features in this release 1.15:
 	* Site-wide tag links, retrieved via the 'tags' caption.
 	* User-defined template for the auto-generated mails.
 	* New option to Auto-save changes while editing.
@@ -11,6 +11,11 @@ New features in this release:
 	* Lazy-load tiddler attribute for generel load-on-demand.
 	* "requires" attribute for systemConfig tiddlers.
 	* Admin now has direct DataStore link to http://appengine.google.com.
+
+Fixed in 1.15.2:
+	* missing index data in config.js
+	* sorting of index.xml: Now most recent
+
 
 Additional resources:
 	http://giewiki.appspot.com
