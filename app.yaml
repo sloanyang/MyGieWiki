@@ -1,5 +1,5 @@
 application: giewiki
-version: 1-15-1
+version: 1-15-2
 runtime: python
 api_version: 1
 
@@ -19,9 +19,6 @@ handlers:
 
 - url: /build_tag_index
   script: build_tag_index.py
-
-- url: /config.js
-  script: config.py
 
 - url: /dynamic/iewiki-xsl
   script: dynamic-xsl.py

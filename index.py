@@ -49,10 +49,8 @@ class MainRss(webapp.RequestHandler):
 			si.language = "en"
 			
 	tq = Tiddler.all().filter("public",True).filter("current",True)
-	for tn in ignore:
-		tq = tq.filter("title != ", tn)
 		
-	ts = tq.order("title").order("-modified").fetch(10)
+	ts = tq.order("-modified").fetch(10 + len(ignore))
 	authors = dict()
 	for t in ts:
 		if t.author != None:
@@ -77,6 +75,8 @@ class MainRss(webapp.RequestHandler):
 		
 	copyright = "Copyright " + pdate.strftime("%Y") + " " + copyright
 	
+	self.response.headers['Content-Type'] = 'application/rss+xml'
+	self.response.headers['Cache-Control'] = 'no-cache'
 	self.response.out.write('\
 <?xml version="1.0"?>\
 <rss version="2.0">\
@@ -89,10 +89,11 @@ class MainRss(webapp.RequestHandler):
 <pubDate>' + pdate.strftime("%Y-%m-%d") + '</pubDate>\
 <lastBuildDate>' + pdate.strftime("%Y-%m-%d") + '</lastBuildDate>\
 <docs>http://blogs.law.harvard.edu/tech/rss</docs>\
-<generator>GieWiki 1.0.3</generator>')
+<generator>giewiki 1.15.2</generator>')
 
 	for t in ts:
-		self.response.out.write('\
+		if not t.title in ignore:
+			self.response.out.write('\
 <item>\
   <title>' + xml.sax.saxutils.escape(t.title) + '</title>\
   <link>' + self.tiddlerUrl(t) + '</link>\

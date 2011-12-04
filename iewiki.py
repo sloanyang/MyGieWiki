@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.15.1
+# ver.:	1.15.2
 
 import cgi
 import codecs
@@ -30,19 +30,128 @@ from google.appengine.api import mail
 from google.appengine.api import namespace_manager
 from google.appengine.api import app_identity
 
-
 from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, noSuchTiddlers
 
 from javascripts import javascriptDict
 
-giewikiVersion = '2.15'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
 S_OK = 0
 S_FALSE = 1
 E_FAIL = -1
+
+HttpMethods = '\
+createPage\n\
+editTiddler\n\
+unlockTiddler\n\
+lockTiddler\n\
+saveTiddler\n\
+dropTiddlerEdit\n\
+addTags\n\
+changeTags\n\
+deleteFile\n\
+deleteTiddler\n\
+revertTiddler\n\
+deleteVersions\n\
+tiddlerHistory\n\
+tiddlerVersion\n\
+tiddlerDiff\n\
+getLoginUrl\n\
+pageProperties\n\
+clipboard\n\
+userProfile\n\
+getUserInfo\n\
+addProject\n\
+deletePage\n\
+getNewAddress\n\
+submitComment\n\
+deleteComment\n\
+alterComment\n\
+getComments\n\
+getNotes\n\
+getMessages\n\
+getTiddler\n\
+getTiddlers\n\
+listTiddlersTagged\n\
+fileList\n\
+replaceExistingFile\n\
+recycleBin\n\
+getRecentChanges\n\
+getRecentComments\n\
+siteMap\n\
+getGroups\n\
+createGroup\n\
+getGroupMembers\n\
+addGroupMember\n\
+removeGroupMember\n\
+evaluate\n\
+tiddlersFromUrl\n\
+openLibrary\n\
+listScripts\n\
+updateTemplate\n\
+getTemplates'
+
+jsProlog = '\
+// This file is auto-generated\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 2, date: new Date("Dec 4, 2011"), extensions: {} };\n\
+http = {\n\
+  _methods: [],\n\
+  _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
+}\n\
+\n\
+http._init = function(ms) { for (var i=0; i < ms.length; i++) http._addMethod(ms[i]); }\n\
+var lazyLoadTags = {};\n\
+var lazyLoadSpecial = [];\n\
+var lazyLoadAll = {};\n'
+
+jsConfig ='\
+var config = {\n\
+	animDuration: 400,\n\
+	appId: "<appid>",\n\
+	autoSaveAfter: 20,\n\
+	cascadeFast: 20,\n\
+	cascadeSlow: 60,\n\
+	cascadeDepth: 5,\n\
+	locale: "en",\n\
+	admin: <isAdmin>,\n\
+	loginName: <loginName>,\n\
+	owner: <pageOwner>,\n\
+	access: "<access>",\n\
+	anonAccess: "<anonAccess>",\n\
+	authAccess: "<authAccess>",\n\
+	groupAccess: "<groupAccess>",\n\
+	groups: <userGroups>,\n\
+	project: "<project>",\n\
+	sitetitle: <sitetitle>,\n\
+	subtitle: <subtitle>,\n\
+	locked: <isLocked>,\n\
+	tiddlerTags: <tiddlerTags>,\n\
+	viewButton: <viewButton>,\n\
+	viewPrior: <viewPrior>,\n\
+	foldIndex: <foldIndex>,\n\
+	serverType: "<servertype>",\n\
+	clientip: "<clientIP>",\n\
+	timeStamp: "<timestamp>",\n\
+	warnings: <allWarnings>,\n\
+	pages: [ <siblingPages> ],\n\
+	deprecatedCount: <deprecatedCount>,\n\
+	noSuchTiddlers: <noSuchTiddlers>,\n\
+	options: {\n\
+		' # the rest is built dynamically
+
+def isNameAnOption(name):
+	return name.startswith('txt') or name.startswith('chk')
+
+def AttrValueOrBlank(o,a):
+	return unicode(getattr(o,a)) if o != None and hasattr(o,a) and getattr(o,a) != None else ''
+
+def jsEncodeStr(s):
+	return 'null' if s is None else u'"' + unicode(s).replace(u'"',u'\\"').replace(u'\n',u'\\n').replace(u'\r',u'') + u'"'
+
+def jsEncodeBool(b):
+	return 'true' if b else 'false'
 
 class library():
 	libraryPath = 'library/'
@@ -576,16 +685,16 @@ class MainPage(webapp.RequestHandler):
 		self.subdomain = None
 		self.sdo = None
 		#LogEvent("GetSubdomain", self.request.host)
-		return
+		return ""
 
-	if pos >= 0 and hostc[pos] != 'latest': # App engine uses this for alternate versions
-		self.subdomain = hostc[pos]
-		self.sdo = SubDomain.all().filter('preurl', self.subdomain).get()
-		#LogEvent("GetSubdomain", self.request.host + " >> " + self.subdomain)
-		namespace_manager.set_namespace(self.subdomain)
-	else:
-		#LogEvent("GetSubdomain", self.request.host + " >none")
-		self.subdomain = None
+#	if pos >= 0 and hostc[pos] != 'latest': # App engine uses this for alternate versions
+#		self.subdomain = hostc[pos]
+#		self.sdo = SubDomain.all().filter('preurl', self.subdomain).get()
+#		#LogEvent("GetSubdomain", self.request.host + " >> " + self.subdomain)
+#		namespace_manager.set_namespace(self.subdomain)
+#	else:
+#		#LogEvent("GetSubdomain", self.request.host + " >none")
+#		self.subdomain = None
 
   def initXmlResponse(self):
 	self.response.headers['Content-Type'] = 'text/xml'
@@ -3248,6 +3357,12 @@ class MainPage(webapp.RequestHandler):
   def getText(self, page, readAccess=True, tiddict=dict(), twd=None, xsl=None, metaData=False, message=None, mcpage = None):
 	if message:
 		self.warnings.append(message);
+	if mcpage:
+		mcpage.lazyLoadAll = dict()
+		mcpage.lazyLoadTags = dict()
+		mcpage.lazyLoadSpecial = []
+		mcpage.page = page
+
 	if page != None:
 		try:
 			refTemplate = page.template
@@ -3365,11 +3480,6 @@ class MainPage(webapp.RequestHandler):
 						tiddict[id] = t
 				else:
 					tiddict[id] = t
-	if mcpage:
-		mcpage.lazyLoadAll = dict()
-		mcpage.lazyLoadTags = dict()
-		mcpage.lazyLoadSpecial = []
-		mcpage.page = page
 
 	httpMethodTiddler = None
 	for id, t in tiddict.iteritems():
@@ -3507,8 +3617,8 @@ class MainPage(webapp.RequestHandler):
 			eoS = '<!--- injection point A --->'
 			psPos = twdtext.rfind(eoS)
 			if psPos == -1:
-				psPos = twdtext.rfind('<!--POST-SCRIPT-START-->')	
-			globalPatch = [ twdtext[0:psPos],'<!-- injected text: -->']
+				psPos = twdtext.rfind('<!--POST-SCRIPT-START-->')
+			globalPatch = [ twdtext[0:psPos],'<script src="' + self.path + '.config.js" type="text/javascript"></script>\r\n<script src="/static/iewiki.js" type="text/javascript"></script>']
 			if not page is None:
 				scrdict = dict()
 				if hasattr(page,'scripts') and page.scripts != None:
@@ -3522,7 +3632,7 @@ class MainPage(webapp.RequestHandler):
 							if len(sn) > 0:
 								scrdict[sn] = javascriptDict[sn]
 				for k in scrdict.keys():
-					globalPatch.append('\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
+					globalPatch.append('\r\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
 			serverHost = self.request.url.replace('.html?','?')
 			globalPatch.append('\n<script type="text/javascript">' \
 							 + '\nconfig.options.rat = ' + ( ('"' + self.readAccessToken(page,readAccess) + '"') if users.get_current_user() != None else 'false') + ';\n')
@@ -3563,6 +3673,9 @@ class MainPage(webapp.RequestHandler):
   def get(self): # this is where it all starts
 	self.user = users.get_current_user()
 	self.path = self.request.path
+	if self.path.endswith('.config.js'):
+		return self.getConfig()
+
 	self.warnings = []
 	self.pagekey = self.request.remote_addr + self.request.path
 	
@@ -3694,9 +3807,10 @@ class MainPage(webapp.RequestHandler):
 	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
 	mcpage = MCPage()
 	text = self.getText(page,readAccess,tiddict,twd,xsl,metaData,message,mcpage)
+	logging.info("mckey := " + self.pagekey)
 	memcache.set(self.pagekey,mcpage) # used by config.js request
 		
-	# last, but no least
+	# last, but not least
 	self.response.headers['Cache-Control'] = 'no-cache'
 	self.response.headers['Access-Control-Allow-Origin'] = '*'
 	self.response.out.write(text)
@@ -3707,6 +3821,154 @@ class MainPage(webapp.RequestHandler):
   def options(self):
 	self.response.headers.add_header('Access-Control-Allow-Origin','*')
 	self.response.headers.add_header('Access-Control-Allow-Headers','X-Requested-With')
+
+  def AppendConfigOption(self,list,fn,fv):
+	self.configOptions.append(fn)
+	list.append(fn + ': ' + fv)
+
+  def getConfig(self):
+	'Dynamically construct file ".config.js"'
+	user = users.get_current_user()
+	self.getSubdomain()
+	logging.info("CFG: " + self.request.path)
+	mckey = self.request.remote_addr + self.request.path[0:-len('.config.js')]
+	mcpage = memcache.get(mckey)
+	page = None if not mcpage else mcpage.page
+	logging.info("mckey : " + mckey)
+	warnings = memcache.get("W:" + mckey)
+	userGroups = ''
+	pages = []
+	noSuchTdlrs = None
+	if page is None or page.is_saved() == False:
+		logging.error("page not found in memcache" if page is None else "Page is new")
+		yourAccess =  'view' if page is None else 'admin' # admin when db is blank
+		anonAccess = 'view' #?
+		authAccess = 'view' #?
+		groupAccess = 'view'#?
+		owner = ''
+		locked = False
+		deprecatedCount = 0
+		siteTitle = ''
+		subTitle = ''
+		viewButton = 'false'
+		viewPrior = 'false'
+		foldIndex = 'false'
+	else:
+		yourAccess = AccessToPage(page,user)
+		anonAccess = page.access[page.anonAccess]
+		authAccess = page.access[page.authAccess]
+		groupAccess = page.access[page.groupAccess]
+		if (not page.ownername is None) and (user is None or user.nickname() != page.owner.nickname()):
+			owner = page.ownername
+		else:
+			owner = page.owner.nickname()
+		if page.groups != None:
+			userGroups = page.groups
+		viewButton = 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false'
+		viewPrior = 'true' if hasattr(page,'viewprior') and page.viewprior else 'false'
+		foldIndex = 'true' if hasattr(page,'foldIndex') and page.foldIndex else 'false'
+		siteTitle = page.title
+		subTitle = page.subtitle
+		locked = page.locked
+		deprecatedCount = mcpage.deprecatedCount
+		if hasattr(page,noSuchTiddlers):
+			noSuchTdlrs = page.noSuchTiddlers
+
+		papalen = page.path.rfind('/')
+		if papalen == -1:
+			paw = ""
+		else:
+			paw = page.path[0:papalen + 1]
+		for p in Page.all():
+			if p.path.startswith(paw): # list sibling pages
+				pages.append(''.join(['{ p:', jsEncodeStr(p.path), ',t:', jsEncodeStr(p.title), ',s:', jsEncodeStr(p.subtitle),'}']))
+		logging.info("Config for " + page.path + ": " + page.title)
+
+	self.configOptions = list()
+	isLoggedIn = user != None
+	self.response.headers['Content-Type'] = 'application/x-javascript'
+	self.response.headers['Cache-Control'] = 'no-cache'
+	loginName = 'null' if user is None else jsEncodeStr(user.nickname())
+	self.response.out.write( jsProlog)
+	nsts = [] if noSuchTdlrs is None else noSuchTdlrs.split('\n')
+	if mcpage:
+		if mcpage.lazyLoadTags:
+			for (altag,altit) in mcpage.lazyLoadTags.iteritems():
+				if len(altit):
+					self.response.out.write('lazyLoadTags[' + jsEncodeStr(altag) + '] = [')
+				while len(altit):
+					self.response.out.write(jsEncodeStr(altit.pop()))
+					self.response.out.write(',' if len(altit) else '];\n')
+		for atn in mcpage.lazyLoadSpecial:
+			self.response.out.write('lazyLoadSpecial.push(' + jsEncodeStr(atn) + ');\n')
+		if mcpage.lazyLoadAll:
+			for (altitle,altime) in mcpage.lazyLoadAll.iteritems():
+				if altitle in nsts:
+					nsts.remove(altitle)
+				self.response.out.write('lazyLoadAll[' + jsEncodeStr(altitle) + '] = "' + altime.strftime('%Y%m%d%H%M%S') + '";\n')
+	self.response.out.write( jsConfig\
+		.replace('<appid>', app_identity.get_application_id(),1)\
+		.replace('<project>',self.getSubdomain(),1)\
+		.replace('<sitetitle>',jsEncodeStr(siteTitle),1)\
+		.replace('<subtitle>',jsEncodeStr(subTitle),1)\
+		.replace('<isLocked>', jsEncodeBool(locked),1)\
+		.replace('<tiddlerTags>',jsEncodeStr(AttrValueOrBlank(page,'tiddlertags')),1)\
+		.replace('<viewButton>',viewButton,1)\
+		.replace('<viewPrior>',viewPrior,1)\
+		.replace('<foldIndex>',foldIndex,1)\
+		.replace('<servertype>',os.environ['SERVER_SOFTWARE'],1)\
+		.replace('<isAdmin>','true' if users.is_current_user_admin() else 'false',1)\
+		.replace('<loginName>',loginName,1)\
+		.replace('<pageOwner>',jsEncodeStr(owner),1)\
+		.replace('<access>',yourAccess,1)\
+		.replace('<anonAccess>',anonAccess,1)\
+		.replace('<authAccess>',authAccess,1)\
+		.replace('<groupAccess>',groupAccess,1)\
+		.replace('<userGroups>',jsEncodeStr(userGroups),1)\
+		.replace('<clientIP>',self.request.remote_addr,1)\
+		.replace('<deprecatedCount>', str(deprecatedCount),1)\
+		.replace('<allWarnings>',jsEncodeStr(warnings),1)\
+		.replace('<noSuchTiddlers>',jsEncodeStr('\n'.join(nsts)),1)\
+		.replace('<siblingPages>', ',\n'.join(pages),1)\
+		.replace('<timestamp>', unicode(datetime.datetime.now()),1)) # time.strftime("%Y-%m-%d-%H:%M:%S"),1))
+	if isLoggedIn:
+		upr = UserProfile.all().filter('user',user).get() # my profile
+		if upr == None:
+			upr = UserProfile(txtUserName = user.nickname()) # my null profile
+		else:
+			upr.txtUserName == user.nickname()
+	else:
+		upr = UserProfile(txtUserName='IP \t' + self.request.remote_addr) # anon null profile
+		
+	optlist = []
+	for (fn,ft) in upr._properties.iteritems():
+		fv = getattr(upr,fn)
+		if fv != None:
+			if type(getattr(UserProfile,fn)) == db.BooleanProperty:
+				fv = 'true' if fv else 'false'
+			else:
+				fv = jsEncodeStr(fv)
+			if isNameAnOption(fn):
+				self.AppendConfigOption(optlist,fn, fv)
+	for (fn,ft) in upr._dynamic_properties.iteritems():
+		fv = getattr(upr,fn)
+		if fv != None:
+			if fn.startswith('chk'):
+				fv = 'true' if fv else 'false'
+			else:
+				fv = jsEncodeStr(fv)
+			if isNameAnOption(fn):
+				self.AppendConfigOption(optlist,fn, fv)
+
+	if isLoggedIn and not 'txtUserName' in self.configOptions:
+		self.AppendConfigOption(optlist,'txtUserName',jsEncodeStr(user.nickname()))
+
+	self.response.out.write(',\n\t\t'.join(optlist))
+	self.response.out.write('\n\t}\n};\n')
+
+	self.response.out.write('http._init(["')
+	self.response.out.write('","'.join(HttpMethods.split('\n')))
+	self.response.out.write('"]);')
 
 ############################################################################
 	

@@ -38,6 +38,13 @@ indexes:
   properties:
   - name: current
   - name: public
+  - name: modified
+    direction: desc
+
+- kind: Tiddler
+  properties:
+  - name: current
+  - name: public
   - name: title
   - name: modified
     direction: desc
