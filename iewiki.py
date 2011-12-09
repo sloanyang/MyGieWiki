@@ -35,6 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
+giewikiVersion = '1.15.2'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -687,14 +688,12 @@ class MainPage(webapp.RequestHandler):
 		#LogEvent("GetSubdomain", self.request.host)
 		return ""
 
-#	if pos >= 0 and hostc[pos] != 'latest': # App engine uses this for alternate versions
-#		self.subdomain = hostc[pos]
-#		self.sdo = SubDomain.all().filter('preurl', self.subdomain).get()
-#		#LogEvent("GetSubdomain", self.request.host + " >> " + self.subdomain)
-#		namespace_manager.set_namespace(self.subdomain)
-#	else:
-#		#LogEvent("GetSubdomain", self.request.host + " >none")
-#		self.subdomain = None
+	if pos >= 0 and hostc[pos] != 'latest': # App engine uses this for alternate versions
+		self.subdomain = hostc[pos]
+		self.sdo = SubDomain.all().filter('preurl', self.subdomain).get()
+		namespace_manager.set_namespace(self.subdomain)
+	else:
+		self.subdomain = None
 
   def initXmlResponse(self):
 	self.response.headers['Content-Type'] = 'text/xml'
@@ -3673,6 +3672,7 @@ class MainPage(webapp.RequestHandler):
   def get(self): # this is where it all starts
 	self.user = users.get_current_user()
 	self.path = self.request.path
+	self.getSubdomain()
 	if self.path.endswith('.config.js'):
 		return self.getConfig()
 
@@ -3688,7 +3688,6 @@ class MainPage(webapp.RequestHandler):
 		memcache.set(self.traceKey(), self.traceLevel, 300) # 5 minutes
 		self.Trace("TL=" + memcache.get(self.traceKey()))
 
-	self.getSubdomain()
 	method = self.request.get('method',None)
 	if method != None:
 		if method == "LoginDone":
@@ -3829,7 +3828,7 @@ class MainPage(webapp.RequestHandler):
   def getConfig(self):
 	'Dynamically construct file ".config.js"'
 	user = users.get_current_user()
-	self.getSubdomain()
+
 	logging.info("CFG: " + self.request.path)
 	mckey = self.request.remote_addr + self.request.path[0:-len('.config.js')]
 	mcpage = memcache.get(mckey)
@@ -3906,9 +3905,12 @@ class MainPage(webapp.RequestHandler):
 				if altitle in nsts:
 					nsts.remove(altitle)
 				self.response.out.write('lazyLoadAll[' + jsEncodeStr(altitle) + '] = "' + altime.strftime('%Y%m%d%H%M%S') + '";\n')
+	
+	project = "" if self.subdomain is None else self.subdomain
+
 	self.response.out.write( jsConfig\
 		.replace('<appid>', app_identity.get_application_id(),1)\
-		.replace('<project>',self.getSubdomain(),1)\
+		.replace('<project>',project,1)\
 		.replace('<sitetitle>',jsEncodeStr(siteTitle),1)\
 		.replace('<subtitle>',jsEncodeStr(subTitle),1)\
 		.replace('<isLocked>', jsEncodeBool(locked),1)\
