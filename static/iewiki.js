@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.15.1
+   version:	1.15.2
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -4712,9 +4712,7 @@ Story.prototype.displayDefaultTiddlers = function() {
 	var dts = store.filterTiddlers(store.getTiddlerText("DefaultTiddlers"));
 	if (dts.length > 0 && dts[0].title == 'PageSetup' && config.access != 'admin')
 		dts.pop();
-	//if (dts.length == 0)
-	//	dts.push(store.getTiddler('NoAccessMessage'));
-    this.displayTiddlers(null, dts);
+	this.displayTiddlers(null, dts);
 };
 
 Story.prototype.displayTiddlers = function(srcElement, titles, template, animate, unused, customFields, toggle) {
@@ -8299,7 +8297,7 @@ config.macros.loginDialog = {
 		if (insideTiddler(place, 'PageSetup'))
 			return;
 		if (config.isLoggedIn() == false)
-			window.location = http.getLoginUrl({ path: window.location.pathname + '#' + story.viewState(["LoginDialog"]) }).Url;
+			window.location = http.getLoginUrl({ path: window.location.pathname + '#' + story.viewState(['LoginDialog','NoAccessMessage']) }).Url;
 	}
 };
 

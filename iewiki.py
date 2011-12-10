@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.15.2
+# ver.:	1.15.3
 
 import cgi
 import codecs
@@ -35,7 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.15.2'
+giewikiVersion = '1.15.3'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -96,7 +96,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 2, date: new Date("Dec 4, 2011"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 3, date: new Date("Dec 10, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -468,7 +468,7 @@ def initHist(shadowTitle,format):
 			caps.append('')
 	versions = '|'.join(caps)
 	if shadowTitle != None:
-		versions += "|>|Default content|<<diff 0 " + shadowTitle + '>>|<<revision "' + shadowTitle + '" 0>>|\n'
+		versions += "|\n|>|Default content|<<diff 0 " + shadowTitle + '>>|<<revision "' + shadowTitle + '" 0>>|'
 	return versions
   
 def getTiddlerVersions(xd,tid,startFrom,format=None):
@@ -3368,8 +3368,12 @@ class MainPage(webapp.RequestHandler):
 		except:
 			refTemplate = None
 
-		if readAccess == False and self.request.get('twd',None) != None and self.request.get('rat') == self.readAccessToken(page,True):
-			readAccess = True # allow sync status retrieval
+		if readAccess == False:
+			if self.request.get('twd',None) != None and self.request.get('rat') == self.readAccessToken(page,True):
+				readAccess = True # allow sync status retrieval
+			else:
+				alwaysReadAccess = ['NoAccessMessage','DefaultTiddlers']
+
 
 		if readAccess and refTemplate != None:
 			tl = self.getTiddlersFromTemplate(refTemplate,tiddict,self.request.get('upgradeTemplate') == 'try')
@@ -3446,14 +3450,16 @@ class MainPage(webapp.RequestHandler):
 					return True
 				else:
 					return not priv
-			elif t.title == 'NoAccessMessage':
+			elif t.title in alwaysReadAccess:
+				if t.title == 'DefaultTiddlers':
+					t.text = '[[NoAccessMessage]]'
 				return True
 			else:
 				return False
 
 	for st in ShadowTiddler.all():
 		if self.path.startswith(st.path) and inclusionFilter(st.tiddler):
-			if readAccess or st.tiddler.title == 'NoAccessMessage':
+			if readAccess or st.tiddler.title in alwaysReadAccess:
 				try:
 					tiddict[st.tiddler.title] = st.tiddler
 				except Exception, x:

@@ -33,7 +33,7 @@ config.macros.STETabInsert = {
 |&lt;&lt;STETabInsert LibraryUsageHelp&gt;&gt;|A help file|
 |&lt;&lt;STETabInsert LoginDialog&gt;&gt;|Used the loginDialog macro to present an iFrame that contains the google login dialog|
 |&lt;&lt;STETabInsert MainMenu&gt;&gt;|This shadow tiddler is used as the contents of the main menu in the left-hand column of the screen|
-|&lt;&lt;STETabInsert NoAccessMessage&gt;&gt;|Presented when the user does not have access to any of the DefaultTiddlers|
+|&lt;&lt;STETabInsert NoAccessMessage&gt;&gt;|Listed in place of the normal DefaultTiddlers (so as to be rendered) when the user does not have access to the page|
 |&lt;&lt;STETabInsert OptionsPanel&gt;&gt;|This shadow tiddler is used as the contents of the options panel slider in the right-hand sidebar|
 |&lt;&lt;STETabInsert PageProperties&gt;&gt;|The dialog for defining page properties (LoD)|
 |&lt;&lt;STETabInsert PagePropertiesScript&gt;&gt;|Script used by the the dialog for defining page properties (LoD)|

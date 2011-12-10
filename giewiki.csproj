@@ -67,7 +67,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="build_tag_index.py" />
-    <Content Include="config.py" />
     <Content Include="ExtScriptHelp.xml" />
     <Content Include="GiewikiAdaptor.xml" />
     <Content Include="giewikidb.py" />
