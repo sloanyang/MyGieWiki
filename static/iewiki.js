@@ -162,7 +162,7 @@ config.tiddlerTemplates = {
 // More messages (rather a legacy layout that should not really be like this)
 config.views = {
     wikified: {
-        defaultText: "The tiddler '%0' doesn't yet exist. Double-click to create it, or to create a new page named %0, <script label=\"click here.\" title=\"Create page\">wikify(store.getTiddlerText(\"CreateNewPage\"), place);</script>",
+        defaultText: "The tiddler '%0' doesn't yet exist. Double-click to create it, or to create a new page named %0, <script label=\"click here.\" title=\"Create page\">wikify(store.getTiddlerText(\"CreateNewPage\"), place);</script><br>",
         defaultModifier: "(missing)",
         shadowModifier: "(special tiddler)",
         dateFormat: "DD MMM YYYY",
@@ -7898,7 +7898,7 @@ config.macros.input = {
 		var fft = params.shift();
 		var ffn = params.shift();
 		var initer = config.macros.input[fft];
-		var f = GetForm(tiddler.title);
+		var f = GetForm(tiddler ? tiddler.title : formName(place));
 		if (params.length == 1 && f && f[ffn] != null)
 			params[1] = f[ffn]; // get default value from form
 		f.controls = f.controls || [];
