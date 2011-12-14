@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.15.3
+# ver.:	1.15.4
 
 import cgi
 import codecs
@@ -35,7 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.15.3'
+giewikiVersion = '1.15.4'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -96,7 +96,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 3, date: new Date("Dec 10, 2011"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 4, date: new Date("Dec 14, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -3784,7 +3784,7 @@ class MainPage(webapp.RequestHandler):
 	else:
 		LogEvent("No page ", self.request.url)
 
-	if page == None:
+	if page is None:
 		if rootpath:
 			pg = Page()
 			pg.path = "/"
@@ -3799,15 +3799,18 @@ class MainPage(webapp.RequestHandler):
 				# Not an existing page, perhaps an uploaded file ?
 				file = UploadedFile.all().filter("path =", urllib.unquote(self.path)).get()
 				#LogEvent("Get file", self.path)
-				if file == None:
-					self.response.set_status(404)
-					return
+				if file is None:
+					page = Page.all().filter('path','/HTTP/404').get()
+					if page is None:
+						self.response.set_status(404)
+						return
 				else:
 					text = file.data
 					self.response.headers['Content-Type'] = file.mimetype
-			self.response.headers['Cache-Control'] = 'no-cache'
-			self.response.out.write(text)
-			return
+			if page is None:
+				self.response.headers['Cache-Control'] = 'no-cache'
+				self.response.out.write(text)
+				return
 
 	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
 	mcpage = MCPage()

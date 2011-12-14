@@ -257,7 +257,42 @@ config.macros.importTiddlers = {
 			config.macros.importTiddlers.renderTL(place,aurl,afilter,tiddlers);
 		}
 	}
-}
+};
+	
+config.macros.importTiddlers.menu = function () {
+	var filelist = http.tiddlersFromUrl({ menu: true });
+	if (filelist.length == 0)
+		return &quot;.&quot;;
+	var mls = [&quot; or select from the following previously retrieved files:&quot;];
+	for (var i = 0; i &lt; filelist.length; i++)
+		mls.push(['&lt;script label=&quot;', filelist[i], '&quot;&gt;config.macros.importTiddlers.serve(', filelist[i].toJSONString(), ')&lt;/script&gt;'].join(''));
+	return mls.join('&lt;br&gt;');
+};
+	
+config.macros.importTiddlers.importSelected = function (ev, tidlr) {
+	var importByMenu = function (url, tbl) {
+		var selectList = [];
+		var cls = config.macros.importTiddlers.tims[url];
+		for (var mn in cls) {
+			var e = cls[mn];
+			var tn = e.nextSibling.firstChild.nodeValue;
+			if (e.type == 'checkbox' &amp;&amp; e.checked &amp;&amp; tn)
+				selectList.push(tn);
+		}
+		var result = http.tiddlersFromUrl({ url: url, select: selectList.length ? selectList.join('||') : 'void' });
+	};
+
+	if (!tidlr)
+		tidlr = story.findContainingTiddler(resolveTarget(ev || window.event));
+	var urls = document.getElementsByName('url')
+	for (var i in urls) {
+		var e = urls[i];
+		if (isDescendant(e, tidlr)) {
+			importByMenu(e.getAttribute(&quot;id&quot;), e.nextSibling);
+		}
+	}
+	return true;
+};
 //}}}
 </pre>
 </tiddler>
@@ -405,7 +440,7 @@ config.macros.importTiddlers.onchange = function (target) {
 					cursel.push(pulls[lix]);
 					var ctls = target.parentNode.parentNode.parentNode.childNodes;
 					for (var cni = 0; cni &lt; ctls.length; cni++) {
-						if (ctls[cni].firstChild.childNodes[1].innerText == pulls[lix])
+						if (ctls[cni].firstChild.childNodes[1].firstChild.nodeValue == pulls[lix])
 							ctls[cni].firstChild.firstChild.checked = true;
 					}
 				}
@@ -462,42 +497,6 @@ config.macros.importTiddlers.serve = function (file, selected, override, where) 
 	else
 		story.displayTiddler(null, file);
 };
-	
-config.macros.importTiddlers.menu = function () {
-	var filelist = http.tiddlersFromUrl({ menu: true });
-	if (filelist.length == 0)
-		return &quot;.&quot;;
-	var mls = [&quot; or select from the following previously retrieved files:&quot;];
-	for (var i = 0; i &lt; filelist.length; i++)
-		mls.push(['&lt;script label=&quot;', filelist[i], '&quot;&gt;config.macros.importTiddlers.serve(', filelist[i].toJSONString(), ')&lt;/script&gt;'].join(''));
-	return mls.join('&lt;br&gt;');
-};
-	
-config.macros.importTiddlers.importSelected = function (ev, tidlr) {
-	var importByMenu = function (url, tbl) {
-		var selectList = [];
-		var cls = config.macros.importTiddlers.tims[url];
-		for (var mn in cls) {
-			var e = cls[mn];
-			var tn = e.nextSibling.firstChild.nodeValue;
-			if (e.type == 'checkbox' &amp;&amp; e.checked &amp;&amp; tn)
-				selectList.push(tn);
-		}
-		var result = http.tiddlersFromUrl({ url: url, select: selectList.length ? selectList.join('||') : 'void' });
-	};
-
-	if (!tidlr)
-		tidlr = story.findContainingTiddler(resolveTarget(ev || window.event));
-	var urls = document.getElementsByName('url')
-	for (var i in urls) {
-		var e = urls[i];
-		if (isDescendant(e, tidlr)) {
-			importByMenu(e.getAttribute(&quot;id&quot;), e.nextSibling);
-		}
-	}
-	return true;
-};
-
 //}}}
 </pre>
 </tiddler>
@@ -521,4 +520,5 @@ config.macros.importTiddlerStatus = {
 		}
 	}
 };
-//}}}</pre></tiddler></tiddlers>
+//}}}
+</pre></tiddler></tiddlers>
