@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.15.4
+# ver.:	1.15.5
 
 import cgi
 import codecs
@@ -35,7 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.15.4'
+giewikiVersion = '1.15.5'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -96,7 +96,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 4, date: new Date("Dec 14, 2011"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 5, date: new Date("Dec 27, 2011"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -3596,6 +3596,12 @@ class MainPage(webapp.RequestHandler):
 	
 	xd.appendChild(elDoc)
 	text = xd.toxml()
+	cssha = '<div id="shadowArea">'
+	cssta = u'<div id="storeArea">'
+	mysha = elShArea.toxml()
+	mysta = elStArea.toxml()
+	serverHost = self.request.url.replace('.html?','?')
+
 	if twd != None:
 		twdtext = None
 		if twd.startswith('http:'):
@@ -3616,56 +3622,67 @@ class MainPage(webapp.RequestHandler):
 				text = HtmlErrorMessage("Cannot read " + twd + ":\n" + unicode(x))
 		if twdtext != None:
 			xmldecl = '<?xml version="1.0" ?>' # strip off this
-			if text.startswith(xmldecl):
-				text = text[len(xmldecl):]
-
-			eoS = '<!--- injection point A --->'
-			psPos = twdtext.rfind(eoS)
-			if psPos == -1:
-				psPos = twdtext.rfind('<!--POST-SCRIPT-START-->')
-			globalPatch = [ twdtext[0:psPos],'<script src="' + self.path + '.config.js" type="text/javascript"></script>\r\n<script src="/static/iewiki.js" type="text/javascript"></script>']
-			if not page is None:
-				scrdict = dict()
-				if hasattr(page,'scripts') and page.scripts != None:
-					for sn in page.scripts.split('|'):
-						if len(sn) > 0 and javascriptDict.has_key(sn):
-							scrdict[sn] = javascriptDict[sn]
-				if refTemplate != None:
-					tpl = refTemplate
-					if hasattr(tpl,'scripts') and tpl.scripts != None:
-						for sn in tpl.scripts.split('|'):
-							if len(sn) > 0:
-								scrdict[sn] = javascriptDict[sn]
-				for k in scrdict.keys():
-					globalPatch.append('\r\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
-			serverHost = self.request.url.replace('.html?','?')
-			globalPatch.append('\n<script type="text/javascript">' \
-							 + '\nconfig.options.rat = ' + ( ('"' + self.readAccessToken(page,readAccess) + '"') if users.get_current_user() != None else 'false') + ';\n')
+			if twdtext.startswith(xmldecl):
+				twdtext = twdtext[len(xmldecl):]
+			if page != None:
+				posTitleS = twdtext.find('<title>')
+				posTitleE = twdtext.find('</title>')
+				if posTitleS != -1 and posTitleE > posTitleS:
+					twdtext = ''.join([twdtext[0:posTitleS + 7], page.title, ' - ' if len(page.title) and len(page.subtitle) else '', page.subtitle, twdtext[posTitleE:] ])
 			if metaData:
+				eoS = '<!--- injection point A --->'
+				psPos = twdtext.rfind(eoS)
+				if psPos == -1:
+					psPos = twdtext.rfind('<!--POST-SCRIPT-START-->')
+				globalPatch = [ twdtext[0:psPos],'<script src="' + self.path + '.config.js" type="text/javascript"></script>\r\n<script src="/static/iewiki.js" type="text/javascript"></script>']
+				if not page is None:
+					scrdict = dict()
+					if hasattr(page,'scripts') and page.scripts != None:
+						for sn in page.scripts.split('|'):
+							if len(sn) > 0 and javascriptDict.has_key(sn):
+								scrdict[sn] = javascriptDict[sn]
+					if refTemplate != None:
+						tpl = refTemplate
+						if hasattr(tpl,'scripts') and tpl.scripts != None:
+							for sn in tpl.scripts.split('|'):
+								if len(sn) > 0:
+									scrdict[sn] = javascriptDict[sn]
+					for k in scrdict.keys():
+						globalPatch.append('\r\n<script src="/scripts/' + scrdict[k] + '" type="text/javascript"></script>')
+				globalPatch.append('\n<script type="text/javascript">' \
+								 + '\nconfig.options.rat = ' + ( ('"' + self.readAccessToken(page,readAccess) + '"') if users.get_current_user() != None else 'false') + ';\n')
 				globalPatch.append('</script>\n')
 				for k in scripts:
 					globalPatch.append('\n<script src="/dynamic/js' + self.request.path + "/" + k + '" type="text/javascript"></script>')
-			else:
-				globalPatch.append('config.defaultCustomFields["server.host"] = "' + serverHost \
-									+ '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n')
 
-			cssa = '<div id="shadowArea">'
-			mysa = elShArea.toxml()
-			if len(mysa) > len(cssa) + 6:
-				iBPos = twdtext.rfind('<!--- injection point B --->')
-				globalPatch.append(twdtext[psPos:iBPos])
-				globalPatch.append(mysa[len(cssa):-6])
-				globalPatch.append(twdtext[iBPos:])
-			else:
-				globalPatch.append(twdtext[psPos:])
-			twdtext = ''.join(globalPatch)
+				if len(mysha) > len(cssha) + 6:
+					iBPos = twdtext.rfind('<!--- injection point B --->')
+					globalPatch.append(twdtext[psPos:iBPos])
+					globalPatch.append(mysha[len(cssha):-6])
+					globalPatch.append(twdtext[iBPos:])
+				else:
+					globalPatch.append(twdtext[psPos:])
+				twdtext = ''.join(globalPatch)
 
-			sasPos = twdtext.find(u'<div id="storeArea">')
-			if sasPos == -1:
-				text = '<div id="storeArea">) not found in ' + twd
+				sasPos = twdtext.find(cssta)
+				if sasPos == -1:
+					text = '<div id="storeArea">) not found in ' + twd
+				else:
+					saePos = twdtext.find('</div>',sasPos)
+					text = ''.join([twdtext[0:sasPos],mysta,twdtext[saePos + len('</div>'):]]) # insert text into body
 			else:
-				saePos = twdtext.find('</div>',sasPos)
-				text = ''.join([twdtext[0:sasPos],elStArea.toxml(),twdtext[saePos + len('</div>'):]]) # insert text into body
+				text = twdtext
+				if mysta[-6:] == '</div>':
+					text = text.replace(cssta,mysta[:-6])
+				if mysha[-6:] == '</div>':
+					text = text.replace(cssha,mysha[:-6])
+				pss = '<!--POST-SCRIPT-START-->'
+				text = text.replace(pss, \
+					'<script type="text/javascript">' \
+					+ '\nconfig.options.rat = ' + ( ('"' + self.readAccessToken(page,readAccess) + '"') if users.get_current_user() != None else 'false') + ';'
+					+ '\nconfig.defaultCustomFields["server.host"] = "' + serverHost \
+					+ '";\nconfig.defaultCustomFields["server.type"] = "giewiki";\n</script>\n'
+					+ pss) 
 	return text
 
   def readAccessToken(self,page,readAccess):
