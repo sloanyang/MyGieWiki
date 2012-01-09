@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.15.5
+# ver.:	1.15.6
 
 import cgi
 import codecs
@@ -35,7 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.15.5'
+giewikiVersion = '1.15.6'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -45,6 +45,7 @@ E_FAIL = -1
 
 HttpMethods = '\
 createPage\n\
+moveThisPage\n\
 editTiddler\n\
 unlockTiddler\n\
 lockTiddler\n\
@@ -96,7 +97,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 5, date: new Date("Dec 27, 2011"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 6, date: new Date("Jan 09, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -536,36 +537,6 @@ def getAuthor(t):
 def LogEvent(what,text):
 	logging.info(what + ": " + text)
 
-def exportTable(xd,xr,c,wnn,enn):
-	tr = xd.createElement(wnn)
-	xr.appendChild(tr)
-
-	cursor = None
-	repeat = True
-	while repeat:
-		ts = c.all()
-		if cursor != None:
-			ts.with_cursor(cursor)
-		n = 0
-		for t in ts.fetch(1000):
-			d = dict()
-			t.todict(d)
-			te = xd.createElement(enn)
-			tr.appendChild(te)
-			for (tan,tav) in d.iteritems():
-				if tav == None:
-					continue
-				tae = xd.createElement(tan)
-				te.appendChild(tae)
-				if tav.__class__ != unicode:
-					tae.setAttribute('type',unicode(tav.__class__.__name__))
-				tae.appendChild(xd.createTextNode(unicode(tav)))
-			n = n + 1
-		if n < 1000:
-			repeat = False
-		else:
-			cursor = ts.cursor()
-	
 def mergeDict(td,ts,filter=None):
 	for t in ts:
 		if filter == None or filter(t):
@@ -2085,6 +2056,29 @@ class MainPage(webapp.RequestHandler):
 	else:
 		self.fail("Page already exists: " + page.path)
 		
+  def moveThisPage(self):
+	newpath = self.request.get('address').strip();
+	if newpath == '':
+		return self.fail("No address indicated");
+	else:
+		# TODO: improve validation
+		if newpath[0] != '/':
+			newpath = '/' + newpath
+		page = Page.all().filter('path',newpath).get()
+		if page == None:
+			page = Page.all().filter('path',self.path).get()
+			if not page is None:
+				page.path = newpath
+				for t in Tiddler.all().filter('page',self.path):
+					t.page = newpath
+					t.put()
+				page.put()
+				self.reply({'Url': newpath, 'success': True })
+			else:
+				return self.fail("Not found: " + self.path);
+		else:
+			return self.fail("Page already exist: " + newpath);
+	
   def getLoginUrl(self):
 	p = self.request.get("path")
 	while len(p) > 300:
@@ -2097,14 +2091,14 @@ class MainPage(webapp.RequestHandler):
 			p = p[0:lsi]
 			
 	if users.get_current_user() is None:
-		self.reply( {"Url": users.create_login_url(p), 'success': True })
+		self.reply( {'Url': users.create_login_url(p), 'success': True })
 	else:
-		self.reply( {"Url": users.create_logout_url(p), 'success': True })
+		self.reply( {'Url': users.create_logout_url(p), 'success': True })
 
   def deletePage(self):
 	path = self.path
-	prex = Page.all().filter("path =",path)
-	tls = Tiddler.all().filter("page=",path)
+	prex = Page.all().filter('path',path)
+	tls = Tiddler.all().filter('page',path)
 	for result in tls:
 		KillTiddlerVersion(result)
 	for result in prex:
@@ -3237,23 +3231,6 @@ class MainPage(webapp.RequestHandler):
 	if method == 'cleanup':
 		return self.cleanup()
 		
-  def export(self):
-	self.initXmlResponse()
-	xd = xml.dom.minidom.Document()
-	xr = xd.createElement("giewiki")
-	xr.setAttribute('timestamp',unicode(datetime.datetime.now()))
-	xd.appendChild(xr)
-	exportTable(xd,xr,Tiddler,'tiddlers','tiddler')
-	exportTable(xd,xr,ShadowTiddler,'shadowtiddlers','shadowtiddler')
-	exportTable(xd,xr,Page,'pages','page')
-	exportTable(xd,xr,Comment,'comments','comment')
-	exportTable(xd,xr,Note,'notes','note')
-	exportTable(xd,xr,Message,'messages','message')
-	exportTable(xd,xr,SiteInfo,'siteinfo','siteinfo')
-	exportTable(xd,xr,Group,'groups','group')
-	exportTable(xd,xr,GroupMember,'groupmembers','groupmember')
-	self.response.out.write(xd.toxml())
-
   def Trace(self,msg):
 	if self.trace == False:
 		return # disabled
@@ -3725,8 +3702,6 @@ class MainPage(webapp.RequestHandler):
 
 	if self.path == "/_tasks":
 		return self.task(method)
-	elif self.path == "/_export.xml" and users.is_current_user_admin():
-		return self.export()
 
 	rootpath = self.path == '/'
 	message = None

@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.15.2
+   version:	1.15.6
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -8741,17 +8741,9 @@ config.macros.downloadAsTiddlyWiki = {
 		place.appendChild(link);
 
 		var link = config.macros.downloadAsTiddlyWiki.createLink( '.xml', '?xsl='); 
-		link.title = "Right-click to download this page as XML";
+		link.title = "Right-click to download the content on this page as XML";
 		createTiddlyText(link, " XML");
 		place.appendChild(link);
-
-		if (config.admin && window.location.pathname == "/") {
-			var link = document.createElement("a");
-			link.href = "/_export.xml"; 
-			link.title = "Right-click to export site to XML";
-			createTiddlyText(link, " Backup");
-			place.appendChild(link);
-		}
 	},
 	createLink: function(ft,qs,fta) // append default filetype & query string
 	{

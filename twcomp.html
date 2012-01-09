@@ -619,6 +619,16 @@ forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"a
 |&gt;|&gt;|Template&lt;br&gt;&lt;&lt;input select template javascript:availableTemplates() &gt;&gt;|
 |&gt;|&gt;|&lt;script label=&quot;Create new page&quot; title=&quot;Create new page&quot;&gt;OnCreatePage(http.createPage(GetForm(place)));&lt;/script&gt;&lt;script&gt;forms[formName(place)].controls['title'].focus();&lt;/script&gt;|</pre>
 </div>
+<div title="MoveThisPage" viewTemplate="ViewOnlyTemplate">
+	<pre>&lt;script&gt;
+var fn = formName(place);
+var fn = formName(place);
+forms[fn] = http.createPage({defaults:"get"}); // for updateAccess
+forms[fn].address = window.location.pathname;
+&lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Move this page&lt;/div&gt;&lt;/html&gt;
+|&gt;|&gt;|Address &lt;br&gt;&lt;&lt;input text address 70&gt;&gt;|
+|&gt;|&gt;|&lt;script label="Move page" title="Move page to a different address"&gt;OnCreatePage(http.moveThisPage(GetForm(place)));&lt;/script&gt;&lt;script&gt;forms[formName(place)].controls['address'].focus();&lt;/script&gt;|
+</pre></div>
 <div title="DefineGroup" >
 <pre>
 	&lt;script&gt;
