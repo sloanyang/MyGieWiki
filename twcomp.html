@@ -4,7 +4,7 @@
 <script id="versionArea" type="text/javascript">
 //<![CDATA[
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {}};
-var giewikiVersion = '1.15.2';
+var giewikiVersion = '1.15.7';
 //]]>
 </script>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
@@ -627,6 +627,7 @@ forms[fn] = http.createPage({defaults:"get"}); // for updateAccess
 forms[fn].address = window.location.pathname;
 &lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Move this page&lt;/div&gt;&lt;/html&gt;
 |&gt;|&gt;|Address &lt;br&gt;&lt;&lt;input text address 70&gt;&gt;|
+|&lt;&lt;input checkbox redirect false&gt;&gt;Redirect current address|
 |&gt;|&gt;|&lt;script label="Move page" title="Move page to a different address"&gt;OnCreatePage(http.moveThisPage(GetForm(place)));&lt;/script&gt;&lt;script&gt;forms[formName(place)].controls['address'].focus();&lt;/script&gt;|
 </pre></div>
 <div title="DefineGroup" >

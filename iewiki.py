@@ -1,7 +1,7 @@
 # this:	iewiki.py
 # by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:	http://code.google.com/p/giewiki
-# ver.:	1.15.6
+# ver.:	1.15.7
 
 import cgi
 import codecs
@@ -35,7 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.15.6'
+giewikiVersion = '1.15.7'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -97,7 +97,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 6, date: new Date("Jan 09, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 7, date: new Date("Jan 21, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -1956,7 +1956,7 @@ class MainPage(webapp.RequestHandler):
 	xd = XmlDocument()
 	xroot = xd.add(xd,'SiteMap', attrs={'type':'object[]'})
 	for p in pal:
-		if p.tags == None or 'hidden' not in p.tags.split():
+		if (p.tags == None or 'hidden' not in p.tags.split()) and not hasattr(p,'redirect'):
 			xpage = xd.createElement('page')
 			xroot.appendChild(xpage)
 			xd.add(xpage,'path',p.path)
@@ -2057,22 +2057,35 @@ class MainPage(webapp.RequestHandler):
 		self.fail("Page already exists: " + page.path)
 		
   def moveThisPage(self):
-	newpath = self.request.get('address').strip();
+	newpath = self.request.get('address').strip()
+	redirect = self.request.get('redirect') == 'true'
 	if newpath == '':
 		return self.fail("No address indicated");
 	else:
 		# TODO: improve validation
 		if newpath[0] != '/':
 			newpath = '/' + newpath
+		if newpath == self.path:
+			return self.fail("Same as current address; not moved")
 		page = Page.all().filter('path',newpath).get()
 		if page == None:
 			page = Page.all().filter('path',self.path).get()
 			if not page is None:
-				page.path = newpath
 				for t in Tiddler.all().filter('page',self.path):
 					t.page = newpath
 					t.put()
-				page.put()
+				if redirect:
+					np = Page()
+					for an in (Page.properties().keys() + page.dynamic_properties()):
+						av = getattr(page,an)
+						setattr(np,an,av)
+					np.path = newpath
+					np.put()
+					setattr(page,'redirect',newpath)
+					page.put()
+				else:
+					page.path = newpath
+					page.put()
 				self.reply({'Url': newpath, 'success': True })
 			else:
 				return self.fail("Not found: " + self.path);
@@ -3803,6 +3816,13 @@ class MainPage(webapp.RequestHandler):
 				self.response.headers['Cache-Control'] = 'no-cache'
 				self.response.out.write(text)
 				return
+	elif hasattr(page,'redirect'):
+		rdpath = getattr(page,'redirect')
+		rdpage = Page.all().filter('path',rdpath).get()
+		if not rdpage is None:
+			self.response.set_status(301)
+			self.response.headers['Location'] = rdpath
+			return
 
 	tiddict = self.getIncludeFiles(rootpath,page,defaultTiddlers,twd)
 	mcpage = MCPage()
