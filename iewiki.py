@@ -1,7 +1,7 @@
-# this:	iewiki.py
-# by:	Poul Staugaard [poul(dot)staugaard(at)gmail...]
-# URL:	http://code.google.com/p/giewiki
-# ver.:	1.15.7
+# this:  iewiki.py
+# by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
+# URL:   http://code.google.com/p/giewiki
+# ver.:  1.15.7
 
 import cgi
 import codecs
@@ -132,6 +132,7 @@ var config = {\n\
 	tiddlerTags: <tiddlerTags>,\n\
 	viewButton: <viewButton>,\n\
 	viewPrior: <viewPrior>,\n\
+	showByline: <showByline>,\n\
 	foldIndex: <foldIndex>,\n\
 	serverType: "<servertype>",\n\
 	clientip: "<clientIP>",\n\
@@ -366,8 +367,11 @@ def rootPageOwner(self):
 def NoneIsFalse(v):
 	return False if v == None else v
 
+def NoneIsTrue(v):
+	return True if v == None else v
+
 def NoneIsBlank(v):
-    return u"" if v == None else unicode(v)
+	return u"" if v == None else unicode(v)
 	
 def NoneIsDefault(a,d):
 	return d if a is None else a
@@ -618,10 +622,10 @@ class XmlDocument(xml.dom.minidom.Document):
 		return self.add(parent,name, attrs={'type':'object[]'})
 
 class ImportException(Exception):
-    def __init__(self,err):
-        self.error = err
-    def __str__(self):
-	   return self.error
+	def __init__(self,err):
+		self.error = err
+	def __str__(self):
+		return self.error
 
 def IsIPaddress(v):
 	if len(v) < 4:
@@ -872,7 +876,7 @@ class MainPage(webapp.RequestHandler):
 			rqlist = memcache.get(mckey)
 			if rqlist == None:
 				rqlist = []
-			error = 'Please <a href="' + self.request.url + '?method=authenticate" target="_blank">authenticate your post</a>'	
+			error = 'Please <a href="' + self.request.url + '?method=authenticate" target="_blank">authenticate your post</a>'
 			if tlr.id == '':
 				tlr.id = unicode(uuid.uuid4())
 				tlr.version = 0
@@ -1695,6 +1699,8 @@ class MainPage(webapp.RequestHandler):
 			page.groups = ''
 			page.viewbutton = False
 			page.viewprior = False
+			page.foldIndex = False
+			page.showByline = True
 		else:
 			return self.fail("Page does not exist")
 	try:
@@ -1725,6 +1731,7 @@ class MainPage(webapp.RequestHandler):
 			page.viewbutton = True if self.request.get('viewbutton') == 'true' else False
 			page.viewprior = self.request.get('viewprior') == 'true'
 			page.foldIndex = self.request.get('foldindex', 'false') == 'true'
+			page.showByline = self.request.get('showbyline','true') == 'true'
 			reqTemplate = self.request.get('template')
 			if reqTemplate != '' and reqTemplate != "normal":
 				pt = PageTemplate.all().filter('title',reqTemplate).filter('current',True).get()
@@ -1772,6 +1779,7 @@ class MainPage(webapp.RequestHandler):
 			'viewbutton': NoneIsFalse(page.viewbutton) if hasattr(page,'viewbutton') else False,
 			'viewprior': NoneIsFalse(page.viewprior) if hasattr(page,'viewprior') else False,
 			'foldindex': NoneIsFalse(page.foldIndex) if hasattr(page,'foldIndex') else False,
+			'showbyline': NoneIsTrue(page.showByline) if hasattr(page,'showByline') else True,
 			'systeminclude': '' if page.systemInclude == None else page.systemInclude }
 		if self.path == '/_templates/normal':
 			reply['message'] = "The 'normal' template is empty"
@@ -1810,7 +1818,7 @@ class MainPage(webapp.RequestHandler):
 			if not prct is None and prct.current == False:
 				# setattr(prct,'isRecycled',True)
 				DeletionLog().Log(prct,self.request.remote_addr,"Dropped from clipboard")
-				reply['Message'] = "Tiddler '" + prct.title + "' dropped from the clipboard				 into the recycle bin!"
+				reply['Message'] = "Tiddler '" + prct.title + "' dropped from the clipboard <br>into the recycle bin!"
 				prct.put()
 		except Exception, uhx:
 			pass
@@ -2002,6 +2010,10 @@ class MainPage(webapp.RequestHandler):
 				pad.anonAccess = Page.access[self.request.get("anonymous")]
 				pad.authAccess = Page.access[self.request.get("authenticated")]
 				pad.groupAccess = Page.access[self.request.get("group")]
+				pad.viewbutton = True
+				pad.viewprior = True
+				pad.foldIndex = False
+				pad.showByline = True
 				pad.put()
 				return self.reply( { 'success': True })
 			else:
@@ -2051,6 +2063,8 @@ class MainPage(webapp.RequestHandler):
 
 		page.viewbutton = pad.viewbutton
 		page.viewprior = pad.viewprior
+		page.foldIndex = pad.foldIndex
+		page.showByline = pad.showByline
 		page.put()
 		self.reply( {'Url': url, 'success': True })
 	else:
@@ -2204,8 +2218,8 @@ class MainPage(webapp.RequestHandler):
 '<header><title>Login succeeded</title>'
 '<script>'
 'function main() { \n'
-'	act = "onLogin()";'
-'	window.parent.setTimeout(act,100);\n'
+'    act = "onLogin()";'
+'    window.parent.setTimeout(act,100);\n'
 '}\n'
 '</script></header>'
 '<body onload="main()">'
@@ -2669,8 +2683,8 @@ class MainPage(webapp.RequestHandler):
 '<header><title>Upload succeeded</title>'
 '<script>'
 'function main() { \n'
-'	act = "onUploadTiddlers(' + "'" + url + "'" + ')";'
-'	window.parent.setTimeout(act,100);\n'
+'    act = "onUploadTiddlers(' + "'" + url + "'" + ')";'
+'    window.parent.setTimeout(act,100);\n'
 '}\n'
 '</script></header>'
 '<body style="margin: 0 0 0 0; text-align: center; font-family: Arial" onload="main()">'
@@ -2821,7 +2835,7 @@ class MainPage(webapp.RequestHandler):
 			if importedFile != None:
 				return FixTWSyntaxAndParse(importedFile.data)
 		if sources == None or 'remote' in sources:
-			content = memcache.get(url)	if cache != None else None
+			content = memcache.get(url) if cache != None else None
 			if content == None:
 				try:
 					result = urlfetch.fetch(url)
@@ -2880,7 +2894,7 @@ class MainPage(webapp.RequestHandler):
 		try:
 			result = eval(self.request.get("expression"))
 # this syntax was introduced in Python 2.6, and is not supported by the google environment:
-#		except Exception as sa:
+#        except Exception as sa:
 # in stead, use:
 		except Exception, sa:
 			result = sa
@@ -3099,8 +3113,8 @@ class MainPage(webapp.RequestHandler):
 			raise ImportException("Fetching the url " + ln + " returned status code " + unicode(result.status_code))
 		else:
 			content = result.content
-			#if cache != None:	
-			#	memcache.add(url,content,cache)
+			#if cache != None:    
+			#    memcache.add(url,content,cache)
 			self.initXmlResponse()
 			self.response.out.write(content)
 	else:
@@ -3412,10 +3426,10 @@ class MainPage(webapp.RequestHandler):
 				deprecated = hasattr(t,'deprecated')	# Check if this tiddler is deprecated
 				if mcpage != None and deprecated:
 					mcpage.deprecatedCount = mcpage.deprecatedCount + 1
-				if getdts == None:							# Unless you want the deprecated tiddlers
+				if getdts == None:						# Unless you want the deprecated tiddlers
 					if deprecated:
-						return False						#   leave 'em out
-				if metaData and hasattr(t,'lazyLoad'):		# - or lazyLoad only
+						return False					#   leave 'em out
+				if metaData and hasattr(t,'lazyLoad'):	# - or lazyLoad only
 					if mcpage:
 						ttl = tagStringToList(t.tags)
 						if not 'excludeLists' in ttl:
@@ -3577,7 +3591,7 @@ class MainPage(webapp.RequestHandler):
 		else:
 			memcache.delete(wmckey)
 
-	if xsl != None and xsl != "":	# except if no CSS is desired
+	if xsl != None and xsl != "":    # except if no CSS is desired
 		xd.appendChild(xd.createProcessingInstruction('xml-stylesheet','type="text/xsl" href="' + xsl + '"'))
 
 	elDoc.appendChild(elShArea)
@@ -3720,8 +3734,8 @@ class MainPage(webapp.RequestHandler):
 	message = None
 	twd = self.request.get('twd',None)
 	xsl = self.request.get('xsl',None)
-	if twd == None and xsl == None:	# Unless a TiddlyWiki is required or a style sheet is specified
-		twd = TWComp # xsl = "/static/iewiki.xsl"	# use the default,
+	if twd == None and xsl == None: # Unless a TiddlyWiki is required or a style sheet is specified
+		twd = TWComp # xsl = "/static/iewiki.xsl" # use the default
 		metaData = True
 	elif twd == TWComp:
 		metaData = True
@@ -3782,8 +3796,8 @@ class MainPage(webapp.RequestHandler):
 			else:
 				message = "Start by defining root page properties"
 
-#	if page != None and page.gwversion < giewikiVersion:
-#		self.warnings.append(Upgrade(self,giewikiVersion))
+#    if page != None and page.gwversion < giewikiVersion:
+#        self.warnings.append(Upgrade(self,giewikiVersion))
 	if page != None:
 		LogEvent("Page request ", self.request.url)
 	else:
@@ -3872,6 +3886,7 @@ class MainPage(webapp.RequestHandler):
 		subTitle = ''
 		viewButton = 'false'
 		viewPrior = 'false'
+		showByline = 'true'
 		foldIndex = 'false'
 	else:
 		yourAccess = AccessToPage(page,user)
@@ -3886,6 +3901,7 @@ class MainPage(webapp.RequestHandler):
 			userGroups = page.groups
 		viewButton = 'true' if hasattr(page,'viewbutton') and page.viewbutton else 'false'
 		viewPrior = 'true' if hasattr(page,'viewprior') and page.viewprior else 'false'
+		showByline = 'true' if (not hasattr(page,'showByline')) or page.showByline != False else 'false'
 		foldIndex = 'true' if hasattr(page,'foldIndex') and page.foldIndex else 'false'
 		siteTitle = page.title
 		subTitle = page.subtitle
@@ -3938,6 +3954,7 @@ class MainPage(webapp.RequestHandler):
 		.replace('<tiddlerTags>',jsEncodeStr(AttrValueOrBlank(page,'tiddlertags')),1)\
 		.replace('<viewButton>',viewButton,1)\
 		.replace('<viewPrior>',viewPrior,1)\
+		.replace('<showByline>',showByline,1)\
 		.replace('<foldIndex>',foldIndex,1)\
 		.replace('<servertype>',os.environ['SERVER_SOFTWARE'],1)\
 		.replace('<isAdmin>','true' if users.is_current_user_admin() else 'false',1)\

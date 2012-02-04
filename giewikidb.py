@@ -102,8 +102,8 @@ class Page(db.Expando):
   EditAccess = 8
   AllAccess = 10
   access = { "all":10, "edit":8, "add":6, "tag":5, "comment":4, "view":2, "none":0,
-             10:"all", 8:"edit", 6:"add", 5:"tag", 4:"comment", 2:"view", 0:"none" }
-    
+			 10:"all", 8:"edit", 6:"add", 5:"tag", 4:"comment", 2:"view", 0:"none" }
+	
   path = db.StringProperty()
   sub = db.StringProperty()
   owner = db.UserProperty()
@@ -123,9 +123,10 @@ class Page(db.Expando):
   modified = db.DateTimeProperty(auto_now_add=True)
   systemInclude = db.TextProperty()
   gwversion = db.StringProperty()
-  viewbutton = db.BooleanProperty(True)
-  viewprior = db.BooleanProperty(True)
-  foldIndex = db.BooleanProperty(False)
+  viewbutton = db.BooleanProperty()
+  viewprior = db.BooleanProperty()
+  foldIndex = db.BooleanProperty()
+  showByline = db.BooleanProperty()
   template = db.ReferenceProperty(PageTemplate)
   scripts = db.StringProperty()
   noSuchTiddlers = db.TextProperty()

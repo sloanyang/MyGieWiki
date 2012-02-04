@@ -651,6 +651,9 @@ function main() {
     story.switchTheme(config.options.txtTheme);
     store.notifyAll();
     restart();
+	if (readOnly && !config.showByline)
+		setStylesheet('.subtitle { display: none }');
+
     refreshDisplay();
     if (pluginProblem) {
 		if (!config.macros.plugins)
