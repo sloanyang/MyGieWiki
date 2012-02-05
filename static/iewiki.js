@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.15.7
+   version:	1.15.8
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -5835,6 +5835,42 @@ function createExternalLink(place, url) {
     return link;
 }
 
+config.macros.editTiddlerField = {
+	edit: function(e) {
+		var target = resolveTarget(e || window.event);
+		target.style.display = 'none';
+		var e = createTiddlyElement(null, 'input');
+		e.setAttribute('type', 'text');
+		e.value = target.firstChild.nodeValue;
+		e.setAttribute('size', '40');
+		e.setAttribute('autocomplete', 'off');
+		target.parentElement.appendChild(e);
+	},
+	save: function(e) {
+		var target = resolveTarget(e || window.event);
+		var title = target.getAttribute('tiddler');
+		var tiddler = store.getTiddler(title);
+		var pe = target.parentElement.parentElement.parentElement;
+		var edits = pe.getElementsByTagName('input');
+		for (var i = 0; i < edits.length; i++) {
+			var ee = edits[i];
+			var se = ee.parentElement.firstChild;
+			var fn = se.getAttribute('field');
+			tiddler.fields[fn] = ee.value;
+		}
+		store.saveTiddler(title, title, tiddler.text, config.options.txtUserName, undefined, String.encodeTiddlyLinkList(tiddler.tags), tiddler.fields, false);
+		var coti = story.findContainingTiddler(target);
+		story.closeTiddler(coti.getAttribute('tiddler'),true);
+	},
+	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
+		var eda = config.admin;
+		if (params.length > 1)
+			createTiddlyButton(place,params[2],"Click to edit",eda?this.edit:null,'tiddlerField',null,null,{ tiddler: params[0], field: params[1] });
+		else if (eda)
+			createTiddlyButton(place,"Save","Save changes",this.save,'button',null,null,{ tiddler: params[0] });
+	}
+};
+
 // Event handler for clicking on a tiddly link
 function onClickTiddlerLink(ev) {
     var e = ev || window.event;
@@ -5849,18 +5885,30 @@ function onClickTiddlerLink(ev) {
         noToggle = link.getAttribute("noToggle");
         link = link.parentNode;
     } while (title == null && link != null);
-    if (!store.isShadowTiddler(title)) {
+	var meta = title.startsWith('fields:');
+	var tn = meta ?	title.substring(7) : title;
+
+    if (!store.isShadowTiddler(tn)) {
         var f = fields ? fields.decodeHashMap() : {};
         fields = String.encodeHashMap(merge(f, config.defaultCustomFields, true));
     }
-    if (title) {
+    if (tn) {
         var toggling = e.metaKey || e.ctrlKey;
         if (config.options.chkToggleLinks)
             toggling = !toggling;
         if (noToggle)
             toggling = false;
-        t = store.getTiddler(title)
-        if (t)
+        var t = store.getTiddler(tn)
+		if (t && meta) {
+			var tfta = ["|title|''" + tn + "''|\n|>|Fields|"]
+			for (var fld in t.fields) {
+				tfta.push(['|', fld, '|<<editTiddlerField ', tn.toJSONString(),' "', fld, '" ', t.fields[fld].toJSONString(),'>>|'].join(''));
+			}
+			tfta.push('|>|<<editTiddlerField ' + tn.toJSONString() + '>>|');
+			t = new Tiddler(title,t.version,tfta.join('\n'));
+            story.displayTiddler(target, t, 'ViewOnlyTemplate');
+		}
+		else if (t)
             t.display(target,fields,toggling);
         else
             story.displayTiddler(target, title, null, true, null, null, toggling);
