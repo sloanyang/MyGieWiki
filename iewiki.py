@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.15.7
+# ver.:  1.15.8
 
 import cgi
 import codecs
@@ -35,7 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.15.7'
+giewikiVersion = '1.15.8'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -97,7 +97,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 7, date: new Date("Jan 21, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 8, date: new Date("Feb 7, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -915,6 +915,8 @@ class MainPage(webapp.RequestHandler):
 								logging.info("The " + apn + " property of " + tlr.title + " has changed")
 							nCh = nCh + 1
 							# break
+					elif apn in tlr.dynamic_properties():
+						nCh = nCh + 1
 				if nCh == 0:
 					return self.fail("No changes to save (use cancel or [Esc] to close)")
 				if minorEdit == False and nCh > 0:

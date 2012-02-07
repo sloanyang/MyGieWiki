@@ -221,6 +221,7 @@ config.macros = {
         missing: {},
         orphans: {},
         shadowed: {},
+        fields: {},
         touched: {},
         filter: {}
     },
@@ -524,7 +525,8 @@ config.shadowTiddlers = {
     TabMoreMissing: '<<list missing>>',
     TabMoreOrphans: '<<list orphans>>',
     TabMoreShadowed: '<<list shadowed>>',
-	TopRightCorner: "",
+    TabMoreFields: '<<list fields>>',
+    TopRightCorner: "",
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
     ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler copyTiddler cutTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes diff help|',
@@ -533,7 +535,7 @@ config.shadowTiddlers = {
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "When" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~js:config.deprecatedCount~Deprecated" "Deprecated tiddlers" "js;DeprecatedTiddlers" "~.." "More lists" TabMore>>',
-    TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
+    TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed "F:*" "Field editors" TabMoreFields>>'
 };
 
 // Strings in "double quotes" should be translated; strings in 'single quotes' should be left alone
@@ -558,6 +560,7 @@ config.macros.list.all.prompt = "All tiddlers in alphabetical order";
 config.macros.list.missing.prompt = "Tiddlers that have links to them but are not defined";
 config.macros.list.orphans.prompt = "Tiddlers that are not linked to from any other tiddlers";
 config.macros.list.shadowed.prompt = "Special purpose tiddlers with default contents";
+config.macros.list.fields.prompt = "Field value editing for all tiddlers";
 config.macros.list.touched.prompt = "Tiddlers that have been modified locally";
 
 config.tagLinks = {};
@@ -1791,6 +1794,10 @@ config.macros.list.shadowed.handler = function(params) {
 
 config.macros.list.touched.handler = function(params) {
     return store.getTouched();
+};
+
+config.macros.list.fields.handler = function(params) {
+	return store.getFields();
 };
 
 config.macros.list.filter.handler = function(params) {
@@ -3385,7 +3392,7 @@ config.commands.revertTiddler.handler = function(event, src, title) {
 config.commands.revertTiddler.isEnabled = function(t)
 {
 	return t && t.fields ? 
-		eval(t.fields['vercnt']) > 1 && (t.currentVer != t.version || (config.admin && !t.fields['reverted'])) : false;
+		eval(t.vercnt) > 1 && (t.currentVer != t.version || (config.admin && !t.fields['reverted'])) : false;
 };
 
 config.commands.truncateTiddler.handler = function(event,src,title) {
@@ -4258,7 +4265,7 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 	if (result.currentVer)
 		tiddler.version = result.currentVer;
 	tiddler.fromversion = fromVersion;
-	tiddler.fields['vercnt'] = result.vercnt;
+	tiddler.vercnt = result.vercnt;
 	
 	if (et)
 		this.deleteTiddler(title);
@@ -4450,6 +4457,16 @@ TiddlyWiki.prototype.getTouched = function() {
     results.sort();
     return results;
 };
+
+TiddlyWiki.prototype.getFields = function() {
+	var results = [];
+	this.forEachTiddler(function(title, tiddler) {
+		results.push('fields:' + tiddler.title);
+	});
+	results.sort();
+	return results;
+};
+
 
 // Resolves a Tiddler reference or tiddler title into a Tiddler object, or null if it doesn't exist
 TiddlyWiki.prototype.resolveTiddler = function(tiddler) {
@@ -5702,7 +5719,7 @@ config.macros.options.onChangeUnknown = function(e) {
     return false;
 };
 
-// If there are unsaved changes, force the user to confirm before exitting
+// If there are unsaved changes, force the user to confirm before exiting
 function confirmExit() {
     hadConfirmExit = true;
     if (story && story.areAnyDirty && story.areAnyDirty())
@@ -5835,16 +5852,43 @@ function createExternalLink(place, url) {
     return link;
 }
 
-config.macros.editTiddlerField = {
+config.macros.editFields = {
 	edit: function(e) {
 		var target = resolveTarget(e || window.event);
 		target.style.display = 'none';
 		var e = createTiddlyElement(null, 'input');
 		e.setAttribute('type', 'text');
 		e.value = target.firstChild.nodeValue;
-		e.setAttribute('size', '40');
+		e.setAttribute('size', '50');
 		e.setAttribute('autocomplete', 'off');
 		target.parentElement.appendChild(e);
+	},
+	add: function(e) {
+		var target = resolveTarget(e || window.event);
+		var pe = target.parentElement.parentElement.parentElement;
+		var coti = story.findContainingTiddler(target);
+		var fv = forms['fields:' + target.getAttribute('tiddler')]
+		var tri = pe.firstChild;
+		var all = [];
+		while (tri.nextSibling) {
+			all.push(tri);
+			tri = tri.nextSibling;
+		}
+		var trn = document.createElement('TR');
+		fv.fldname = fv.fldname.toLowerCase().replace(/ /mg, "_");
+		createTiddlyElement(trn,"TD",null,null,fv.fldname);
+		var atd = createTiddlyElement(trn,"TD",null);
+		var e = createTiddlyElement(null, 'input');
+		e.setAttribute('field', fv.fldname);
+		e.setAttribute('type', 'text');
+		e.value = fv.fldvalue;
+		e.setAttribute('size', '50');
+		e.setAttribute('autocomplete', 'off');
+		atd.appendChild(e);		
+		pe.insertBefore(trn, all[all.length - 1]);
+		fv.controls.fldname.value = "";
+		fv.controls.fldvalue.value = "";
+		displayMessage("Add " + fv.fldname + " = " + fv.fldvalue + " of " + coti.getAttribute("tiddler"));
 	},
 	save: function(e) {
 		var target = resolveTarget(e || window.event);
@@ -5864,8 +5908,13 @@ config.macros.editTiddlerField = {
 	},
 	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
 		var eda = config.admin;
-		if (params.length > 1)
-			createTiddlyButton(place,params[2],"Click to edit",eda?this.edit:null,'tiddlerField',null,null,{ tiddler: params[0], field: params[1] });
+		if (params.length > 1) {
+			if (params[1] == '/+') {
+				createTiddlyButton(place,"add..","Add field",this.add,null,null,null,{ tiddler: params[0]});
+			}
+			else
+				createTiddlyButton(place,params[2],"Click to edit",eda?this.edit:null,'tiddlerField',null,null,{ tiddler: params[0], field: params[1] });
+		}
 		else if (eda)
 			createTiddlyButton(place,"Save","Save changes",this.save,'button',null,null,{ tiddler: params[0] });
 	}
@@ -5900,12 +5949,15 @@ function onClickTiddlerLink(ev) {
             toggling = false;
         var t = store.getTiddler(tn)
 		if (t && meta) {
-			var tfta = ["|title|''" + tn + "''|\n|>|Fields|"]
+			var tfta = ["|title|''" + tn + "''|h\n|>|Fields|"]
+			var jstn = tn.toJSONString();
 			for (var fld in t.fields) {
-				tfta.push(['|', fld, '|<<editTiddlerField ', tn.toJSONString(),' "', fld, '" ', t.fields[fld].toJSONString(),'>>|'].join(''));
+				tfta.push(['|', fld, '|<<editFields ', jstn,' "', fld, '" ', t.fields[fld].toJSONString(),'>>|'].join(''));
 			}
-			tfta.push('|>|<<editTiddlerField ' + tn.toJSONString() + '>>|');
+			tfta.push('|<<input text fldname 20>>|<<input text fldvalue 50>>|')
+			tfta.push('|<<editFields ' + jstn + ' /+ >>|<<editFields ' + jstn + '>>|');
 			t = new Tiddler(title,t.version,tfta.join('\n'));
+			forms['fields:' + tn] = { updateaccess: true };
             story.displayTiddler(target, t, 'ViewOnlyTemplate');
 		}
 		else if (t)
@@ -7593,7 +7645,9 @@ TW21Loader.prototype.internalizeTiddler = function(tiddler, title, node) {
 			tiddler.readOnly = eval(value);
 			break;
 		case 'from':
-			tiddler.from = value;
+		case 'vercnt':
+			tiddler[name] = value;
+		case 'currentver':
 			break;
 		default:
 			if (!TiddlyWiki.isStandardField(name))
@@ -7796,7 +7850,7 @@ function HttpRequest(args,debug) {
 config.macros.history = {
 	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
 		if (tiddler instanceof Tiddler) {
-			var hist = eval(tiddler.fields['vercnt']);
+			var hist = eval(tiddler.vercnt);
 			if (hist === undefined || hist == 0) {
 				var inclFrom = tiddler["includedFrom"];
 				if (inclFrom)
