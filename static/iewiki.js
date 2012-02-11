@@ -221,7 +221,6 @@ config.macros = {
         missing: {},
         orphans: {},
         shadowed: {},
-        fields: {},
         touched: {},
         filter: {}
     },
@@ -428,8 +427,8 @@ config.commands = {
 	fields: {
 		type: "popup",
 		text: "fields",
-		tooltip: "Show the extended fields of this tiddler",
-		emptyText: "There are no extended fields for this tiddler",
+		tooltip: "Show the fields of this tiddler",
+		emptyText: "There are no fields for this tiddler",
 		listViewTemplate: {
 			columns: [
 				{ name: 'Field', field: 'field', title: "Field", type: 'String' },
@@ -525,7 +524,6 @@ config.shadowTiddlers = {
     TabMoreMissing: '<<list missing>>',
     TabMoreOrphans: '<<list orphans>>',
     TabMoreShadowed: '<<list shadowed>>',
-    TabMoreFields: '<<list fields>>',
     TopRightCorner: "",
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
@@ -535,7 +533,7 @@ config.shadowTiddlers = {
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SideBarTabs: '<<tabs txtMainTab "When" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~js:config.deprecatedCount~Deprecated" "Deprecated tiddlers" "js;DeprecatedTiddlers" "~.." "More lists" TabMore>>',
-    TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed "F:*" "Field editors" TabMoreFields>>'
+    TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
 
 // Strings in "double quotes" should be translated; strings in 'single quotes' should be left alone
@@ -560,7 +558,6 @@ config.macros.list.all.prompt = "All tiddlers in alphabetical order";
 config.macros.list.missing.prompt = "Tiddlers that have links to them but are not defined";
 config.macros.list.orphans.prompt = "Tiddlers that are not linked to from any other tiddlers";
 config.macros.list.shadowed.prompt = "Special purpose tiddlers with default contents";
-config.macros.list.fields.prompt = "Field value editing for all tiddlers";
 config.macros.list.touched.prompt = "Tiddlers that have been modified locally";
 
 config.tagLinks = {};
@@ -1794,10 +1791,6 @@ config.macros.list.shadowed.handler = function(params) {
 
 config.macros.list.touched.handler = function(params) {
     return store.getTouched();
-};
-
-config.macros.list.fields.handler = function(params) {
-	return store.getFields();
 };
 
 config.macros.list.filter.handler = function(params) {
@@ -3594,6 +3587,10 @@ config.commands.fields.handlePopup = function(popup, title) {
         ListView.create(popup, items, this.listViewTemplate);
     else
         createTiddlyElement(popup, "div", null, null, this.emptyText);
+	if (config.admin) {
+		var eh = function(e) { TiddlerLinkHandler(story.getTiddler(title),"fields:" + title); };
+		createTiddlyButton(popup,"Edit fields",null,eh,'fieldsLink');
+	}
 };
 
 //--
@@ -4457,16 +4454,6 @@ TiddlyWiki.prototype.getTouched = function() {
     results.sort();
     return results;
 };
-
-TiddlyWiki.prototype.getFields = function() {
-	var results = [];
-	this.forEachTiddler(function(title, tiddler) {
-		results.push('fields:' + tiddler.title);
-	});
-	results.sort();
-	return results;
-};
-
 
 // Resolves a Tiddler reference or tiddler title into a Tiddler object, or null if it doesn't exist
 TiddlyWiki.prototype.resolveTiddler = function(tiddler) {
@@ -5936,6 +5923,11 @@ function onClickTiddlerLink(ev) {
         noToggle = link.getAttribute("noToggle");
         link = link.parentNode;
     } while (title == null && link != null);
+	TiddlerLinkHandler(target,title,fields,noToggle,e);
+}
+
+function TiddlerLinkHandler(target,title,fields,noToggle,e)
+{
 	var meta = title.startsWith('fields:');
 	var tn = meta ?	title.substring(7) : title;
 
@@ -5944,7 +5936,7 @@ function onClickTiddlerLink(ev) {
         fields = String.encodeHashMap(merge(f, config.defaultCustomFields, true));
     }
     if (tn) {
-        var toggling = e.metaKey || e.ctrlKey;
+        var toggling = e && (e.metaKey || e.ctrlKey);
         if (config.options.chkToggleLinks)
             toggling = !toggling;
         if (noToggle)
