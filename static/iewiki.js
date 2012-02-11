@@ -3584,7 +3584,7 @@ config.commands.fields.handlePopup = function(popup, title) {
     if (!tiddler)
         return;
     var fields = {};
-    store.forEachField(tiddler, function(tiddler, fieldName, value) { fields[fieldName] = value; }, true);
+    store.forEachField(tiddler, function(tiddler, fieldName, value) { if (value != '') fields[fieldName] = value; }, true);
     var items = [];
     for (var t in fields) {
         items.push({ field: t, value: fields[t] });
@@ -5862,6 +5862,7 @@ config.macros.editFields = {
 		e.setAttribute('size', '50');
 		e.setAttribute('autocomplete', 'off');
 		target.parentElement.appendChild(e);
+		e.focus();
 	},
 	add: function(e) {
 		var target = resolveTarget(e || window.event);
@@ -5888,7 +5889,6 @@ config.macros.editFields = {
 		pe.insertBefore(trn, all[all.length - 1]);
 		fv.controls.fldname.value = "";
 		fv.controls.fldvalue.value = "";
-		displayMessage("Add " + fv.fldname + " = " + fv.fldvalue + " of " + coti.getAttribute("tiddler"));
 	},
 	save: function(e) {
 		var target = resolveTarget(e || window.event);
@@ -5900,7 +5900,9 @@ config.macros.editFields = {
 			var ee = edits[i];
 			var se = ee.parentElement.firstChild;
 			var fn = se.getAttribute('field');
-			tiddler.fields[fn] = ee.value;
+			if (fn != null) {
+				tiddler.fields[fn] = ee.value;
+			}
 		}
 		store.saveTiddler(title, title, tiddler.text, config.options.txtUserName, undefined, String.encodeTiddlyLinkList(tiddler.tags), tiddler.fields, false);
 		var coti = story.findContainingTiddler(target);
@@ -5949,10 +5951,11 @@ function onClickTiddlerLink(ev) {
             toggling = false;
         var t = store.getTiddler(tn)
 		if (t && meta) {
-			var tfta = ["|title|''" + tn + "''|h\n|>|Fields|"]
+			var tfta = ['!' + title, '|Field|Value|h']
 			var jstn = tn.toJSONString();
 			for (var fld in t.fields) {
-				tfta.push(['|', fld, '|<<editFields ', jstn,' "', fld, '" ', t.fields[fld].toJSONString(),'>>|'].join(''));
+				if (t.fields[fld] != '')
+					tfta.push(['|', fld, '|<<editFields ', jstn,' "', fld, '" ', t.fields[fld].toJSONString(),'>>|'].join(''));
 			}
 			tfta.push('|<<input text fldname 20>>|<<input text fldvalue 50>>|')
 			tfta.push('|<<editFields ' + jstn + ' /+ >>|<<editFields ' + jstn + '>>|');

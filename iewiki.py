@@ -909,16 +909,18 @@ class MainPage(webapp.RequestHandler):
 				for apn in (Tiddler.properties().keys() + tlr.dynamic_properties()):
 					if apn in ['author','author_ip','created','modified','comments','public','current','version','vercnt','currentver','currentVer']:
 						continue
-					if hasattr(t,apn):
-						if not getattr(t,apn) == getattr(tlr,apn):
-							if minorEdit:
-								logging.info("The " + apn + " property of " + tlr.title + " has changed")
+					if apn in tlr.dynamic_properties() and getattr(tlr,apn) == '':
+						nCh = nCh + 1
+						delattr(tlr,apn)
+					elif hasattr(t,apn):
+						if getattr(t,apn) == getattr(tlr,apn):
+							logging.info("The '" + apn + "' property is unchanged: " + str(getattr(tlr,apn)))
+						else:
 							nCh = nCh + 1
-							# break
 					elif apn in tlr.dynamic_properties():
 						nCh = nCh + 1
 				if nCh == 0:
-					return self.fail("No changes to save (use cancel or [Esc] to close)")
+					return self.fail("No changes to save (use cancel or [Esc] to close)!")
 				if minorEdit == False and nCh > 0:
 					tlr.version = t.version + 1
 					tlr.vercnt = t.vercnt + 1 if hasattr(t,'vercnt') and t.vercnt != None else tlr.version
