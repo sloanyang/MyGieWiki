@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.15.8
+   version:	1.15.9
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -5930,9 +5930,10 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 {
 	var meta = title.startsWith('fields:');
 	var tn = meta ?	title.substring(7) : title;
+    var f = fields ? fields.decodeHashMap() : {};
+	merge(f, { viewTemplate:'ViewTemplate', edittemplate:'EditTemplate' }, true);
 
     if (!store.isShadowTiddler(tn)) {
-        var f = fields ? fields.decodeHashMap() : {};
         fields = String.encodeHashMap(merge(f, config.defaultCustomFields, true));
     }
     if (tn) {
@@ -5948,6 +5949,10 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 			for (var fld in t.fields) {
 				if (t.fields[fld] != '')
 					tfta.push(['|', fld, '|<<editFields ', jstn,' "', fld, '" ', t.fields[fld].toJSONString(),'>>|'].join(''));
+			}
+			for (var dfn in f) {
+				if (typeof(t.fields[dfn]) == 'undefined')
+					tfta.push(['|', dfn, '|<<editFields ', jstn,' "', dfn, '" ', f[dfn],'>>|'].join(''));					
 			}
 			tfta.push('|<<input text fldname 20>>|<<input text fldvalue 50>>|')
 			tfta.push('|<<editFields ' + jstn + ' /+ >>|<<editFields ' + jstn + '>>|');
