@@ -5862,6 +5862,9 @@ config.macros.editFields = {
 			all.push(tri);
 			tri = tri.nextSibling;
 		}
+		var ir = all[all.length - 1];
+		if (fv.fldvalue === undefined)
+			return ir.childNodes[1].firstChild.focus();
 		var trn = document.createElement('TR');
 		fv.fldname = fv.fldname.toLowerCase().replace(/ /mg, "_");
 		createTiddlyElement(trn,"TD",null,null,fv.fldname);
@@ -5873,7 +5876,7 @@ config.macros.editFields = {
 		e.setAttribute('size', '50');
 		e.setAttribute('autocomplete', 'off');
 		atd.appendChild(e);		
-		pe.insertBefore(trn, all[all.length - 1]);
+		pe.insertBefore(trn, ir);
 		fv.controls.fldname.value = "";
 		fv.controls.fldvalue.value = "";
 	},
@@ -5889,6 +5892,17 @@ config.macros.editFields = {
 			var fn = se.getAttribute('field');
 			if (fn != null) {
 				tiddler.fields[fn] = ee.value;
+				switch (fn) {
+				  case 'viewtemplate':
+					tiddler.templates[DEFAULT_VIEW_TEMPLATE] = ee.value;
+					story.refreshTiddler(title);
+					break;
+				  case 'edittemplate':
+				  	tiddler.templates[DEFAULT_EDIT_TEMPLATE] = ee.value;
+					if (story.isDirty(title))
+						story.refreshTiddler(title, DEFAULT_EDIT_TEMPLATE, true);
+					break;
+				}
 			}
 		}
 		store.saveTiddler(title, title, tiddler.text, config.options.txtUserName, undefined, String.encodeTiddlyLinkList(tiddler.tags), tiddler.fields, false);
@@ -5931,7 +5945,7 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 	var meta = title.startsWith('fields:');
 	var tn = meta ?	title.substring(7) : title;
     var f = fields ? fields.decodeHashMap() : {};
-	merge(f, { viewTemplate:'ViewTemplate', edittemplate:'EditTemplate' }, true);
+	merge(f, { viewtemplate:'ViewTemplate', edittemplate:'EditTemplate' }, true);
 
     if (!store.isShadowTiddler(tn)) {
         fields = String.encodeHashMap(merge(f, config.defaultCustomFields, true));
