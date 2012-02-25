@@ -2065,10 +2065,11 @@ class MainPage(webapp.RequestHandler):
 			if page.template == None:
 				page.template = AutoGenerateTemplate(reqTemplate)
 
-		page.viewbutton = pad.viewbutton
-		page.viewprior = pad.viewprior
-		page.foldIndex = pad.foldIndex
-		page.showByline = pad.showByline
+		page.viewbutton = hasattr(page,'viewbutton') and page.viewbutton
+		page.viewprior = hasattr(page,'viewprior') and page.viewprior
+		page.showByline = (not hasattr(page,'showByline')) or page.showByline
+		page.foldIndex = hasattr(page,'foldIndex') and page.foldIndex
+
 		page.put()
 		self.reply( {'Url': url, 'success': True })
 	else:
@@ -2324,8 +2325,9 @@ class MainPage(webapp.RequestHandler):
 					if rtn in astd.keys():
 						ts.append(presentTiddler(astd[rtn]))
 				return self.reply({'tiddlers': ts})
-
-			xdt = xml.dom.minidom.parse(title + '.xml')
+			xmlfn = title + '.xml'
+			logging.info('parse ' + xmlfn)
+			xdt = xml.dom.minidom.parse(xmlfn)
 			de = xdt.documentElement
 			if de.tagName == 'tiddler':
 				t = TiddlerFromXml(de,self.path)
@@ -2341,6 +2343,7 @@ class MainPage(webapp.RequestHandler):
 			else:
 				return self.fail()
 		except Exception, x:
+			logging.info("No such ? (" + str(x) + ")")
 			cp = self.CurrentPage()
 			if not cp is None:
 				nctl = cp.NoSuchTiddlersOfPage()
