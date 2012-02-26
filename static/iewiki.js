@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.15.9
+   version:	1.15.10
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -44,7 +44,9 @@ var Type = {
 };
 
 // Errors in the tiddler save process
-TIDDLER_NOT_SAVED = -2; // Implies do not close the editor
+var TIDDLER_NOT_SAVED = -2; // Implies do not close the editor
+
+var pfxFields = 'fields/';
 
 // Hashmap of alternative parsers for the wikifier
 config.parsers = {};
@@ -875,9 +877,9 @@ config.paramifiers.start = {
 
 config.paramifiers.open = {
     onstart: function(v) {
-        if (!readOnly || store.tiddlerExists(v) || store.isShadowTiddler(v) || TryGetTiddler(v))
-            story.displayTiddler("bottom", v, null, false, null);
-    }
+		if (!readOnly || store.tiddlerExists(v) || store.isShadowTiddler(v) || TryGetTiddler(v))
+			TiddlerLinkHandler('bottom',v);
+	}
 };
 
 config.paramifiers.story = {
@@ -3588,7 +3590,7 @@ config.commands.fields.handlePopup = function(popup, title) {
     else
         createTiddlyElement(popup, "div", null, null, this.emptyText);
 	if (config.admin) {
-		var eh = function(e) { TiddlerLinkHandler(story.getTiddler(title),"fields:" + title); };
+		var eh = function(e) { TiddlerLinkHandler(story.getTiddler(title),pfxFields + title); };
 		createTiddlyButton(popup,"Edit fields",null,eh,'fieldsLink');
 	}
 };
@@ -5855,7 +5857,7 @@ config.macros.editFields = {
 		var target = resolveTarget(e || window.event);
 		var pe = target.parentElement.parentElement.parentElement;
 		var coti = story.findContainingTiddler(target);
-		var fv = forms['fields:' + target.getAttribute('tiddler')]
+		var fv = forms[pfxFields + target.getAttribute('tiddler')]
 		var tri = pe.firstChild;
 		var all = [];
 		while (tri.nextSibling) {
@@ -5942,8 +5944,8 @@ function onClickTiddlerLink(ev) {
 
 function TiddlerLinkHandler(target,title,fields,noToggle,e)
 {
-	var meta = title.startsWith('fields:');
-	var tn = meta ?	title.substring(7) : title;
+	var meta = title.startsWith(pfxFields);
+	var tn = meta ?	title.substring(pfxFields.length) : title;
     var f = fields ? fields.decodeHashMap() : {};
 	merge(f, { viewtemplate:'ViewTemplate', edittemplate:'EditTemplate' }, true);
 
@@ -5971,7 +5973,7 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 			tfta.push('|<<input text fldname 20>>|<<input text fldvalue 50>>|')
 			tfta.push('|<<editFields ' + jstn + ' /+ >>|<<editFields ' + jstn + '>>|');
 			t = new Tiddler(title,t.version,tfta.join('\n'));
-			forms['fields:' + tn] = { updateaccess: true };
+			forms[pfxFields + tn] = { updateaccess: true };
             story.displayTiddler(target, t, 'ViewOnlyTemplate');
 		}
 		else if (t)
