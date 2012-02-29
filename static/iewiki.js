@@ -155,11 +155,12 @@ config.optionsDesc = {
 var DEFAULT_VIEW_TEMPLATE = 1;
 var DEFAULT_EDIT_TEMPLATE = 2;
 var SPECIAL_EDIT_TEMPLATE = 3;
-config.tiddlerTemplates = {
-    1: "ViewTemplate",
-    2: "EditTemplate",
-	3: "SpecialEditTemplate"
-};
+config.tiddlerTemplates = [
+	null,
+    "ViewTemplate",
+    "EditTemplate",
+	"SpecialEditTemplate"
+];
 
 // More messages (rather a legacy layout that should not really be like this)
 config.views = {
@@ -3479,16 +3480,16 @@ config.commands.attributes.handlePopup = function(popup, title) {
 		var target = resolveTarget(ev || window.event);
 		var tag = target.getAttribute('tag');
 		var tee = finder();
-			var etl = tee.value.readBracketedList();
-			var eti = etl.indexOf(tag);
-			if (eti == -1) {
-				etl.push(tag);
-				for (var pte = tee.parentElement; pte; pte = pte.parentElement)
-					if (pte.id == 'tag') { pte.style.display = 'block'; break; }
-			}
-			else
-				etl.remove(tag);
-			tee.value = String.encodeTiddlyLinkList(etl);
+		var etl = tee.value.readBracketedList();
+		var eti = etl.indexOf(tag);
+		if (eti == -1) {
+			etl.push(tag);
+			for (var pte = tee.parentElement; pte; pte = pte.parentElement)
+				if (pte.id == 'tag') { pte.style.display = 'block'; break; }
+		}
+		else
+			etl.remove(tag);
+		tee.value = String.encodeTiddlyLinkList(etl);
 	};
 	var add = function(aLabel,aTag) {
 		var act = finder().value.readBracketedList().indexOf(aTag) == -1 ? "mark" : "clear";
@@ -3503,7 +3504,8 @@ config.commands.attributes.handlePopup = function(popup, title) {
 	add("exclude from search",'excludeSearch');
 	add("treat as script",'systemConfig');
 	add("disable as script",'systemConfigDisable');
-	add("include as special tiddler", 'shadowTiddler');
+	add("include as special tiddler",'shadowTiddler');
+	add("used as template",'tiddlerTemplate');
 };
 
 config.commands.preview.handler = function(e, src, title) {
@@ -3761,8 +3763,11 @@ Tiddler.prototype.assign = function (title, text, modifier, modified, tags, crea
 
 	if (id != undefined)
 		this.id = id;
-	if (tags != undefined)
+	if (tags != undefined) {
 		this.tags = (typeof tags == "string") ? tags.readBracketedList() : tags;
+		if (this.tags.indexOf('tiddlerTemplate') != -1)
+			config.tiddlerTemplates.push(title);
+	}
 	else if (this.tags == undefined)
 		this.tags = [];
 	return this;
@@ -4277,6 +4282,8 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 
 	if (title != newTitle)
 		this.notify(title, true);
+
+	updateTemplatesOfTiddler(tiddler);
 	this.notify(newTitle, true);
 	return tiddler;
 };
@@ -5380,6 +5387,7 @@ config.notifyTiddlers = [
 { name: "SiteTitle", notify: refreshPageTitle },
 { name: "SiteSubtitle", notify: refreshPageTitle },
 { name: "ColorPalette", notify: refreshColorPalette },
+{ name: null, notify: refreshTemplateList },
 { name: null, notify: refreshDisplay }
 ];
 
@@ -5502,6 +5510,14 @@ function refreshPageTemplate(title) {
     for (t = nodes.length - 1; t >= 0; t--)
         display.appendChild(nodes[t]);
     removeNode(stash);
+}
+
+function refreshTemplateList(title) {
+	var t = store.getTiddler(title);
+	if (t && t.tags.indexOf('tiddlerTemplate') != -1) {
+		if (config.tiddlerTemplates.indexOf(title) == -1)
+			config.tiddlerTemplates.push(title);
+	}
 }
 
 function refreshDisplay(hint) {
@@ -5898,7 +5914,6 @@ config.macros.editFields = {
 			if (fn != null)
 				tiddler.fields[fn] = ee.value;
 		}
-		updateTemplatesOfTiddler(tiddler);
 		store.saveTiddler(title, title, tiddler.text, config.options.txtUserName, undefined, String.encodeTiddlyLinkList(tiddler.tags), tiddler.fields, false);
 		var coti = story.findContainingTiddler(target);
 		story.closeTiddler(coti.getAttribute('tiddler'),true);
@@ -5966,7 +5981,24 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
             toggling = !toggling;
         if (noToggle)
             toggling = false;
-        var t = store.getTiddler(tn)
+		var t = store.getTiddler(tn);
+		if (t == null) {
+			var tsp = tn.indexOf('/'); // look for templateName/tiddlerName pattern
+			if (tsp > 0) {
+				var ttn = tn.substring(0,tsp);
+				if (config.tiddlerTemplates.indexOf(ttn) != -1) {
+					var tnp = tn.substring(tsp + 1);
+					t = store.getTiddler(tnp);
+					if (t) {
+						var tiddlerElem = story.getTiddler(tnp);
+						var fields = tiddlerElem && tiddlerElem.getAttribute("tiddlyFields");
+						story.displayTiddler(null, t, ttn, false, null, fields, toggling);
+						story.focusTiddler(tnp, config.options.txtEditorFocus || "text");
+						return;
+					}
+				}
+			}
+		}
 		if (t && meta) {
 			merge(f, { viewtemplate: 'ViewTemplate', edittemplate: 'EditTemplate' }, true);
 			var tfta = ['!' + title, '|Field|Value|h']
