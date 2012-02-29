@@ -3323,20 +3323,23 @@ config.commands.cancelTiddler.handler = function (event, src, title) {
 	return false;
 };
 
-config.commands.deleteTiddler.handler = function(event, src, title) {
-	var deleteIt = true;
-	if (config.options.chkRequireDeleteConfirm)
-		deleteIt = window.confirm(this.warning.format([title]));
-	if (deleteIt && config.options.chkRequireDeleteReason) {
-		var reason = window.prompt(this.prompt.format([title]),"");
-		if (reason == null)
-			return false;
-	}
-	else
-		var reason = "No reason";
+config.commands.deleteTiddler.handler = function (event, src, title) {
+	var st = store.getTiddler(title);
+	if (st) {
+		var deleteIt = true;
+		if (config.options.chkRequireDeleteConfirm)
+			deleteIt = window.confirm(this.warning.format([title]));
+		if (deleteIt && config.options.chkRequireDeleteReason) {
+			var reason = window.prompt(this.prompt.format([title]), "");
+			if (reason == null)
+				return false;
+		}
+		else
+			var reason = "No reason";
 
-	store.getTiddler(title)._deleteReason = reason;
-	if (deleteIt && store.removeTiddler(title)) {
+		st._deleteReason = reason;
+	}
+	if (st == null || (deleteIt && store.removeTiddler(title))) {
 		story.closeTiddler(title, true);
 		config.macros.recycleBin.close();
 	}
@@ -5892,21 +5895,10 @@ config.macros.editFields = {
 			var ee = edits[i];
 			var se = ee.parentElement.firstChild;
 			var fn = se.getAttribute('field');
-			if (fn != null) {
+			if (fn != null)
 				tiddler.fields[fn] = ee.value;
-				switch (fn) {
-				  case 'viewtemplate':
-					tiddler.templates[DEFAULT_VIEW_TEMPLATE] = ee.value;
-					story.refreshTiddler(title);
-					break;
-				  case 'edittemplate':
-				  	tiddler.templates[DEFAULT_EDIT_TEMPLATE] = ee.value;
-					if (story.isDirty(title))
-						story.refreshTiddler(title, DEFAULT_EDIT_TEMPLATE, true);
-					break;
-				}
-			}
 		}
+		updateTemplatesOfTiddler(tiddler);
 		store.saveTiddler(title, title, tiddler.text, config.options.txtUserName, undefined, String.encodeTiddlyLinkList(tiddler.tags), tiddler.fields, false);
 		var coti = story.findContainingTiddler(target);
 		story.closeTiddler(coti.getAttribute('tiddler'),true);
@@ -5924,6 +5916,23 @@ config.macros.editFields = {
 			createTiddlyButton(place,"Save","Save changes",this.save,'button',null,null,{ tiddler: params[0] });
 	}
 };
+
+function updateTemplatesOfTiddler(tiddler) {
+	var title = tiddler.title;
+	for (fn in tiddler.fields) {
+		switch (fn) {
+			case 'viewtemplate':
+				tiddler.templates[DEFAULT_VIEW_TEMPLATE] = tiddler.fields[fn];
+				story.refreshTiddler(title);
+				break;
+			case 'edittemplate':
+				tiddler.templates[DEFAULT_EDIT_TEMPLATE] = tiddler.fields[fn];
+				if (story.isDirty(title))
+					story.refreshTiddler(title, DEFAULT_EDIT_TEMPLATE, true);
+				break;
+		}
+	}
+}
 
 // Event handler for clicking on a tiddly link
 function onClickTiddlerLink(ev) {
@@ -5947,19 +5956,19 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 	var meta = title.startsWith(pfxFields);
 	var tn = meta ?	title.substring(pfxFields.length) : title;
     var f = fields ? fields.decodeHashMap() : {};
-	merge(f, { viewtemplate:'ViewTemplate', edittemplate:'EditTemplate' }, true);
 
     if (!store.isShadowTiddler(tn)) {
         fields = String.encodeHashMap(merge(f, config.defaultCustomFields, true));
     }
     if (tn) {
-        var toggling = e && (e.metaKey || e.ctrlKey);
+    	var toggling = e && (e.metaKey || e.ctrlKey);
         if (config.options.chkToggleLinks)
             toggling = !toggling;
         if (noToggle)
             toggling = false;
         var t = store.getTiddler(tn)
 		if (t && meta) {
+			merge(f, { viewtemplate: 'ViewTemplate', edittemplate: 'EditTemplate' }, true);
 			var tfta = ['!' + title, '|Field|Value|h']
 			var jstn = tn.toJSONString();
 			for (var fld in t.fields) {
