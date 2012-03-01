@@ -5725,6 +5725,22 @@ config.macros.options.onChangeUnknown = function(e) {
     removeChildren(listWrapper);
     config.macros.options.refreshOptions(listWrapper, this.checked);
     return false;
+   };
+
+config.macros.tiwinate = {
+	// <<tiwinate "label" template [tiddler|this|''] [className] [condition]>> produces a link to open tiddler using the specified template
+	handler: function (place, macroName, params, wikifier, paramString) {
+		if (params[1] && (params[4] === undefined || eval(params[4]))) {
+			var tn = params[2];
+			if (tn === undefined || tn == 'this') {
+				var ct = story.findContainingTiddler(place);
+				if (ct)
+					tn = ct.getAttribute("tiddler");
+			}
+			var btnClass = params[3] || (place.parentElement.className == 'toolbar' ? 'button' : 'tiddlyLinkExisting');
+			createTiddlyButton(place,params[0],"open " + (params[2] || '') + " using " + params[1],onClickTiddlerLink,btnClass,null,null,{ tiddlyLink: params[1] + "/" + tn });
+		}
+	}
 };
 
 // If there are unsaved changes, force the user to confirm before exiting
