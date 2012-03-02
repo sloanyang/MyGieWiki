@@ -2571,7 +2571,7 @@ config.macros.view.handler = function(place, macroName, params, wikifier, paramS
     if ((tiddler instanceof Tiddler) && fn) {
         var value = store.getValue(tiddler, fn);
 		if (!value && fn == 'title') // workaround for newTiddler.title being ""
-			value = "New tiddler";
+			value = tiddler.caption || "New tiddler";
         if (value) {
 			if (params[3]) createTiddlyText(place,params[3]);
             var type = params[1] || config.macros.view.defaultView;
@@ -4854,7 +4854,7 @@ Story.prototype.refreshTiddler = function (title, template, force, customFields,
 		var currTemplate = tiddlerElem.getAttribute("template");
 		if ((tpln != currTemplate) || force) {
 			var tiddler = tdlr || store.getTiddler(title);
-			var isEdit = template == DEFAULT_EDIT_TEMPLATE ||(tiddler && template == tiddler.fields["EditTemplate"]);
+			var isEdit = template == DEFAULT_EDIT_TEMPLATE ||(tiddler && template == tiddler.fields["edittemplate"]);
 			if (!tiddler) {
 				tiddler = new Tiddler();
 				if (store.isShadowTiddler(title)) {
@@ -5732,13 +5732,19 @@ config.macros.tiwinate = {
 	handler: function (place, macroName, params, wikifier, paramString) {
 		if (params[1] && (params[4] === undefined || eval(params[4]))) {
 			var tn = params[2];
+			var attrs = {};
 			if (tn === undefined || tn == 'this') {
 				var ct = story.findContainingTiddler(place);
 				if (ct)
 					tn = ct.getAttribute("tiddler");
 			}
+			else if (tn == 'new' && params[5]) {
+				attrs.tiddlyFields = params[5];
+				tn = '';
+			}
 			var btnClass = params[3] || (place.parentElement.className == 'toolbar' ? 'button' : 'tiddlyLinkExisting');
-			createTiddlyButton(place,params[0],"open " + (params[2] || '') + " using " + params[1],onClickTiddlerLink,btnClass,null,null,{ tiddlyLink: params[1] + "/" + tn });
+			attrs.tiddlyLink = params[1] + "/" + tn;
+			createTiddlyButton(place,params[0],"open " + (params[2] || '') + " using " + params[1],onClickTiddlerLink,btnClass,null,null,attrs);
 		}
 	}
 };
@@ -6004,13 +6010,26 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 				var ttn = tn.substring(0,tsp);
 				if (config.tiddlerTemplates.indexOf(ttn) != -1) {
 					var tnp = tn.substring(tsp + 1);
-					t = store.getTiddler(tnp);
-					if (t) {
-						var tiddlerElem = story.getTiddler(tnp);
-						var fields = tiddlerElem && tiddlerElem.getAttribute("tiddlyFields");
-						story.displayTiddler(null, t, ttn, false, null, fields, toggling);
-						story.focusTiddler(tnp, config.options.txtEditorFocus || "text");
+					if (tnp == '') {
+						var nt = new Tiddler("", 0, "");
+						nt.fields = f;
+						if (f.title) {
+							nt.caption = f.title;
+							delete f.title;
+						}
+						f.edittemplate = ttn;
+						story.displayTiddler(null,nt,ttn,false,null,String.encodeHashMap(merge(f, config.defaultCustomFields, true)));
 						return;
+					}
+					else {
+						t = store.getTiddler(tnp);
+						if (t) {
+							var tiddlerElem = story.getTiddler(tnp);
+							var fields = tiddlerElem && tiddlerElem.getAttribute("tiddlyFields");
+							story.displayTiddler(null, t, ttn, false, null, fields, toggling);
+							story.focusTiddler(tnp, config.options.txtEditorFocus || "text");
+							return;
+						}
 					}
 				}
 			}
