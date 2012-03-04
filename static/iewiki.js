@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.15.10
+   version:	1.16.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -1933,17 +1933,20 @@ config.macros.tagging.handler = function(place, macroName, params, wikifier, par
 
 function DoServerSideTagSearch(ev) {
 	var tli = resolveTarget(ev || window.event).parentNode;
-	var tiddlerElem = story.findContainingTiddler(place);
+	var tiddlerElem = story.findContainingTiddler(tli);
 	var tn = tiddlerElem.getAttribute("tiddler");
-	var st = store.getTiddler(tn);
+	var st = tn ? store.getTiddler(tn) : null;
 
 	var ulp = tli.parentNode;
 	var tags = tli.getAttribute('tags');
-	var lta = { excl: st.id };
+	var lta = { };
 	if (tags)
 		lta.tags = tags.split('\n');
 	else
 		lta.tag = tli.getAttribute('tag');
+	if (st)
+		lta.excl = st.id;
+
 	var ttr = http.listTiddlersTagged(lta);
 	if (ttr.success) {
 		if (ttr.mt) {
@@ -5728,11 +5731,26 @@ config.macros.options.onChangeUnknown = function(e) {
    };
 
 config.macros.tiwinate = {
+	// <<tiwinate>> produces buttons to instantiate each of the tiddlerTemplates that are named like nounEditTemplate
 	// <<tiwinate "label" template [tiddler|this|''] [className] [condition]>> produces a link to open tiddler using the specified template
 	handler: function (place, macroName, params, wikifier, paramString) {
-		if (params[1] && (params[4] === undefined || eval(params[4]))) {
+		if (params.length == 0) {
+			var tpls = store.getTaggedTiddlers('tiddlerTemplate');
+			for (var i = 0; i < tpls.length; i++) {
+				var attt = tpls[i].title;
+				displayMessage(attt);
+				var tpos = attt.indexOf('EditTemplate');
+				if (tpos > 0) {
+					var attk = attt.substring(0, tpos);
+					createTiddlyButton(place, 'new ' + attk, "open new " + attk, onClickTiddlerLink, 'button', null, null,
+						{tiddlyLink: attt + "/",tiddlyFields: String.encodeHashMap(tpls[i].fields)});
+				}
+			}
+		}
+		else if (params[1] && (params[4] === undefined || eval(params[4]))) {
 			var tn = params[2];
 			var attrs = {};
+			var using = " using ";
 			if (tn === undefined || tn == 'this') {
 				var ct = story.findContainingTiddler(place);
 				if (ct)
@@ -5741,10 +5759,11 @@ config.macros.tiwinate = {
 			else if (tn == 'new' && params[5]) {
 				attrs.tiddlyFields = params[5];
 				tn = '';
+				using = " ";
 			}
 			var btnClass = params[3] || (place.parentElement.className == 'toolbar' ? 'button' : 'tiddlyLinkExisting');
 			attrs.tiddlyLink = params[1] + "/" + tn;
-			createTiddlyButton(place,params[0],"open " + (params[2] || '') + " using " + params[1],onClickTiddlerLink,btnClass,null,null,attrs);
+			createTiddlyButton(place,params[0],"open " + (params[2] || '') + using + params[1],onClickTiddlerLink,btnClass,null,null,attrs);
 		}
 	}
 };
