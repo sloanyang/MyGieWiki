@@ -5738,12 +5738,15 @@ config.macros.tiwinate = {
 			var tpls = store.getTaggedTiddlers('tiddlerTemplate');
 			for (var i = 0; i < tpls.length; i++) {
 				var attt = tpls[i].title;
-				displayMessage(attt);
 				var tpos = attt.indexOf('EditTemplate');
 				if (tpos > 0) {
 					var attk = attt.substring(0, tpos);
-					createTiddlyButton(place, 'new ' + attk, "open new " + attk, onClickTiddlerLink, 'button', null, null,
+					tpls[i].fields.title = "New " + attk;
+					tpls[i].fields.viewtemplate = attk + 'ViewTemplate';
+					createTiddlyButton(place, "new " + attk, "open new " + attk, onClickTiddlerLink, 'button', null, null,
 						{tiddlyLink: attt + "/",tiddlyFields: String.encodeHashMap(tpls[i].fields)});
+					delete tpls[i].fields.title;
+					delete tpls[i].fields.viewtemplate;
 				}
 			}
 		}
