@@ -5232,7 +5232,9 @@ Story.prototype.saveTiddler = function(title, minorUpdate, newTemplate, autoSave
 		if (!store.tiddlerExists(newTitle))
 			minorUpdate = false;
 		var newDate = new Date();
-		var extendedFields = store.tiddlerExists(newTitle) ? store.fetchTiddler(newTitle).fields : (newTitle != title && store.tiddlerExists(title) ? store.fetchTiddler(title).fields : config.defaultCustomFields);
+		var extendedFields = store.tiddlerExists(newTitle) ? store.fetchTiddler(newTitle).fields :
+			(newTitle != title && store.tiddlerExists(title) ? store.fetchTiddler(title).fields
+															 : merge({},config.defaultCustomFields));
 		for (var n in fields) {
 			if (!TiddlyWiki.isStandardField(n))
 				extendedFields[n] = fields[n];
@@ -6041,6 +6043,7 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 						}
 						f.edittemplate = ttn;
 						story.displayTiddler(null,nt,ttn,false,null,String.encodeHashMap(merge(f, config.defaultCustomFields, true)));
+						story.focusTiddler("",'title');
 						return;
 					}
 					else {
