@@ -1857,9 +1857,16 @@ class MainPage(webapp.RequestHandler):
 			if ct == None:
 				return self.fail("Clipboard is empty")
 			cd = getattr(u,'clipDomain')
-			cxt = Tiddler.all().filter('page', self.path).filter('title',ct.title).filter('current', True).get()
-			if not cxt is None:
-				return self.fail("A tiddler named " + ct.title + "<br>already exists on this page!")
+			message = None
+			newtitle = ct.title
+			while True:
+				cxt = Tiddler.all().filter('page', self.path).filter('title',newtitle).filter('current', True).get()
+				if not cxt is None:
+					if message == None:
+						message = "Original title was '" + ct.title + "'"
+					newtitle = '_' + newtitle;
+				else:
+					break
 			if cd != self.subdomain: # we need to copy/move it
 				logging.info("Moving between domain: " + str(cd) + " -> " + str(self.subdomain))
 				namespace_manager.set_namespace(self.subdomain)
@@ -1878,6 +1885,8 @@ class MainPage(webapp.RequestHandler):
 					# setattr(cpt,'isRecycled',True)
 					DeletionLog().Log(ct,self.request.remote_addr,"Moved to " + ("top domain" if self.subdomain is None else "subdomain " + self.subdomain))
 					namespace_manager.set_namespace(self.subdomain)
+				if message:
+					setattr(cpt,'Message', message)
 				return self.deliverTiddler(cpt)
 			else:
 				namespace_manager.set_namespace(self.subdomain)
@@ -1887,6 +1896,8 @@ class MainPage(webapp.RequestHandler):
 						# clone tiddler
 						if fn == 'id':
 							cpt.id = unicode(uuid.uuid4())
+						elif fn == 'title':
+							cpt.title = newtitle
 						elif fn == 'vercnt':
 							cpt.vercnt = 1
 						elif fn == 'page':
@@ -1894,14 +1905,19 @@ class MainPage(webapp.RequestHandler):
 						else:
 							setattr(cpt,fn,atr)
 					cpt.put()
+					if message:
+						setattr(cpt,'Message', message)
 					return self.deliverTiddler(cpt)
 				else:
 					ct.page = self.path
 					ct.current = True
+					ct.title = newtitle
 					ct.put()
 					for t in Tiddler.all().filter('id',ct.id):
 						t.page = self.path
 						t.put()
+					if message:
+						setattr(ct,'Message', message)
 					return self.deliverTiddler(ct)
 		self.reply()
 	else:
