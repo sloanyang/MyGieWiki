@@ -165,7 +165,7 @@ config.tiddlerTemplates = [
 // More messages (rather a legacy layout that should not really be like this)
 config.views = {
     wikified: {
-        defaultText: "The tiddler '%0' doesn't yet exist. Double-click to create it, or to create a new page named %0, <script label=\"click here.\" title=\"Create page\">wikify(store.getTiddlerText(\"CreateNewPage\"), place);</script><br>",
+        defaultText: "The tiddler '%0' doesn't yet exist. Double-click to create it, or to create a new page named %0: <script label=\"click here\" title=\"Create page\">var pe=place.parentElement; wikify(store.getTiddlerText(\"CreateNewPage\"), pe); pe.removeChild(place);</script><br><br>",
         defaultModifier: "(missing)",
         shadowModifier: "(special tiddler)",
         dateFormat: "DD MMM YYYY",
