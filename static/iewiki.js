@@ -3279,10 +3279,13 @@ config.commands.cutTiddler.handler = function(event, src, title, cbaction) {
 		clone.hasShadow = false;
 		if (config.tiddlerTemplates.indexOf(title) > 0 && clone.tags.indexOf('tiddlerTemplate') == -1)
 			clone.tags.push('tiddlerTemplate');
-		window.localClipboard = clone;
-
-		displayMessage("A special tiddler like '" + title + "'");
-		displayMessage("can only be pasted on the same page.");
+		store.addTiddler(clone);
+		story.displayTiddler(null, clone, DEFAULT_EDIT_TEMPLATE);
+		story.focusTiddler(clone.title, "title");
+		displayMessage(title + " is a shadowTiddler and");
+		displayMessage("can only be pasted on the same page (done).");
+		displayMessage("It was pasted for editing as " + clone.title);
+		displayMessage("and is not yet saved.");
 	}
 	else {
 		window.localClipboard = null;
@@ -8856,24 +8859,16 @@ config.macros.pasteTiddler = {
 	},
 	onClickPaste: function()
 	{
-		if (window.localClipboard) {
-			store.addTiddler(window.localClipboard);
-			story.displayTiddler(null, window.localClipboard, DEFAULT_EDIT_TEMPLATE);
-			story.focusTiddler(window.localClipboard.title, "title");
-			window.localClipboard = null;
-		}
-		else {
-			var ptr = http.clipboard({ action: 'paste' });
-			if (ptr.success) {
-				KeepTiddlers(ptr);
-				store.notify(ptr.title, true);
-				if (ptr.title.startsWith('_')) {
-					story.displayTiddler(null, ptr.title, DEFAULT_EDIT_TEMPLATE);
-					story.focusTiddler(ptr.title, "text");
-				}
-				else
-					story.displayTiddler(null, ptr.title);
+		var ptr = http.clipboard({ action: 'paste' });
+		if (ptr.success) {
+			KeepTiddlers(ptr);
+			store.notify(ptr.title, true);
+			if (ptr.title.startsWith('_')) {
+				story.displayTiddler(null, ptr.title, DEFAULT_EDIT_TEMPLATE);
+				story.focusTiddler(ptr.title, "text");
 			}
+			else
+				story.displayTiddler(null, ptr.title);
 		}
 	}
 };
