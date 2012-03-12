@@ -3277,6 +3277,8 @@ config.commands.cutTiddler.handler = function(event, src, title, cbaction) {
 		while (store.getTiddler(clone.title))
 			clone.title = '_' + clone.title;
 		clone.hasShadow = false;
+		if (config.tiddlerTemplates.indexOf(title) > 0 && clone.tags.indexOf('tiddlerTemplate') == -1)
+			clone.tags.push('tiddlerTemplate');
 		window.localClipboard = clone;
 
 		displayMessage("A special tiddler like '" + title + "'");
@@ -5759,7 +5761,9 @@ config.macros.tiwinate = {
 				if (tpos > 0) {
 					var attk = attt.substring(0, tpos);
 					tpls[i].fields.title = "New " + attk;
-					tpls[i].fields.viewtemplate = attk + 'ViewTemplate';
+					var vtn = attk + 'ViewTemplate';
+					if (store.getTiddler(vtn))
+						tpls[i].fields.viewtemplate = vtn;
 					createTiddlyButton(place, "new " + attk, "open new " + attk, onClickTiddlerLink, 'button', null, null,
 						{tiddlyLink: attt + "/",tiddlyFields: String.encodeHashMap(tpls[i].fields)});
 					delete tpls[i].fields.title;
