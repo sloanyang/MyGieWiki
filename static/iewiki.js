@@ -530,7 +530,7 @@ config.shadowTiddlers = {
     TopRightCorner: "",
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
-    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler copyTiddler cutTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history|\n|~TextToolbar|preview tag attributes diff help|',
+    ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler copyTiddler cutTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history copyTiddler|\n|~TextToolbar|preview tag attributes diff help|',
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
@@ -3134,7 +3134,8 @@ function KeepTiddlers(st,title) {
 			Date.convertFromYYYYMMDDHHMM(st.modified), st.tags,
 			Date.convertFromYYYYMMDDHHMM(st.created),
 			null, parseInt(st.version));
-		t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewTemplate;
+		t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewtemplate;
+		t.templates[DEFAULT_EDIT_TEMPLATE] = st.edittemplate;
 		t.id = st.id;
 		for (a in st) {
 			if (a != 'success' && t[a] === undefined && t.fields[a] === undefined)
@@ -3270,15 +3271,29 @@ config.commands.excludeTiddler.isEnabled = function(tdlr) {
 
 config.commands.cutTiddler.handler = function(event, src, title, cbaction) {
 	var t = store.getTiddler(title);
-	var ctr = http.clipboard({ action: cbaction || 'cut', tiddler: t.id }); // copy or cut
-	if (ctr.success) {
-		if (ctr.act == 'cut') {
-			delete t.id;
-			store.removeTiddler(title);
-			story.closeTiddler(title, true);
+	if (cbaction == 'copy' && !t.id && t.hasShadow) {
+		var clone = new Tiddler();
+		merge(clone, t);
+		while (store.getTiddler(clone.title))
+			clone.title = '_' + clone.title;
+		clone.hasShadow = false;
+		window.localClipboard = clone;
+
+		displayMessage("A special tiddler like '" + title + "'");
+		displayMessage("can only be pasted on the same page.");
+	}
+	else {
+		window.localClipboard = null;
+		var ctr = http.clipboard({ action: cbaction || 'cut', tiddler: t.id }); // copy or cut
+		if (ctr.success) {
+			if (ctr.act == 'cut') {
+				delete t.id;
+				store.removeTiddler(title);
+				story.closeTiddler(title, true);
+			}
+			displayMessage("The tiddler '" + title + "'<br>was " + ctr.action + " to your clipboard.");
+			wikify('<script label="Where">wikify("<<tiddler SiteMap>>",place);\n</script> would you like to paste it?', getMessageDiv());
 		}
-		displayMessage("The tiddler '" + title + "'<br>was " + ctr.action + " to your clipboard.");
-		wikify('<script label="Where">wikify("<<tiddler SiteMap>>",place);\n</script> would you like to paste it?',getMessageDiv());
 	}
 };
 
@@ -3291,7 +3306,7 @@ config.commands.copyTiddler.handler = function(event, src, title) {
 };
 
 config.commands.copyTiddler.isEnabled =  function(tlr) {
-	return tlr.id && tlr.from === undefined;
+	return (tlr.id && tlr.from === undefined) || tlr.hasShadow;
 };
 
 config.commands.cancelTiddler.handler = function (event, src, title) {
@@ -8837,12 +8852,24 @@ config.macros.pasteTiddler = {
 	},
 	onClickPaste: function()
 	{
-		var ptr = http.clipboard({ action: 'paste' });
-		if (ptr.success) {
-			KeepTiddlers(ptr);
-			store.notify(ptr.title,true);
-			story.displayTiddler(null, ptr.title);
-			story.focusTiddler(ptr.title, "text");
+		if (window.localClipboard) {
+			store.addTiddler(window.localClipboard);
+			story.displayTiddler(null, window.localClipboard, DEFAULT_EDIT_TEMPLATE);
+			story.focusTiddler(window.localClipboard.title, "title");
+			window.localClipboard = null;
+		}
+		else {
+			var ptr = http.clipboard({ action: 'paste' });
+			if (ptr.success) {
+				KeepTiddlers(ptr);
+				store.notify(ptr.title, true);
+				if (ptr.title.startsWith('_')) {
+					story.displayTiddler(null, ptr.title, DEFAULT_EDIT_TEMPLATE);
+					story.focusTiddler(ptr.title, "text");
+				}
+				else
+					story.displayTiddler(null, ptr.title);
+			}
 		}
 	}
 };
