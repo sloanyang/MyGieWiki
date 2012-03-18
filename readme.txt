@@ -1,7 +1,7 @@
 This is (or was) giewiki release 1.16.0.
 
 Starting point:
-	http://giewiki.appspot.com (or readme.htm, if present)
+	http://giewiki.appspot.com
 
 New features in release 1.16:
 	* The attribute tag tiddlerTemplate marks a tiddler as template for editing or viewing tiddlers.
@@ -33,5 +33,9 @@ New in 1.15.8:
 
 Additional resources:
 	http://code.google.com/p/giewiki
+
+Feedback:
+	http://giewiki.appspot.com/FeedBack
+	poul.staugaard@gmail.com
 
 Enjoy!
