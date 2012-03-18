@@ -159,7 +159,8 @@ config.tiddlerTemplates = [
 	null,
     "ViewTemplate",
     "EditTemplate",
-	"SpecialEditTemplate"
+	"SpecialEditTemplate",
+	"fields"
 ];
 
 // More messages (rather a legacy layout that should not really be like this)
@@ -1029,7 +1030,13 @@ config.formatterHelpers = {
         if (urlRegExp.exec(link)) {
             return true;
         }
-        if (link.indexOf(".") != -1 || link.indexOf("\\") != -1 || link.indexOf("/") != -1 || link.indexOf("#") != -1) {
+        var ssp = link.indexOf("/");
+		if (ssp > 0) {
+			var ttn = link.substring(0,ssp);
+			if (config.tiddlerTemplates.indexOf(ttn) != -1)
+				return false;
+		}
+        if (link.indexOf(".") != -1 || link.indexOf("\\") != -1 || ssp != -1 || link.indexOf("#") != -1) {
             return true;
         }
         return false;
@@ -5885,6 +5892,9 @@ function getTiddlyLinkInfo(title, currClasses) {
     var classes = currClasses ? currClasses.split(" ") : [];
     var link;
     classes.pushUnique("tiddlyLink");
+    var sp = title.indexOf('/');
+	if (sp > 0 && config.tiddlerTemplates.indexOf(title.substring(0, sp)))
+		title = title.substring(sp + 1);
 	var subTitle = lazyLoadAll[title] === undefined ? null : "info not loaded";
 	if (subTitle == null) {
 		var tiddler = store.fetchTiddler(title);
