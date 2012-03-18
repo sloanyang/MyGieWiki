@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.15.9
+# ver.:  1.16.0
 
 import cgi
 import codecs
@@ -35,7 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.15.9'
+giewikiVersion = '1.16.0'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -97,7 +97,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 15, revision: 9, date: new Date("Feb 12, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 16, revision: 0, date: new Date("Mar 18, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -2343,7 +2343,10 @@ class MainPage(webapp.RequestHandler):
 				return self.reply({'tiddlers': ts})
 			xmlfn = title + '.xml'
 			logging.info('parse ' + xmlfn)
-			xdt = xml.dom.minidom.parse(xmlfn)
+			try:
+				xdt = xml.dom.minidom.parse(xmlfn)
+			except IOError,iox:
+				xdt = xml.dom.minidom.parse(xmlfn.replace(' ','_'))
 			de = xdt.documentElement
 			if de.tagName == 'tiddler':
 				t = TiddlerFromXml(de,self.path)

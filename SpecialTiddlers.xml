@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <tiddlers>
-<tiddler title="SpecialTiddlers" viewTemplate="ViewOnlyTemplate">
+<tiddler title="SpecialTiddlers" viewTemplate="ViewOnlyTemplate" tags="excludeLists">
 	<pre>&lt;script&gt;
 config.macros.STETabInsert = {
 	handler: function(place, macroName, params) {
@@ -77,7 +77,7 @@ config.macros.STETabInsert = {
 (*: SiteTitle &amp; SiteSubtitle: use these if you want the changes to be versioned, otherwise set these via the PageProperties)
 </pre>
 </tiddler>
-<tiddler title="LoD" viewTemplate="ViewOnlyTemplate">
+<tiddler title="LoD" viewTemplate="ViewOnlyTemplate" tags="excludeLists">
 	<pre>!LoD (Load-on-demand)
 Certain special tiddlers are loaded only on demand and do not appear in the list of special Tiddlers that's available on the right.</pre>
 </tiddler>
