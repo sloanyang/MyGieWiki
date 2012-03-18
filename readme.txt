@@ -1,7 +1,17 @@
-This is (or was) giewiki release 1.15.8.
+This is (or was) giewiki release 1.16.0.
 
 Starting point:
 	http://giewiki.appspot.com (or readme.htm, if present)
+
+New features in release 1.16:
+	* The attribute tag tiddlerTemplate marks a tiddler as template for editing or viewing tiddlers.
+	  A new macro <<tiwinate>>, used in EditingMenu lets you easily subclass the existing EditTemplate and ViewTemplate tiddlers 
+	  by defining (copy via page setup - All..) derivatives named e.g. thingEditTemplate and thingEditTemplate. This will produce
+	  a new entry in the edit sidebar labeled (in this case) "new thing".
+	* When you have a tiddler tagged tiddlerTemplate, a link pattern of the form templateName/tiddlerName will render tiddlerName
+	  using templateName as the HTML template.
+	* You can now paste a tiddler on the same page as where you did the copy (via the editing menu). This will produce a copy where
+	  the title is derived by prepending a '_'.
  
 New features in release 1.15:
 	* Site-wide tag links, retrieved via the 'tags' caption.
