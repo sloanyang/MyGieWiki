@@ -5549,6 +5549,7 @@ function refreshTemplateList(title) {
 	if (t && t.tags.indexOf('tiddlerTemplate') != -1) {
 		if (config.tiddlerTemplates.indexOf(title) == -1)
 			config.tiddlerTemplates.push(title);
+		refreshAll();
 	}
 }
 
@@ -8485,12 +8486,18 @@ config.macros.image = {
 }
 
 config.macros.menu = {
+	opened: [],
 	handler: function(place,macroName,params,wikifier,paramString,tiddler) 
 	{
 		// parameters: text contentTiddler tooltip accesskey condition
 		if (params[4] && !eval(params[4]))
 			return;
-		var btn = createTiddlyButton(place, params[0], params[2], this.onClick, null, null, params[3], { data: params[1] });
+		var dl = params[1];
+		if (this.opened.indexOf(dl) > -1) {
+			this.render(dl, createTiddlyElement(place,'div'));
+		}
+		else
+			createTiddlyButton(place, params[0], params[2], this.onClick, null, null, params[3], { data: dl });
 	},
 	onClick: function(ev)
 	{
@@ -8498,33 +8505,35 @@ config.macros.menu = {
 		var data = target.getAttribute("data");
 		if (!data)
 			return;
+		config.macros.menu.render(data,target);
+		config.macros.menu.opened.push(data);
+	},
+	render: function(data,target)
+	{
 		var text = store.getTiddlerText(data).split('\n');
-		for (var i=text.length-1; i >= 0; i--)
-		{
+		for (var i = text.length - 1; i >= 0; i--) {
 			var what = text[i].split("|");
-			switch (what.shift())
-			{
-			case 'macro':
-				invokeMacro(target,what[0],what[1]);
-				break;
-			case 'tiddler':
-				var tn = what[0];
-				createTiddlyButton(target,what[1],what[2],config.macros.menu.openTiddler,null,null,what[3],{data:tn});
-				break;
-			case 'link':
-				// link URL text condition
-				if (eval(what[2])) {
-					var lnk = createExternalLink(target, what[0]);
-					lnk.appendChild(document.createTextNode(what[1]));
-				}
-				break;
+			switch (what.shift()) {
+				case 'macro':
+					invokeMacro(target, what[0], what[1]);
+					break;
+				case 'tiddler':
+					var tn = what[0];
+					createTiddlyButton(target, what[1], what[2], config.macros.menu.openTiddler, null, null, what[3], { data: tn });
+					break;
+				case 'link':
+					// link URL text condition
+					if (eval(what[2])) {
+						var lnk = createExternalLink(target, what[0]);
+						lnk.appendChild(document.createTextNode(what[1]));
+					}
+					break;
 			}
 		}
 		var c = target;
-		while (target.childNodes.length > 1)
-		{
+		while (target.childNodes.length > 1) {
 			var mc = target.removeChild(target.childNodes[1]);
-			insertAfter(c,mc);
+			insertAfter(c, mc);
 			mc = c;
 		}
 		removeNode(target);
