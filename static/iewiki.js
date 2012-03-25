@@ -8200,7 +8200,9 @@ config.macros.input = {
 		var value = params.length > 1 && params[1] ? params[1] : valus.split('|')[0];
 		if (updateAccess) {
 			var osdo = params.length > 2 ? params[2] : "";
-			var cbl = createTiddlyElement(place, "a", name, null, value, { href: "javascript:;", values: valus, onselect: osdo });
+			var cbl = createTiddlyElement(place,"a",name,null,value,{ href: "javascript:;", values: valus, onselect: osdo });
+			var drs = createTiddlyElement(place,'span');
+			drs.innerHTML = "&#9660;";
 			cbl.onclick = config.macros.input.dropSelect;
 			return cbl;
 		} else
@@ -8209,12 +8211,24 @@ config.macros.input = {
 	dropSelect: function (ev) {
 		var e = ev || window.event;
 		var me = resolveTarget(e);
+		var val = me.childNodes[0].nodeValue;
 		var values = me.getAttribute("values").split("|");
 		var popup = Popup.create(this);
 		for (var i = 1; i < values.length; i++)
-			createTiddlyButton(createTiddlyElement(popup, "li"), values[i], null, config.macros.input.selectChanged);
+			createTiddlyButton(createTiddlyElement(popup, "li"),values[i],null,config.macros.input.selectChanged);
 		popup.setAttribute("owner", me.getAttribute("id"));
 		Popup.show();
+		var cup = values.indexOf(val);
+		if (cup >= 0)
+			popup.childNodes[cup - 1].firstChild.focus();
+		var kph = function (ev) {
+			var e = ev || window.event;
+			if (e.keyCode == 27) { // Esc
+				Popup.remove();
+				me.focus();
+			}
+		};
+		addEvent(popup,window.event ? "keydown" : "keypress",kph);
 		e.cancelBubble = true;
 		if (e.stopPropagation) e.stopPropagation();
 		return false;
@@ -8226,6 +8240,7 @@ config.macros.input = {
 		var val = me.childNodes[0].nodeValue;
 		var eOwner = document.getElementById(owner);
 		eOwner.firstChild.nodeValue = val;
+		eOwner.focus();
 		updateForm(owner, eOwner, val);
 		var action = eOwner.getAttribute("onselect");
 		if (action)
