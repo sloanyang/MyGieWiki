@@ -479,11 +479,11 @@ body {font-size:0.8em;}
 <div title="UserProfile" viewTemplate="ViewOnlyTemplate">
 <pre>
 &lt;script&gt;forms.UserProfile = http.userProfile();&lt;/script&gt;
-|My pen name&lt;br&gt;&lt;&lt;input text txtUserName 50&gt;&gt;|
-|About me (displayed as a tooltip)&lt;br&gt;&lt;&lt;input textarea aboutme 5*50&gt;&gt;|
-|Email address for receiving messages&lt;br&gt;&lt;&lt;input text txtEmail 50&gt;&gt;|
-|When my pen name is clicked, display this page or tiddler (/path#title)&lt;br&gt;&lt;&lt;input text tiddler 55&gt;&gt; &lt;script label=&quot;Display&quot; title=&quot;Display tiddler now&quot;&gt;DisplayNonLocalTiddler(null,forms.UserProfile.tiddler);&lt;/script&gt;|
-|My projects&lt;br&gt; &lt;&lt;myprojects&gt;&gt;&lt;&lt;input text newproject 55&gt;&gt; &lt;script if=&quot;config.project == ''&quot; label=&quot;Add&quot; title=&quot;Add project&quot;&gt;var n = 'newproject'; if (config.macros.input.showField(n)) { if (ConfirmIfMessage(http.addProject({'domain': forms.UserProfile.newproject}))) if (http.addProject({'domain': forms.UserProfile.newproject, 'confirmed': true}).Success) story.refreshTiddler("UserProfile",null,true)} else config.macros.input.showField(n,true);&lt;/script&gt;&lt;br&gt;|
+|My pen name&lt;br&gt;&lt;&lt;input txtUserName text 50&gt;&gt;|
+|About me (displayed as a tooltip)&lt;br&gt;&lt;&lt;input aboutme textarea 5*50&gt;&gt;|
+|Email address for receiving messages&lt;br&gt;&lt;&lt;input txtEmail text 50&gt;&gt;|
+|When my pen name is clicked, display this page or tiddler (/path#title)&lt;br&gt;&lt;&lt;input tiddler text 55&gt;&gt; &lt;script label=&quot;Display&quot; title=&quot;Display tiddler now&quot;&gt;DisplayNonLocalTiddler(null,forms.UserProfile.tiddler);&lt;/script&gt;|
+|My projects&lt;br&gt; &lt;&lt;myprojects&gt;&gt;&lt;&lt;input newproject text 55&gt;&gt; &lt;script if=&quot;config.project == ''&quot; label=&quot;Add&quot; title=&quot;Add project&quot;&gt;var n = 'newproject'; if (config.macros.input.showField(n)) { if (ConfirmIfMessage(http.addProject({'domain': forms.UserProfile.newproject}))) if (http.addProject({'domain': forms.UserProfile.newproject, 'confirmed': true}).Success) story.refreshTiddler("UserProfile",null,true)} else config.macros.input.showField(n,true);&lt;/script&gt;&lt;br&gt;|
 |&lt;script label=&quot;Save&quot; title=&quot;Save&quot;&gt;OnCommitCloseForm("UserProfile",http.userProfile(forms.UserProfile));&lt;/script&gt;|
 &lt;script&gt;config.macros.input.showField('newproject',false);&lt;/script&gt;
 </pre>

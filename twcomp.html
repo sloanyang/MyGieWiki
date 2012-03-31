@@ -613,12 +613,12 @@ if (fn != "CreateNewPage") {
 forms[fn].template = "normal";
 forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"address",CheckNewAddress(v)); }
 ;&lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Create new page&lt;/div&gt;&lt;/html&gt;
-|&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input text title 70&gt;&gt;|
-|&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input text subtitle 70&gt;&gt;|
-|&gt;|&gt;|Address (&lt;script label=&quot;end with a /&quot;&gt;MakePathAFolder('address');&lt;/script&gt; to make a folder)&lt;br&gt;&lt;&lt;input text address 70&gt;&gt;|
+|&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input title text 70&gt;&gt;|
+|&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input subtitle text 70&gt;&gt;|
+|&gt;|&gt;|Address (&lt;script label=&quot;end with a /&quot;&gt;MakePathAFolder('address');&lt;/script&gt; to make a folder)&lt;br&gt;&lt;&lt;input address text 70&gt;&gt;|
 |&gt;|&gt;|Access permissions|
-|Group&lt;br&gt;&lt;&lt;input select group javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input select authenticated javascript:accessTypes&gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input select anonymous &quot;javascript:accessTypes&quot;&gt;&gt;|
-|&gt;|&gt;|Template&lt;br&gt;&lt;&lt;input select template javascript:availableTemplates() &gt;&gt;|
+|Group&lt;br&gt;&lt;&lt;input group select javascript:accessTypes&gt;&gt;|Authenticated&lt;br&gt;&lt;&lt;input authenticated select javascript:accessTypes&gt;&gt;|Anonymous&lt;br&gt;&lt;&lt;input anonymous select &quot;javascript:accessTypes&quot;&gt;&gt;|
+|&gt;|&gt;|Template&lt;br&gt;&lt;&lt;input template select javascript:availableTemplates() &gt;&gt;|
 |&gt;|&gt;|&lt;script label=&quot;Create new page&quot; title=&quot;Create new page&quot;&gt;OnCreatePage(http.createPage(GetForm(place)));&lt;/script&gt;&lt;script&gt;forms[formName(place)].controls['title'].focus();&lt;/script&gt;|</pre>
 </div>
 <div title="MoveThisPage" viewTemplate="ViewOnlyTemplate">
@@ -628,8 +628,8 @@ var fn = formName(place);
 forms[fn] = http.createPage({defaults:"get"}); // for updateAccess
 forms[fn].address = window.location.pathname;
 &lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Move this page&lt;/div&gt;&lt;/html&gt;
-|&gt;|&gt;|Address &lt;br&gt;&lt;&lt;input text address 70&gt;&gt;|
-|&lt;&lt;input checkbox redirect false&gt;&gt;Redirect current address|
+|&gt;|&gt;|Address &lt;br&gt;&lt;&lt;input address text 70&gt;&gt;|
+|&lt;&lt;input redirect checkbox false&gt;&gt;Redirect current address|
 |&gt;|&gt;|&lt;script label="Move page" title="Move page to a different address"&gt;OnCreatePage(http.moveThisPage(GetForm(place)));&lt;/script&gt;&lt;script&gt;forms[formName(place)].controls['address'].focus();&lt;/script&gt;|
 </pre></div>
 <div title="DefineGroup" >
@@ -644,9 +644,9 @@ else
 listOfAllGroups = listOfAllGroups.join('|');
 forms[fn] = { 'updateaccess': true };
 	&lt;/script&gt;
-|Group&lt;br&gt;&lt;&lt;input select groupname javascript:listOfAllGroups "" ListGroupMembers()&gt;&gt;|New group&lt;br&gt;&lt;&lt;input text name 36&gt;&gt; &lt;script label=&quot;Create&quot; title=&quot;Create group&quot;&gt;OnCreateGroup(http.createGroup(forms.DefineGroup));&lt;/script&gt;|
+|Group&lt;br&gt;&lt;&lt;input groupname select javascript:listOfAllGroups "" ListGroupMembers()&gt;&gt;|New group&lt;br&gt;&lt;&lt;input name text 36&gt;&gt; &lt;script label=&quot;Create&quot; title=&quot;Create group&quot;&gt;OnCreateGroup(http.createGroup(forms.DefineGroup));&lt;/script&gt;|
 |Members:|&lt;html&gt;&lt;div id="groupMemberList"&gt;&lt;/html&gt;|
-||&gt;|Add user as member&lt;br&gt;&lt;&lt;input text user 36&gt;&gt; &lt;script label=&quot;Add&quot; title=&quot;Add user&quot;&gt;OnAddMember(http.addGroupMember(forms.DefineGroup));&lt;/script&gt;|
+||&gt;|Add user as member&lt;br&gt;&lt;&lt;input user text 36&gt;&gt; &lt;script label=&quot;Add&quot; title=&quot;Add user&quot;&gt;OnAddMember(http.addGroupMember(forms.DefineGroup));&lt;/script&gt;|
 
 </pre>
 </div>

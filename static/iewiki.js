@@ -2569,6 +2569,10 @@ config.macros.view.views = {
             value = params[2].unescapeLineBreaks().format([value]);
         wikify(value, place, highlightHack, tiddler);
     },
+    bool: function (value, place, params, wikifier, paramString, tiddler) {
+		var se = createTiddlyElement(place,'span');
+		se.innerHTML = value && value != 'false' ? '&#10003' : '<b>-</b>';
+	},
     date: function(value, place, params, wikifier, paramString, tiddler) {
 		if (value == null) return;
         value = Date.convertFromYYYYMMDDHHMM(value);
@@ -2592,42 +2596,47 @@ config.macros.view.handler = function(place, macroName, params, wikifier, paramS
     }
 };
 
-config.macros.edit.handler = function(place, macroName, params, wikifier, paramString, tiddler) {
-    var field = params[0];
-    var rows = params[1] || 0;
-    var defVal = params[2] || '';
-    if ((tiddler instanceof Tiddler) && field) {
-        story.setDirty(tiddler.title, true);
-        var e, v;
-        if (field != "text" && !rows) {
-            e = createTiddlyElement(null, "input");
-            if (tiddler.isReadOnly())
-                e.setAttribute("readOnly", "readOnly");
-            e.setAttribute("edit", field);
-            e.setAttribute("type", "text");
-            e.value = store.getValue(tiddler, field) || defVal;
-            e.setAttribute("size", "40");
-            e.setAttribute("autocomplete", "off");
-            place.appendChild(e);
-        } else {
-            var wrapper1 = createTiddlyElement(null, "fieldset", null, "fieldsetFix");
-            var wrapper2 = createTiddlyElement(wrapper1, "div");
-            e = createTiddlyElement(wrapper2, "textarea");
-            if (tiddler.isReadOnly())
-                e.setAttribute("readOnly", "readOnly");
-            e.value = v = store.getValue(tiddler, field) || defVal;
-            rows = rows || 10;
-            var lines = v.match(/\n/mg);
-            var maxLines = Math.max(parseInt(config.options.txtMaxEditRows), 5);
-            if (lines != null && lines.length > rows)
-                rows = lines.length + 5;
-            rows = Math.min(rows, maxLines);
-            e.setAttribute("rows", rows);
-            e.setAttribute("edit", field);
-            place.appendChild(wrapper1);
-        }
-        return e;
-    }
+config.macros.edit.handler = function (place, macroName, params, wikifier, paramString, tiddler) {
+	var fa = params[1];
+	if (fa && isNaN(fa))
+		return config.macros.input.handler(place, macroName, params, wikifier, paramString, tiddler);
+
+	var field = params[0];
+	var rows = fa || 0;
+
+	var defVal = params[2] || '';
+	if ((tiddler instanceof Tiddler) && field) {
+		story.setDirty(tiddler.title, true);
+		var e, v;
+		if (field != "text" && !rows) {
+			e = createTiddlyElement(null, "input");
+			if (tiddler.isReadOnly())
+				e.setAttribute("readOnly", "readOnly");
+			e.setAttribute("edit", field);
+			e.setAttribute("type", "text");
+			e.value = store.getValue(tiddler, field) || defVal;
+			e.setAttribute("size", "40");
+			e.setAttribute("autocomplete", "off");
+			place.appendChild(e);
+		} else {
+			var wrapper1 = createTiddlyElement(null, "fieldset", null, "fieldsetFix");
+			var wrapper2 = createTiddlyElement(wrapper1, "div");
+			e = createTiddlyElement(wrapper2, "textarea");
+			if (tiddler.isReadOnly())
+				e.setAttribute("readOnly", "readOnly");
+			e.value = v = store.getValue(tiddler, field) || defVal;
+			rows = rows || 10;
+			var lines = v.match(/\n/mg);
+			var maxLines = Math.max(parseInt(config.options.txtMaxEditRows), 5);
+			if (lines != null && lines.length > rows)
+				rows = lines.length + 5;
+			rows = Math.min(rows, maxLines);
+			e.setAttribute("rows", rows);
+			e.setAttribute("edit", field);
+			place.appendChild(wrapper1);
+		}
+		return e;
+	}
 };
 
 config.macros.tagChooser.onClick = function(ev) {
@@ -5154,17 +5163,32 @@ Story.prototype.findContainingTiddler = function(e) {
     return e;
 };
 
-Story.prototype.gatherSaveFields = function(e, fields) {
-    if (e && e.getAttribute) {
-        var f = e.getAttribute("edit");
-        if (f)
-            fields[f] = e.value.replace(/\r/mg, "");
-        if (e.hasChildNodes()) {
-            var c = e.childNodes;
-            for (var t = 0; t < c.length; t++)
-                this.gatherSaveFields(c[t], fields);
-        }
-    }
+Story.prototype.gatherSaveFields = function (e, fields) {
+	var getters = {
+		checkbox: function(e) { return e.checked.toString(); },
+		select: function(e) {
+			var v = e.firstChild.nodeValue;
+			var vs = e.getAttribute('values').split('|');
+			if (v == vs[0] && v.startsWith('(') && v.endsWith(')')) // just a prompt
+				v = "";
+			return v;
+		},
+		text: function(e) {
+			return e.value.replace(/\r/mg, "");
+		}
+	};
+	if (e && e.getAttribute) {
+		var f = e.getAttribute("edit");
+		if (f) {
+			var gtr = getters[e.type] || getters.text;
+			fields[f] = gtr(e);
+		}
+		if (e.hasChildNodes()) {
+			var c = e.childNodes;
+			for (var t = 0; t < c.length; t++)
+				this.gatherSaveFields(c[t], fields);
+		}
+	}
 };
 
 Story.prototype.hasChanges = function(title) {
@@ -6104,7 +6128,7 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 				if (typeof(t.fields[dfn]) == 'undefined')
 					tfta.push(['|', dfn, '|<<editFields ', jstn,' "', dfn, '" ', f[dfn],'>>|'].join(''));					
 			}
-			tfta.push('|<<input text fldname 20>>|<<input text fldvalue 50>>|')
+			tfta.push('|<<input fldname text 20>>|<<input fldvalue text 50>>|')
 			tfta.push('|<<editFields ' + jstn + ' /+ >>|<<editFields ' + jstn + '>>|');
 			t = new Tiddler(title,t.version,tfta.join('\n'));
 			forms[pfxFields + tn] = { updateaccess: true };
@@ -8148,65 +8172,101 @@ function setFormFieldValue(f,name,value,vList) {
 
 config.macros.input = {
 	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
-		if (params.length < 2 || !this[params[0]])
+		if (params.length < 2 || !this[params[1]])
 			return createTiddlyLink(place, "GuideToInputMacro", true);
-		var fft = params.shift();
 		var ffn = params.shift();
+		var fft = params.shift();
 		var initer = config.macros.input[fft];
-		var f = GetForm(tiddler ? tiddler.title : formName(place));
-		if (params.length == 1 && f && f[ffn] != null)
-			params[1] = f[ffn]; // get default value from form
-		f.controls = f.controls || [];
-		f.controls[ffn] = initer(place, ffn, params, wikifier, paramString, tiddler, f.updateaccess);
+		if (macroName == 'edit') {
+			var f = merge({ updateaccess: true }, tiddler.fields, true);
+		} else {
+			var f = GetForm(tiddler ? tiddler.title : formName(place));
+			if (params.length == 1 && f && f[ffn] != null)
+				params[1] = f[ffn]; // get default value from form
+			f.controls = f.controls || [];
+		}
+		initer(place, ffn, params, wikifier, paramString, tiddler, f);
 	},
-	// <<input text name width text>>
-	text: function (place, name, params, wikifier, paramString, tiddler, updateAccess) {
+	// <<input name text width text>>
+	text: function (place, name, params, wikifier, paramString, tiddler, f) {
 		var c = createTiddlyElement(place, "input", name, null, null, { href: "javascript:;" });
 		if (params.length > 0)
 			c.size = params[0];
-		if (!updateAccess)
+		if (!f.updateaccess)
 			c.setAttribute("readOnly", "readOnly");
-		c.value = params.length > 1 ? params[1] : "";
 		c.onchange = config.macros.input.fieldChanged;
-		return c;
+		if (f.controls) {
+			c.value = params.length > 1 ? params[1] : "";
+			f.controls[name] = c;
+		}
+		else {
+			c.value = store.getValue(tiddler, name) || (params[3] || '');
+			c.setAttribute("edit", name);
+			c.setAttribute("type", "text");
+		}
 	},
-	// <<input textarea name rows*cols text>>
-	textarea: function (place, name, params, wikifier, paramString, tiddler, updateAccess) {
+	// <<input name textarea rows*cols text>>
+	textarea: function (place, name, params, wikifier, paramString, tiddler, f) {
 		var attribs = { href: "javascript:;" };
 		var md = params[0].split('*');
 		attribs.rows = md[0];
 		if (md.length > 1)
 			attribs.cols = md[1];
 		var c = createTiddlyElement(place, "textarea", name, null, null, attribs);
-		if (!updateAccess)
+		if (!f.updateaccess)
 			c.setAttribute("readOnly", "readOnly");
-		c.value = params.length > 1 ? params[1] : "";
 		c.onchange = config.macros.input.fieldChanged;
-		return c;
+		if (f.controls) {
+			c.value = params.length > 1 ? params[1] : "";
+			f.controls[name] = c;
+		}
+		else {
+			c.value = store.getValue(tiddler, name) || (params[3] || '');
+			c.setAttribute("edit", name);
+			c.setAttribute("type", "text");
+		}
 	},
-	// <<input checkbox name [checked]>>
-	checkbox: function (place, name, params, wikifier, paramString, tiddler) {
+	// <<input name checkbox [checked]>>
+	checkbox: function (place, name, params, wikifier, paramString, tiddler, f) {
 		var c = createTiddlyElement(place, "input", name, null, null, { href: "javascript:;", type: "checkbox" });
-		c.checked = params.length > 1 ? params[1] : "";
 		c.onchange = config.macros.input.fieldChanged;
-		return c;
+		if (f.controls) {
+			c.checked = params.length > 1 ? params[1] : "";
+			f.controls[name] = c;
+		}
+		else {
+			var sv = store.getValue(tiddler, name);
+			c.checked = sv == 'false' ? false : (sv || (params[2] || ''));
+			c.setAttribute('edit', name);
+			c.setAttribute('type', 'checkbox');
+		}
 	},
+	// <<input name macro handler>>
 	macro: function (place, name, params, wikifier, paramString, tiddler) {
 		if (params.length > 1 && params[1].handler)
 			params[1].handler(place, params[1]);
 	},
-	select: function (place, name, params, wikifier, paramString, tiddler, updateAccess) {
+	// <<input name select values value>>
+	select: function (place, name, params, wikifier, paramString, tiddler, f) {
 		var valus = config.macros.input.parameter(params[0]);
-		var value = params.length > 1 && params[1] ? params[1] : valus.split('|')[0];
-		if (updateAccess) {
-			var osdo = params.length > 2 ? params[2] : "";
-			var cbl = createTiddlyElement(place,"a",name,null,value,{ href: "javascript:;", values: valus, onselect: osdo });
-			var drs = createTiddlyElement(place,'span');
+		var osdo = params.length > 2 ? params[2] : "";
+		var attrs = { href: "javascript:;", values: valus, onselect: osdo };
+		if (f.controls) {
+			var value = params.length > 1 && params[1] ? params[1] : valus.split('|')[0];
+		} else {
+			var value = store.getValue(tiddler, name) || valus.split('|')[0];
+			attrs.edit = name;
+			attrs.type = 'select';
+		}
+		if (f.updateaccess) {
+			var cbl = createTiddlyElement(place, "a", name, null, value, attrs);
+			var drs = createTiddlyElement(place, 'span');
 			drs.innerHTML = "&#9660;";
 			cbl.onclick = config.macros.input.dropSelect;
-			return cbl;
+			if (f.controls)
+				f.controls[name] = cbl;
 		} else
-			return createTiddlyElement(place,'span',null,null,value);
+			createTiddlyElement(place, 'span', null, null, value);
 	},
 	dropSelect: function (ev) {
 		var e = ev || window.event;
@@ -8215,12 +8275,12 @@ config.macros.input = {
 		var values = me.getAttribute("values").split("|");
 		var popup = Popup.create(this);
 		for (var i = 1; i < values.length; i++)
-			createTiddlyButton(createTiddlyElement(popup, "li"),values[i],null,config.macros.input.selectChanged);
+			createTiddlyButton(createTiddlyElement(popup, "li"), values[i], null, config.macros.input.selectChanged);
 		popup.setAttribute("owner", me.getAttribute("id"));
 		Popup.show();
 		var cup = values.indexOf(val);
 		if (cup >= 0)
-			popup.childNodes[cup - 1].firstChild.focus();
+			popup.childNodes[cup >= 1 ? cup - 1 : 0].firstChild.focus();
 		var kph = function (ev) {
 			var e = ev || window.event;
 			if (e.keyCode == 27) { // Esc
@@ -8228,7 +8288,7 @@ config.macros.input = {
 				me.focus();
 			}
 		};
-		addEvent(popup,window.event ? "keydown" : "keypress",kph);
+		addEvent(popup, window.event ? "keydown" : "keypress", kph);
 		e.cancelBubble = true;
 		if (e.stopPropagation) e.stopPropagation();
 		return false;
@@ -8270,7 +8330,7 @@ config.macros.input = {
 		else
 			e.style.display = show ? 'inline' : 'none';
 	}
-}
+};
 
 config.macros.submitButton = {
 	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
@@ -8851,7 +8911,7 @@ config.macros.fileList = {
 			var flt = "|!Path|!Date|!Type|"
 			for (var i = 0; i < fl.files.length; i++) {
 				forms[this.fn][fl.files[i].path] = false;
-				flt = [flt, '\n|<<input checkbox "', fl.files[i].path, '" false>> [[', fl.files[i].path, ']]|', fl.files[i].date.formatString('DD MMM YYYY 0hh:0mm'), '|', fl.files[i].mimetype, '|'].join('')
+				flt = [flt, '\n|<<input "', fl.files[i].path, '" checkbox false>> [[', fl.files[i].path, ']]|', fl.files[i].date.formatString('DD MMM YYYY 0hh:0mm'), '|', fl.files[i].mimetype, '|'].join('')
 			}
 			flt = flt + '\n<<submitButton true "Delete file(s)" "Delete selected files" config.macros.fileList.DeleteSelected()>>';
 			flt = flt + ' <<submitButton true "Replace file.." "Replace selected file" config.macros.fileList.ReplaceSelected()>>';
