@@ -8184,7 +8184,7 @@ config.macros.input = {
 		var fft = params.shift();
 		var initer = config.macros.input[fft];
 		if (macroName == 'edit') {
-			var f = { updateaccess: true };
+			var f = { updateaccess: !readOnly };
 		} else {
 			var f = GetForm(tiddler ? tiddler.title : formName(place));
 			if (params.length == 1 && f && f[ffn] != null)
