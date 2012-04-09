@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.16.0
+   version:	1.16.1
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -116,6 +116,7 @@ merge(config.options, {
     chkRequireDeleteConfirm: true,
     chkRequireDeleteReason: true,
     chkInsertTabs: false,
+	chkListPrevious: true,
     chkUsePreForStorage: true, // Whether to use <pre> format for storage
     chkDisplayInstrumentation: false,
     txtEditorFocus: "text",
@@ -144,6 +145,7 @@ config.optionsDesc = {
     chkRequireDeleteConfirm: "Require confirmation before deleting tiddlers",
     chkRequireDeleteReason: "Ask for a reason for deletion",
     chkInsertTabs: "Use the tab key to insert tab characters instead of moving between fields",
+	chkListPrevious: "List previous version(s) of tiddlers you just edited",
     txtEmptyTiddlyWiki: "Source template (empty.html) for downloaded TiddlyWiki's",
     txtMaxEditRows: "Maximum number of visible lines in edit boxes",
     txtEmail: "Email for receiving messages",
@@ -8071,6 +8073,7 @@ function onClickTiddlerHistory(e) {
 	else {
 		tiddler.versions = res.versions;
 		story.refreshTiddler(t, null, true);
+		delete tiddler.versions;
 	}
 }
 
@@ -8181,7 +8184,7 @@ config.macros.input = {
 		var fft = params.shift();
 		var initer = config.macros.input[fft];
 		if (macroName == 'edit') {
-			var f = merge({ updateaccess: true }, tiddler.fields, true);
+			var f = { updateaccess: true };
 		} else {
 			var f = GetForm(tiddler ? tiddler.title : formName(place));
 			if (params.length == 1 && f && f[ffn] != null)
@@ -8354,6 +8357,19 @@ config.macros.localDiv = {
 	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
 		createTiddlyElement(place,params[1] || "div",formName(place) + params[0]);
    }
+}
+
+config.macros['if'] = {
+	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
+		if (params.length < 2)
+			return;
+		var c = params.shift();
+		if (eval(c)) {
+			var m = params.shift();
+			if (config.macros[m])
+				return config.macros[m].handler.call(this, place, macroName, params, wikifier, paramString, tiddler);
+		}
+	}
 }
 
 config.macros.iFrame = {
