@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.16.0
+# ver.:  1.16.1
 
 import cgi
 import codecs
@@ -35,7 +35,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.16.0'
+giewikiVersion = '1.16.1'
 TWComp = 'twcomp.html'
 
 # status codes, COM style:
@@ -97,7 +97,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 16, revision: 0, date: new Date("Mar 18, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 16, revision: 1, date: new Date("Apr 13, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -914,7 +914,7 @@ class MainPage(webapp.RequestHandler):
 						delattr(tlr,apn)
 					elif hasattr(t,apn):
 						if getattr(t,apn) == getattr(tlr,apn):
-							logging.info("The '" + apn + "' property is unchanged: " + str(getattr(tlr,apn)))
+							logging.info("The '" + apn + "' property is unchanged: " + unicode(getattr(tlr,apn)))
 						else:
 							nCh = nCh + 1
 					elif apn in tlr.dynamic_properties():

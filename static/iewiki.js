@@ -4266,11 +4266,15 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		atag: atags,
 		currentVer: tiddler.currentVer,
 		modifier: modifier,
-		fromVer: fromVersion,
 		autoSave: autoSave || false,
 		historyView: story.getHistoryView(tiddler),
 		shadow: tiddler.hasShadow ? 1 : 0
 	}
+	if (config.options.chkListPrevious)
+		m.fromVer = fromVersion;
+	else
+		delete tiddler.versions;
+	
 	if (!(tiddler.autoSavedAsVer === undefined)) {
 		m.autoSavedAsVer = tiddler.autoSavedAsVer;
 		delete tiddler.autoSavedAsVer;
@@ -8072,8 +8076,10 @@ function onClickTiddlerHistory(e) {
 		displayMessage(res.error);
 	else {
 		tiddler.versions = res.versions;
+		var av = config.options.chkListPrevious;
+		config.options.chkListPrevious = true;
 		story.refreshTiddler(t, null, true);
-		delete tiddler.versions;
+		config.options.chkListPrevious = av;
 	}
 }
 
