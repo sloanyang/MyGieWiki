@@ -1,7 +1,14 @@
-This is (or was) giewiki release 1.16.0.
+This is (or was) giewiki release 1.16.1.
 
 Starting point:
 	http://giewiki.appspot.com
+
+Changes in 1.16.1:
+	* <<input type name ..>> changed to <<input name type ..>> for consistency & interop with: <<edit name type ..>>
+	* New: macro <<if "condition" other-macro>>
+	* New: advanced option chkListPrevious: "List previous version(s) of tiddlers you just edited" (defaults to true)
+	* Fix: Multi-line custom fields
+	* Fix: Unicode in tiddler title
 
 New features in release 1.16:
 	* The attribute tag tiddlerTemplate marks a tiddler as template for editing or viewing tiddlers.
