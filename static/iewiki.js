@@ -256,7 +256,7 @@ config.macros = {
     slider: {},
     option: {},
     options: {
-        wizardTitle: "Tweak advanced options",
+        wizardTitle: "Personal preferences",
         step1Title: "These options are saved online in your profile if you are logged in (otherwise not)",
         step1Html: "<input type='hidden' name='markList'></input><br><input type='checkbox' checked='false' name='chkUnknown'>Show unknown options</input>",
         unknownDescription: "//(unknown)//",
@@ -4274,13 +4274,13 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		m.fromVer = fromVersion;
 	else
 		delete tiddler.versions;
-	
+
 	if (!(tiddler.autoSavedAsVer === undefined)) {
 		m.autoSavedAsVer = tiddler.autoSavedAsVer;
 		delete tiddler.autoSavedAsVer;
 	}
 	if (modified === undefined)
-		m.minorEdit = true; 
+		m.minorEdit = true;
 	if (tags) {
 		if (atags.indexOf('isPrivate') > -1)
 			m.isPrivate = 'true';
@@ -4288,8 +4288,12 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 			m.deprecated = 'true';
 	}
 	for (fn in fields) {
-		if (m[fn] === undefined)
-			m[fn] = fields[fn].escapeLineBreaks();
+		if (m[fn] === undefined) {
+			var fv = fields[fn];
+			if (typeof (fv) == 'object')
+				fv = fv.join('\n');
+			m[fn] = fv.escapeLineBreaks();
+		}
 	}
 	if (tiddler.key)
 		m.key = tiddler.key;
@@ -4318,10 +4322,10 @@ TiddlyWiki.prototype.saveTiddler = function (title, newTitle, newBody, modifier,
 		tiddler.version = result.currentVer;
 	tiddler.fromversion = fromVersion;
 	tiddler.vercnt = result.vercnt;
-	
+
 	if (et)
 		this.deleteTiddler(title);
-	this.addTiddlerAs(tiddler,autoSave ? title : newTitle);
+	this.addTiddlerAs(tiddler, autoSave ? title : newTitle);
 	if (autoSave)
 		return tiddler;
 
@@ -4604,14 +4608,14 @@ function DateFieldAccess(n) {
     this.get = function(t) { return t[n] ? t[n].convertToYYYYMMDDHHMM() : undefined; };
 }
 
-function LinksFieldAccess(n) {
+function LinksFieldAccess(n,i) {
     this.set = function(t, v) {
         var s = (typeof v == "string") ? v.readBracketedList() : v;
         if (s.toString() != t[n].toString()) {
             t[n] = s; return true;
         }
     };
-    this.get = function(t) { return String.encodeTiddlyLinkList(t[n]); };
+    this.get = function(t,i) { return i === undefined ? String.encodeTiddlyLinkList(t[n]) : t[n][i]; };
 }
 
 TiddlyWiki.standardFieldAccess = {
@@ -4693,16 +4697,22 @@ TiddlyWiki.prototype.setValue = function(tiddler, fieldName, value) {
 // Returns the value of the given field of the tiddler.
 // The fieldName is case-insensitive.
 // Will only return String values (or undefined).
-TiddlyWiki.prototype.getValue = function(tiddler, fieldName) {
-    var t = this.resolveTiddler(tiddler);
-    if (!t)
-        return undefined;
-    fieldName = fieldName.toLowerCase();
-    var accessor = TiddlyWiki.standardFieldAccess[fieldName];
-    if (accessor) {
-        return accessor.get(t);
-    }
-    return t.fields[fieldName];
+TiddlyWiki.prototype.getValue = function (tiddler, fieldName, i) {
+	var t = this.resolveTiddler(tiddler);
+	if (!t)
+		return undefined;
+	fieldName = fieldName.toLowerCase();
+	var accessor = TiddlyWiki.standardFieldAccess[fieldName];
+	if (accessor) {
+		return accessor.get(t, i);
+	}
+	var fv = t.fields[fieldName];
+	if (typeof(fv) == 'string')
+		fv = fv.split('\n');
+	if (typeof(fv) == 'object')
+		return fv[i || 0];
+	else
+		return "";
 };
 
 // Calls the callback function for every field in the tiddler.
@@ -5170,27 +5180,39 @@ Story.prototype.findContainingTiddler = function(e) {
 };
 
 Story.prototype.getters = {
-	checkbox: function(e) { return e.checked.toString(); },
-	select: function(e) {
+	checkbox: function (e) { return e.checked.toString(); },
+	select: function (e) {
 		var v = e.firstChild.nodeValue;
 		var vs = e.getAttribute('values').split('|');
 		if (v == vs[0] && v.startsWith('(') && v.endsWith(')')) // just a prompt
 			v = "";
 		return v;
 	},
-	text: function(e) {
-		return e.value.replace(/\r/mg, "");
+	text: function (e) {
+		var v = e.value;
+		if (v === undefined)
+			Debugger("Type: " + typeof(e),"");
+		else
+			return e.value.replace(/\r/mg, "");
 	}
 };
 
 Story.prototype.gatherSaveFields = function (e, fields) {
-		if (e && e.getAttribute) {
-			var f = e.getAttribute("edit");
+	if (e && e.getAttribute) {
+		var f = e.getAttribute('edit');
+		var i = e.getAttribute('index');
 		if (f) {
 			var gtr = this.getters[e.type];
 			if (!gtr || f == 'text')
 				gtr = this.getters.text;
-			fields[f] = gtr(e);
+			var v = gtr(e);
+			if (i != null) {
+				if (fields[f] === undefined)
+					fields[f] = [];
+				fields[f][i] = v;
+			}
+			else
+				fields[f] = v;
 		}
 		if (e.hasChildNodes()) {
 			var c = e.childNodes;
@@ -6130,8 +6152,11 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 			var tfta = ['!' + title, '|Field|Value|h']
 			var jstn = tn.toJSONString();
 			for (var fld in t.fields) {
-				if (t.fields[fld] != '')
-					tfta.push(['|', fld, '|<<editFields ', jstn,' "', fld, '" ', t.fields[fld].toJSONString(),'>>|'].join(''));
+				var fv = t.fields[fld];
+				if (typeof (fv) == 'object')
+					fv = fv.join('\n');
+				if (fv != '')
+					tfta.push(['|', fld, '|<<editFields ', jstn,' "', fld, '" ', fv.toJSONString(),'>>|'].join(''));
 			}
 			for (var dfn in f) {
 				if (typeof(t.fields[dfn]) == 'undefined')
@@ -8184,12 +8209,23 @@ function setFormFieldValue(f,name,value,vList) {
 
 config.macros.input = {
 	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
-		if (params.length < 2 || !this[params[1]])
-			return createTiddlyLink(place, "GuideToInputMacro", true);
 		var ffn = params.shift();
 		var fft = params.shift();
+		var fftl = fft.length;
+		var edit = macroName == 'edit';
+		var ne = 1;
+		if (fftl > 1 && fft.startsWith('[') && fft.endsWith(']')) {
+			ne = fftl > 2 && parseInt(fft.substring(1, fftl - 1));
+			if (ne < 0) {
+				//displayMessage("upt to " + ne);
+				ne = 0 - ne;
+			}
+			fft = params.shift();
+		}
+		if (fft === undefined || !this[fft] || isNaN(ne))
+			return createTiddlyLink(place, "GuideToInputMacro", true);
 		var initer = config.macros.input[fft];
-		if (macroName == 'edit') {
+		if (edit) {
 			var f = { updateaccess: !readOnly };
 		} else {
 			var f = GetForm(tiddler ? tiddler.title : formName(place));
@@ -8197,10 +8233,22 @@ config.macros.input = {
 				params[1] = f[ffn]; // get default value from form
 			f.controls = f.controls || [];
 		}
-		initer(place, ffn, params, wikifier, paramString, tiddler, f);
+		for (var i = 0; i < ne; i++) {
+			if (place.tagName == 'TR')
+				var cwe = createTiddlyElement(place, 'TD');
+			else
+				var cwe = place;
+			var ce = initer(cwe, ffn, params, wikifier, paramString, tiddler, f, i);
+			if (ce) {
+				if (edit)
+					ce.setAttribute("edit", ffn);
+				if (ne > 1) //!(cwe === place))
+					ce.setAttribute('index', i);
+			}
+		}
 	},
 	// <<input name text width text>>
-	text: function (place, name, params, wikifier, paramString, tiddler, f) {
+	text: function (place, name, params, wikifier, paramString, tiddler, f, i) {
 		var c = createTiddlyElement(place, "input", name, null, null, { href: "javascript:;" });
 		if (params.length > 0)
 			c.size = params[0];
@@ -8212,10 +8260,10 @@ config.macros.input = {
 			f.controls[name] = c;
 		}
 		else {
-			c.value = store.getValue(tiddler, name) || (params[3] || '');
-			c.setAttribute("edit", name);
+			c.value = store.getValue(tiddler, name, i) || (params[3] || '');
 			c.setAttribute("type", "text");
 		}
+		return c;
 	},
 	// <<input name textarea rows*cols text>>
 	textarea: function (place, name, params, wikifier, paramString, tiddler, f) {
@@ -8234,12 +8282,12 @@ config.macros.input = {
 		}
 		else {
 			c.value = store.getValue(tiddler, name) || (params[3] || '');
-			c.setAttribute("edit", name);
 			c.setAttribute("type", "text");
 		}
+		return c;
 	},
 	// <<input name checkbox [checked]>>
-	checkbox: function (place, name, params, wikifier, paramString, tiddler, f) {
+	checkbox: function (place, name, params, wikifier, paramString, tiddler, f, i) {
 		var c = createTiddlyElement(place, "input", name, null, null, { href: "javascript:;", type: "checkbox" });
 		c.onchange = config.macros.input.fieldChanged;
 		if (f.controls) {
@@ -8247,11 +8295,11 @@ config.macros.input = {
 			f.controls[name] = c;
 		}
 		else {
-			var sv = store.getValue(tiddler, name);
+			var sv = store.getValue(tiddler,name,i);
 			c.checked = sv == 'false' ? false : (sv || (params[2] || ''));
-			c.setAttribute('edit', name);
 			c.setAttribute('type', 'checkbox');
 		}
+		return c;
 	},
 	// <<input name macro handler>>
 	macro: function (place, name, params, wikifier, paramString, tiddler) {
@@ -8259,15 +8307,14 @@ config.macros.input = {
 			params[1].handler(place, params[1]);
 	},
 	// <<input name select values value>>
-	select: function (place, name, params, wikifier, paramString, tiddler, f) {
+	select: function (place, name, params, wikifier, paramString, tiddler, f, i) {
 		var valus = config.macros.input.parameter(params[0]);
 		var osdo = params.length > 2 ? params[2] : "";
 		var attrs = { href: "javascript:;", values: valus, onselect: osdo };
 		if (f.controls) {
 			var value = params.length > 1 && params[1] ? params[1] : valus.split('|')[0];
 		} else {
-			var value = store.getValue(tiddler, name) || valus.split('|')[0];
-			attrs.edit = name;
+			var value = store.getValue(tiddler,name,i) || valus.split('|')[0];
 			attrs.type = 'select';
 		}
 		if (f.updateaccess) {
@@ -8277,8 +8324,9 @@ config.macros.input = {
 			cbl.onclick = config.macros.input.dropSelect;
 			if (f.controls)
 				f.controls[name] = cbl;
+			return cbl;
 		} else
-			createTiddlyElement(place, 'span', null, null, value);
+			return createTiddlyElement(place, 'span', null, null, value);
 	},
 	dropSelect: function (ev) {
 		var e = ev || window.event;
@@ -8310,7 +8358,7 @@ config.macros.input = {
 		var me = resolveTarget(e);
 		var owner = me.parentNode.parentNode.getAttribute("owner");
 		var val = me.childNodes[0].nodeValue;
-		var eOwner = document.getElementById(owner);
+		var eOwner = Popup.stack[0].root;
 		eOwner.firstChild.nodeValue = val;
 		eOwner.focus();
 		updateForm(owner, eOwner, val);
