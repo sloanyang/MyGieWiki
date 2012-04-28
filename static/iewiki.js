@@ -5997,14 +5997,22 @@ function createExternalLink(place, url) {
 config.macros.editFields = {
 	edit: function(e) {
 		var target = resolveTarget(e || window.event);
-		target.style.display = 'none';
-		var e = createTiddlyElement(null, 'input');
-		e.setAttribute('type', 'text');
-		e.value = target.firstChild.nodeValue;
-		e.setAttribute('size', '50');
-		e.setAttribute('autocomplete', 'off');
-		target.parentElement.appendChild(e);
-		e.focus();
+		var fld = target.getAttribute('field');
+		var pe = target.parentElement.parentElement;
+		var oe = pe.getElementsByTagName('a');
+		for (var i = oe.length - 1; i >= 0; i--) {
+			var oei = oe[i];
+			var fc = target === oei;
+			var ne = createTiddlyElement(oei.parentElement, 'input');
+			ne.setAttribute('type', 'text');
+			ne.value = oei.firstChild.nodeValue;
+			ne.setAttribute('size', '50');
+			ne.setAttribute('autocomplete', 'off');
+			ne.setAttribute('field', fld);
+			removeNode(oei);
+			if (fc)
+				ne.focus();
+		}
 	},
 	add: function(e) {
 		var target = resolveTarget(e || window.event);
@@ -6022,15 +6030,15 @@ config.macros.editFields = {
 			return ir.childNodes[1].firstChild.focus();
 		var trn = document.createElement('TR');
 		fv.fldname = fv.fldname.toLowerCase().replace(/ /mg, "_");
-		createTiddlyElement(trn,"TD",null,null,fv.fldname);
-		var atd = createTiddlyElement(trn,"TD",null);
-		var e = createTiddlyElement(null, 'input');
+		createTiddlyElement(trn,'TD',null,null,fv.fldname);
+		var atd = createTiddlyElement(trn,'TD',null);
+		var e = createTiddlyElement(null,'input');
 		e.setAttribute('field', fv.fldname);
 		e.setAttribute('type', 'text');
 		e.value = fv.fldvalue;
 		e.setAttribute('size', '50');
 		e.setAttribute('autocomplete', 'off');
-		atd.appendChild(e);		
+		atd.appendChild(e);
 		pe.insertBefore(trn, ir);
 		fv.controls.fldname.value = "";
 		fv.controls.fldvalue.value = "";
@@ -6041,12 +6049,17 @@ config.macros.editFields = {
 		var tiddler = store.getTiddler(title);
 		var pe = target.parentElement.parentElement.parentElement;
 		var edits = pe.getElementsByTagName('input');
+		var vals = {};
 		for (var i = 0; i < edits.length; i++) {
 			var ee = edits[i];
 			var se = ee.parentElement.firstChild;
 			var fn = se.getAttribute('field');
-			if (fn != null)
-				tiddler.fields[fn] = ee.value.unescapeLineBreaks();
+			if (fn != null) {
+				if (vals[fn] === undefined)
+					vals[fn] = [];
+				vals[fn].push(ee.value);
+				tiddler.fields[fn] = vals[fn].join('\n');
+			}
 		}
 		store.saveTiddler(title, title, tiddler.text, config.options.txtUserName, undefined, String.encodeTiddlyLinkList(tiddler.tags), tiddler.fields, false);
 		var coti = story.findContainingTiddler(target);
@@ -6056,13 +6069,18 @@ config.macros.editFields = {
 		var eda = config.admin;
 		if (params.length > 1) {
 			if (params[1] == '/+') {
-				createTiddlyButton(place,"add..","Add field",this.add,null,null,null,{ tiddler: params[0]});
+				createTiddlyButton(place,"add..","Add field",this.add,null,null,null,{ tiddler: params[0] });
 			}
-			else
-				createTiddlyButton(place,params[2],"Click to edit",eda?this.edit:null,'tiddlerField',null,null,{ tiddler: params[0], field: params[1] });
+			else {
+				var vals = eval('"' + params[2] + '"').split('\n');
+				for (var i = 0; i < vals.length; i++) {
+					var wd = createTiddlyElement(place, 'div');
+					createTiddlyButton(wd, vals[i], "Click to edit", eda ? this.edit : null, 'tiddlerField', null, null, { tiddler: params[0], field: params[1] });
+				}
+			}
 		}
 		else if (eda)
-			createTiddlyButton(place,"Save","Save changes",this.save,'button',null,null,{ tiddler: params[0] });
+			createTiddlyButton(place,"Save","Save changes",this.save,'button',null,null, { tiddler: params[0] });
 	}
 };
 
