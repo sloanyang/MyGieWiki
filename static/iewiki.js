@@ -6003,12 +6003,9 @@ config.macros.editFields = {
 		for (var i = oe.length - 1; i >= 0; i--) {
 			var oei = oe[i];
 			var fc = target === oei;
-			var ne = createTiddlyElement(oei.parentElement, 'input');
-			ne.setAttribute('type', 'text');
-			ne.value = oei.firstChild.nodeValue;
-			ne.setAttribute('size', '50');
-			ne.setAttribute('autocomplete', 'off');
-			ne.setAttribute('field', fld);
+			var ne = createTiddlyElement(oei.parentElement,'input',null,null,null,{ type: 'text', size: '50', autocomplete: 'off', field: fld });
+			if (oei.firstChild && oei.firstChild.nodeValue != "+ ..")
+				ne.value = oei.firstChild.nodeValue;
 			removeNode(oei);
 			if (fc)
 				ne.focus();
@@ -6057,7 +6054,8 @@ config.macros.editFields = {
 			if (fn != null) {
 				if (vals[fn] === undefined)
 					vals[fn] = [];
-				vals[fn].push(ee.value);
+				if (ee.value !== '')
+					vals[fn].push(ee.value);
 				tiddler.fields[fn] = vals[fn].join('\n');
 			}
 		}
@@ -6073,6 +6071,7 @@ config.macros.editFields = {
 			}
 			else {
 				var vals = eval('"' + params[2] + '"').split('\n');
+				vals.push("+ ..");
 				for (var i = 0; i < vals.length; i++) {
 					var wd = createTiddlyElement(place, 'div');
 					createTiddlyButton(wd, vals[i], "Click to edit", eda ? this.edit : null, 'tiddlerField', null, null, { tiddler: params[0], field: params[1] });
