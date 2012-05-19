@@ -101,6 +101,9 @@ h2,h3 {border-bottom:1px solid [[ColorPalette::TertiaryLight]];}
 .button:hover {color:[[ColorPalette::PrimaryDark]]; background:[[ColorPalette::SecondaryLight]]; border-color:[[ColorPalette::SecondaryMid]];}
 .button:active {color:[[ColorPalette::Background]]; background:[[ColorPalette::SecondaryMid]]; border:1px solid [[ColorPalette::SecondaryDark]];}
 
+.cxtoggle {color:[[ColorPalette::TertiaryMid]];}
+.cxtoggle:hover {color:[[ColorPalette::Foreground]];}
+
 .header {background:[[ColorPalette::PrimaryMid]];}
 .headerShadow {color:[[ColorPalette::Foreground]];}
 .headerShadow a {font-weight:normal; color:[[ColorPalette::Foreground]];}
@@ -297,10 +300,10 @@ a.tiddlyLinkNonExisting.shadow {font-weight:bold;}
 
 #topRightCorner { position:absolute; top:0.5em;right:0.9em; font-size: 1.1em; text-align: right; }
 
-#mainMenu {position:absolute; left:0; width:10em; text-align:right; line-height:1.6em; padding:1.5em 0.5em 0.5em 0.5em; font-size:1.1em;}
+#mainMenu {position:absolute; left:0; width:10em; text-align:right; line-height:1.6em; padding:0.5em 0.5em 0.5em 0.5em; font-size:1.1em;}
 
-#sidebar {position:absolute; right:3px; width:16em; font-size:.9em;}
-#sidebarOptions {padding-top:0.3em;}
+#sidebar {position:absolute; right:3px; width:16em; margin-top:1em; font-size:.9em;}
+#sidebarOptions {padding-top:0em;}
 #sidebarOptions a {margin:0em 0.2em; padding:0.2em 0.3em; display:block;}
 #sidebarOptions input {margin:0.4em 0.5em;}
 #sidebarOptions .sliderPanel {margin-left:1em; padding:0.5em; font-size:.85em;}
@@ -343,16 +346,19 @@ a.tiddlyLinkNonExisting.shadow {font-weight:bold;}
 #contentWrapper {display:block;}
 #splashScreen {display:none;}
 
-#displayArea {margin:1em 17em 0em 14em;}
+#displayArea {margin:1em 17em 0em 13em;}
 
 .toolbar {text-align:right; font-size:.9em; float:right }
 .commentToolbar {text-align:left; font-size:.9em;}
 
-.tiddler {padding:1em 1em 0em 1em;}
+.tiddler {padding:0em 1em 1em 0em;}
 
 .missing .viewer,.missing .title {font-style:italic;}
 
 .title {font-size:1.6em; font-weight:bold;}
+.cxtoggle {width:1.0em; font-size:1.10em;}
+.vttable td { padding: 0 0 0 0 }
+.tdtoggle {width: 1.25em;}
 
 .missing .subtitle {display:none;}
 .subtitle {font-size:1.1em;}
@@ -465,8 +471,14 @@ body {font-size:0.8em;}
 </div>
 <div title="ViewTemplate" editTemplateSpecial="ViewTemplateEditTemplate" historyview="modified:%Y-%m-%d %H:%M;When|author;Who|version;V#|title;Title|field:tags;Tags">
 <pre>&lt;!--{{{--&gt;
-&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::ViewToolbar]]'&gt;&lt;/div&gt;
+&lt;table width='100%' class='vttable'>&lt;tr valign='top'&gt;
+&lt;td class='tdtoggle'&gt;
+&lt;a class='cxtoggle button' title='collapse' href='javascript:;'&gt;&#x25BC;&lt;/a&gt;
+&lt;a class='cxtoggle button' title='expand' href='javascript:;' style='display:none'&gt;&#x25BA;&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::ViewToolbar]]'&gt;&lt;/div&gt;
 &lt;div class='title' macro='view title'&gt;&lt;/div&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;
 &lt;div class='subtitle'&gt;&lt;span macro='author'&gt;&lt;/span&gt;&lt;span macro='view modified date "DD MMM YYYY" ", "'&gt;&lt;/span&gt; &lt;span macro='history'&gt;&lt;/span&gt;&lt;/div&gt;
 &lt;div class='tagging' macro='tagging'&gt;&lt;/div&gt;
 &lt;div class='tagged' macro='tags'&gt;&lt;/div&gt;
@@ -475,19 +487,29 @@ body {font-size:0.8em;}
 &lt;div class='tagClear'&gt;&lt;/div&gt;
 &lt;hr/&gt;
 &lt;div class='comments' macro='comments'&gt;&lt;/div&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;
 &lt;!--}}}--&gt;
 </pre>
 </div>
 <div title="EditTemplate">
 <pre>&lt;!--{{{--&gt;
-&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::EditToolbar]]'&gt;&lt;/div&gt;
+&lt;table width='100%' class='vttable'>&lt;tr valign='top'&gt;
+&lt;td class='tdtoggle'&gt;
+&lt;a class='cxtoggle button' title='collapse' href='javascript:;'&gt;&#x25BC;&lt;/a&gt;
+&lt;a class='cxtoggle button' title='expand' href='javascript:;' style='display:none'&gt;&#x25BA;&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::EditToolbar]]'&gt;&lt;/div&gt;
 &lt;div class='title' macro='view title'&gt;&lt;/div&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;
 &lt;fieldset&gt;&lt;legend&gt;Title&lt;/legend&gt;&lt;div class='editor' macro='edit title'&gt;&lt;/div&gt;&lt;/fieldset&gt;
 &lt;div macro='annotations'&gt;&lt;/div&gt;
 &lt;fieldset&gt;&lt;legend&gt;Text&lt;/legend&gt;&lt;div class='editor' macro='edit text'&gt;&lt;/div&gt;
 &lt;table style='width:100%;'&gt;&lt;tr&gt;&lt;td&gt;&lt;div class='commentToolbar' macro='toolbar [[ToolbarCommands::TextToolbar]]'&gt;&lt;/td&gt;&lt;td align='right'&gt;&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::EditToolbar]]'&gt;&lt;/div&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt; &lt;/fieldset&gt;
 &lt;fieldset id='preview' style='display:none'&gt;&lt;legend&gt;Preview&lt;/legend&gt;&lt;div class='viewer' &gt;&lt;/div&gt;&lt;/fieldset&gt;
 &lt;fieldset id='tag' class='tagFrame'&gt;&lt;legend&gt;Tags &amp; attributes&lt;/legend&gt;&lt;div class='editor' macro='edit tags'&gt;&lt;/div&gt;&lt;div class='editorFooter'&gt;&lt;span macro='message views.editor.tagPrompt'&gt;&lt;/span&gt;&lt;span macro='tagChooser'&gt;&lt;/span&gt;&lt;/div&gt;&lt;/fieldset&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;
 &lt;!--}}}--&gt;
 </pre>
 </div>
@@ -516,9 +538,18 @@ body {font-size:0.8em;}
 </div>
 <div title="ViewOnlyTemplate">
 <pre>&lt;!--{{{--&gt;
-&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
+&lt;table width='100%' class='vttable'>&lt;tr valign='top'&gt;
+&lt;td class='tdtoggle'&gt;
+&lt;a class='cxtoggle button' title='collapse' href='javascript:;'&gt;&#x25BC;&lt;/a&gt;
+&lt;a class='cxtoggle button' title='expand' href='javascript:;' style='display:none'&gt;&#x25BA;&lt;/a&gt;&lt;/td&gt;
+&lt;td&gt;&lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
+&lt;div class='title' macro='view title'&gt;&lt;/div&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;tr&gt;&lt;td&gt;&lt;/td&gt;&lt;td&gt;
 &lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
 &lt;div class='tagClear'&gt;&lt;/div&gt;
+&lt;/td&gt;&lt;/tr&gt;
+&lt;/table&gt;
 &lt;!--}}}--&gt;
 </pre>
 </div>
@@ -592,12 +623,10 @@ macro|pasteTiddler|
 	<pre>&lt;&lt;siteMap&gt;&gt;</pre>
 </div>
 <div title="RecentChanges" viewTemplate="ViewOnlyTemplate">
-  <pre>&lt;html&gt;&lt;div class='title'&gt;Recent changes&lt;/div&gt;&lt;/html&gt;
-&lt;&lt;recentChanges&gt;&gt;</pre>
+  <pre>&lt;&lt;recentChanges&gt;&gt;</pre>
 </div>
 <div title="RecentComments" viewTemplate="ViewOnlyTemplate">
-  <pre>&lt;html&gt;&lt;div class='title'&gt;Recent comments&lt;/div&gt;&lt;/html&gt;
-&lt;&lt;recentComments&gt;&gt;</pre>
+  <pre>&lt;&lt;recentComments&gt;&gt;</pre>
 </div>
 <div title="UploadDialog" viewTemplate="ViewOnlyTemplate">
 	<pre>&lt;&lt;uploadDialog&gt;&gt;</pre>
@@ -612,7 +641,7 @@ if (fn != "CreateNewPage") {
 	}
 forms[fn].template = "normal";
 forms[fn].title_changed = function(f,id,v) { f.title = v; setFormFieldValue(f,"address",CheckNewAddress(v)); }
-;&lt;/script&gt;&lt;html&gt;&lt;div class='title'&gt;Create new page&lt;/div&gt;&lt;/html&gt;
+;&lt;/script&gt
 |&gt;|&gt;|Title&lt;br&gt;&lt;&lt;input title text 70&gt;&gt;|
 |&gt;|&gt;|Subtitle&lt;br&gt;&lt;&lt;input subtitle text 70&gt;&gt;|
 |&gt;|&gt;|Address (&lt;script label=&quot;end with a /&quot;&gt;MakePathAFolder('address');&lt;/script&gt; to make a folder)&lt;br&gt;&lt;&lt;input address text 70&gt;&gt;|

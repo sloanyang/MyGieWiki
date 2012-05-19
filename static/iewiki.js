@@ -4801,33 +4801,53 @@ Story.prototype.displayTiddlers = function(srcElement, titles, template, animate
 };
 
 Story.prototype.specialCases = [];
-Story.prototype.displayTiddler = function(srcElement, tiddler, template, animate, unused, customFields, toggle, animationSrc) {
-    var title = (tiddler instanceof Tiddler) ? tiddler.title : tiddler;
+Story.prototype.displayTiddler = function (srcElement, tiddler, template, animate, unused, customFields, toggle, animationSrc) {
+	var title = (tiddler instanceof Tiddler) ? tiddler.title : tiddler;
 	var sch = this.specialCases[title];
 	if (sch && sch(title))
 		return;
-    var tiddlerElem = this.getTiddler(title);
-    if (tiddlerElem) {
-        if (toggle)
-            this.closeTiddler(title, true);
-        else
-            this.refreshTiddler(title, template, false, customFields);
-    } else {
-        var place = this.getContainer();
-        var before = this.positionTiddler(srcElement);
-        tiddlerElem = this.createTiddler(place, before, title, template, customFields, tiddler instanceof Tiddler ? tiddler : null);
-    }
-    if (animationSrc && typeof animationSrc !== "string") {
-        srcElement = animationSrc;
-    }
-    if (!startingUp && config.options.chkAutoSyncAddress && title != "LoginDialog")
-        this.permaView();
-    if (srcElement && typeof srcElement !== "string") {
-        if (config.options.chkAnimate && (animate == undefined || animate == true) && anim && typeof Zoomer == "function" && typeof Scroller == "function")
-            anim.startAnimating(new Zoomer(title, srcElement, tiddlerElem), new Scroller(tiddlerElem));
-        else
-            window.scrollTo(0, ensureVisible(tiddlerElem));
-    }
+	var tiddlerElem = this.getTiddler(title);
+	if (tiddlerElem) {
+		if (toggle)
+			this.closeTiddler(title, true);
+		else
+			this.refreshTiddler(title, template, false, customFields);
+	} else {
+		var place = this.getContainer();
+		var before = this.positionTiddler(srcElement);
+		tiddlerElem = this.createTiddler(place, before, title, template, customFields, tiddler instanceof Tiddler ? tiddler : null);
+	}
+	var acas = [];
+	if (getElementsByClassName('cxtoggle', 'a', tiddlerElem, acas)) {
+		acas[0].onclick = function (ev) {
+			var target = resolveTarget(ev || window.event);
+			var trtxt = target.parentElement.parentElement.parentElement.children[1];
+			trtxt.parentElement.removeChild(trtxt);
+			target.parentElement.children[1].style.display = 'block';
+			target.style.display = 'none';
+			target.appendChild(trtxt);
+		};
+		acas[1].onclick = function (ev) {
+			var target = resolveTarget(ev || window.event);
+			var stasha = target.parentElement.children[0];
+			var children = stasha.children;
+			var trbody = target.parentElement.parentElement.parentElement;
+			trbody.appendChild(children[0]);
+			target.parentElement.children[0].style.display = 'block';
+			target.style.display = 'none';
+		};
+	}
+	if (animationSrc && typeof animationSrc !== "string") {
+		srcElement = animationSrc;
+	}
+	if (!startingUp && config.options.chkAutoSyncAddress && title != "LoginDialog")
+		this.permaView();
+	if (srcElement && typeof srcElement !== "string") {
+		if (config.options.chkAnimate && (animate == undefined || animate == true) && anim && typeof Zoomer == "function" && typeof Scroller == "function")
+			anim.startAnimating(new Zoomer(title, srcElement, tiddlerElem), new Scroller(tiddlerElem));
+		else
+			window.scrollTo(0, ensureVisible(tiddlerElem));
+	}
 };
 
 Story.prototype.positionTiddler = function(srcElement) {
