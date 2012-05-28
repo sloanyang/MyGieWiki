@@ -4749,7 +4749,9 @@ TiddlyWiki.prototype.forEachField = function(tiddler, callback, onlyExtendedFiel
 //--
 
 function Story(containerId, idPrefix) {
-    this.container = containerId;
+	this.container = containerId;
+	this.containers = {};
+	this.containers[containerId] = null;
     this.idPrefix = idPrefix;
     this.highlightRegExp = null;
     this.tiddlerId = function(title) {
@@ -4769,17 +4771,24 @@ Story.prototype.getContainer = function() {
     return document.getElementById(this.containerId());
 };
 
-Story.prototype.forEachTiddler = function(fn) {
-    var place = this.getContainer();
-    if (!place)
-        return;
-    var e = place.firstChild;
-    while (e) {
-        var n = e.nextSibling;
-        var title = e.getAttribute("tiddler");
-        fn.call(this, title, e);
-        e = n;
-    }
+Story.prototype.itor = function (p,fn) {
+	if (!p)
+		return;
+	var e = p.firstChild;
+	while (e) {
+		var n = e.nextSibling;
+		var title = e.getAttribute("tiddler");
+		fn.call(this, title, e);
+		e = n;
+	}
+};
+
+Story.prototype.forEachTiddler = function (fn) {
+	for (var ci in this.containers) {
+		if (this.containers[ci] == null)
+			this.containers[ci] = document.getElementById(ci);
+		this.itor(this.containers[ci], fn);
+	}
 };
 
 Story.prototype.displayDefaultTiddlers = function() {
@@ -4808,7 +4817,8 @@ Story.prototype.displayTiddler = function (srcElement, tiddler, template, animat
 	}
 	else {
 		var title = tiddler;
-		var fields = null;
+		tiddler = store.getTiddler(title);
+		var fields = tiddler ? tiddler.fields : null;
 	}
 	var sch = this.specialCases[title];
 	if (sch && sch(title))
@@ -4826,6 +4836,7 @@ Story.prototype.displayTiddler = function (srcElement, tiddler, template, animat
 			var want = document.getElementById(fields.space);
 			if (want) {
 				place = want;
+				this.containers[fields.space] = want;
 				srcElement = null;
 				before = null;
 			}
