@@ -347,6 +347,7 @@ a.tiddlyLinkNonExisting.shadow {font-weight:bold;}
 #splashScreen {display:none;}
 
 #displayArea {margin:1em 17em 0em 13em;}
+#wideArea {margin:1em 1em 0em 13em;}
 
 .toolbar {text-align:right; font-size:.9em; float:right }
 .commentToolbar {text-align:left; font-size:.9em;}
@@ -458,6 +459,7 @@ body {font-size:0.8em;}
 &lt;span id='topRightCorner' refresh='content' tiddler='TopRightCorner'&gt;&lt;/span&gt;
 &lt;/div&gt;
 &lt;div id='mainMenu' refresh='content' tiddler='MainMenu'&gt;&lt;/div&gt;
+&lt;div id='wideArea'&gt;&lt;/div&gt;
 &lt;div id='sidebar'&gt;
 &lt;div id='sidebarOptions' refresh='content' tiddler='SideBarOptions'&gt;&lt;/div&gt;
 &lt;div id='sidebarTabs' refresh='content' force='true' tiddler='SideBarTabs'&gt;&lt;/div&gt;
@@ -561,7 +563,7 @@ tiddler|UserProfile|my profile|Edit my profile|
 link|/_ah/admin|DataStore|config.admin
 </pre>
 </div>
-<div title="PageSetup"  viewTemplate="ViewOnlyTemplate">
+<div title="PageSetup"  viewTemplate="ViewOnlyTemplate" space="wideArea">
 <pre>
 &lt;&lt;tabs chkPageSetup 
 'PageProperties' 'Title, access, template/includes' 'js;editTiddlerHere;PageProperties;SpecialViewTemplate'

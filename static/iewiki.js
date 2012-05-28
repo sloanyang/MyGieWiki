@@ -4802,7 +4802,14 @@ Story.prototype.displayTiddlers = function(srcElement, titles, template, animate
 
 Story.prototype.specialCases = [];
 Story.prototype.displayTiddler = function (srcElement, tiddler, template, animate, unused, customFields, toggle, animationSrc) {
-	var title = (tiddler instanceof Tiddler) ? tiddler.title : tiddler;
+	if (tiddler instanceof Tiddler) {
+		var title = tiddler.title;
+		var fields = tiddler.fields;
+	}
+	else {
+		var title = tiddler;
+		var fields = null;
+	}
 	var sch = this.specialCases[title];
 	if (sch && sch(title))
 		return;
@@ -4815,6 +4822,14 @@ Story.prototype.displayTiddler = function (srcElement, tiddler, template, animat
 	} else {
 		var place = this.getContainer();
 		var before = this.positionTiddler(srcElement);
+		if (fields && fields.space) {
+			var want = document.getElementById(fields.space);
+			if (want) {
+				place = want;
+				srcElement = null;
+				before = null;
+			}
+		}
 		tiddlerElem = this.createTiddler(place, before, title, template, customFields, tiddler instanceof Tiddler ? tiddler : null);
 	}
 	var acas = [];
