@@ -6211,8 +6211,8 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
 			}
 		}
 		if (t && meta) {
-			merge(f, { viewtemplate: 'ViewTemplate', edittemplate: 'EditTemplate' }, true);
-			var tfta = ['!' + title, '|Field|Value|h']
+			merge(f, { viewtemplate: 'ViewTemplate', edittemplate: 'EditTemplate', space: story.container }, true);
+			var tfta = ['|Field|Value|h']
 			var jstn = tn.toJSONString();
 			for (var fld in t.fields) {
 				var fv = t.fields[fld];
