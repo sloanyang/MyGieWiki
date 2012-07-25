@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.16.1
+   version:	1.16.3
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -4771,14 +4771,21 @@ Story.prototype.getContainer = function() {
     return document.getElementById(this.containerId());
 };
 
-Story.prototype.itor = function (p,fn) {
+Story.prototype.itor = function (p, fn) {
 	if (!p)
 		return;
 	var e = p.firstChild;
 	while (e) {
 		var n = e.nextSibling;
-		var title = e.getAttribute("tiddler");
-		fn.call(this, title, e);
+		try {
+			var title = null;
+			title = e.getAttribute("tiddler");
+			fn.call(this, title, e);
+		}
+		catch (e) {
+			if (title)
+				displayMessage("Story/'" + title + "' fails: " + e);
+		}
 		e = n;
 	}
 };
@@ -4955,13 +4962,13 @@ Story.prototype.refreshTiddler = function (title, template, force, customFields,
 		var currTemplate = tiddlerElem.getAttribute("template");
 		if ((tpln != currTemplate) || force) {
 			var tiddler = tdlr || store.getTiddler(title);
-			var isEdit = template == DEFAULT_EDIT_TEMPLATE ||(tiddler && template == tiddler.fields["edittemplate"]);
+			var isEdit = template == DEFAULT_EDIT_TEMPLATE || (tiddler && template == tiddler.fields["edittemplate"]);
 			if (!tiddler) {
 				tiddler = new Tiddler();
 				if (store.isShadowTiddler(title)) {
 					tiddler.set(title, store.getTiddlerText(title), config.views.wikified.shadowModifier, version.date, [], version.date);
 				} else {
-					var text =  isEdit ?
+					var text = isEdit ?
 								config.views.editor.defaultText.format([title]) :
 								config.views.wikified.defaultText.format([title]);
 					text = defaultText || text;
@@ -5993,6 +6000,7 @@ function refreshTiddlyLink(e, title) {
 function getTiddlyLinkInfo(title, currClasses) {
     var classes = currClasses ? currClasses.split(" ") : [];
     var link;
+    var existing = false;
     classes.pushUnique("tiddlyLink");
     var sp = title.indexOf('/');
 	if (sp > 0 && config.tiddlerTemplates.indexOf(title.substring(0, sp)))
@@ -6000,10 +6008,16 @@ function getTiddlyLinkInfo(title, currClasses) {
 	var subTitle = lazyLoadAll[title] === undefined ? null : "info not loaded";
 	if (subTitle == null) {
 		var tiddler = store.fetchTiddler(title);
-		if (tiddler)
+		if (tiddler) {
+			if (tiddler.id)
+				existing = true;
 			subTitle = tiddler.getSubtitle();
+		}
 	}
-	if (subTitle) {
+	else
+		existing = true; // except for shadows...
+
+	if (existing) {
         classes.pushUnique("tiddlyLinkExisting");
         classes.remove("tiddlyLinkNonExisting");
         classes.remove("shadow");
@@ -8758,26 +8772,10 @@ config.macros.menu = {
 	}
 };
 
-function insideTiddler(e,tn) {
-	var id = 'tiddler' + tn;
-	for (var pe = e.parentElement; pe != null; pe = pe.parentElement)
-		if (pe.id == id)
-			return pe;
-	return null;
-}
-
-config.macros.loginDialog = {
-	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
-		if (insideTiddler(place, 'PageSetup'))
-			return;
-		if (config.isLoggedIn() == false)
-			window.location = http.getLoginUrl({ path: window.location.pathname + '#' + story.viewState(['LoginDialog','NoAccessMessage']) }).Url;
-	}
-};
-
 config.macros.login = {
-	displayLoginDialog: function()	{
-		story.displayTiddler(null,"LoginDialog");
+	displayLoginDialog: function() {
+		if (config.isLoggedIn() == false)
+			window.location = http.getLoginUrl({ path: window.location.pathname + '#' + story.viewState(['LoginDialog', 'NoAccessMessage']) }).Url;
 	},
 	handler: function(place,macroName,params,wikifier,paramString,tiddler) {
 		var label = "login";

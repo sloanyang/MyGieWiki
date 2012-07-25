@@ -23,15 +23,14 @@ config.macros.STETabInsert = {
 &lt;/script&gt;''These are the pre-defined tiddlers used by giewiki, most of which have default content that serves a special purpose.''
 
 |&lt;&lt;STETabInsert AdvancedOptions&gt;&gt;|This shadow tiddler provides access to several advanced options.|
-|&lt;&lt;STETabInsert ColorPalette&gt;&gt;|These values in this shadow tiddler determine the colour scheme of the ~TiddlyWiki user interface|
+|&lt;&lt;STETabInsert ColorPalette&gt;&gt;|These values in this shadow tiddler determine the colour scheme of the user interface|
 |&lt;&lt;STETabInsert CreateNewPage&gt;&gt;|Dialog for creating pages|
-|&lt;&lt;STETabInsert DefaultTiddlers&gt;&gt;|The tiddlers listed in this shadow tiddler will be automatically displayed when ~TiddlyWiki starts up|
+|&lt;&lt;STETabInsert DefaultTiddlers&gt;&gt;|The tiddlers listed in this shadow tiddler will be automatically displayed when the page loads|
 |&lt;&lt;STETabInsert DefineGroup&gt;&gt;|Dialog for defining a user group|
 |&lt;&lt;STETabInsert EditTemplate&gt;&gt;|The HTML template in this shadow tiddler determines how tiddlers look while they are being edited|
 |&lt;&lt;STETabInsert EditingMenu&gt;&gt;|Menu which is inserted into the right sidebar when you have edit rights|
 |File list|Auto-generated list of uploaded files|
 |&lt;&lt;STETabInsert LibraryUsageHelp&gt;&gt;|A help file|
-|&lt;&lt;STETabInsert LoginDialog&gt;&gt;|Used the loginDialog macro to present an iFrame that contains the google login dialog|
 |&lt;&lt;STETabInsert MainMenu&gt;&gt;|This shadow tiddler is used as the contents of the main menu in the left-hand column of the screen|
 |&lt;&lt;STETabInsert MoveThisPage&gt;&gt;|Dialog for changing the address of the current page|
 |&lt;&lt;STETabInsert NoAccessMessage&gt;&gt;|Listed in place of the normal DefaultTiddlers (so as to be rendered) when the user does not have access to the page|
@@ -39,7 +38,7 @@ config.macros.STETabInsert = {
 |&lt;&lt;STETabInsert PageProperties&gt;&gt;|The dialog for defining page properties (LoD)|
 |&lt;&lt;STETabInsert PagePropertiesScript&gt;&gt;|Script used by the the dialog for defining page properties (LoD)|
 |&lt;&lt;STETabInsert PageSetup&gt;&gt;|The top-level tiddler you see here|
-|&lt;&lt;STETabInsert PageTemplate&gt;&gt;|The HTML template in this shadow tiddler determines the overall ~TiddlyWiki layout.&lt;br&gt;//This is a separate concept from the [[Page template|PageTemplateHelp]] mechanism//|
+|&lt;&lt;STETabInsert PageTemplate&gt;&gt;|The HTML template in this shadow tiddler determines the overall page layout.&lt;br&gt;//This is a separate concept from the [[Page template|PageTemplateHelp]] mechanism//|
 |&lt;&lt;STETabInsert PageTemplateHelp&gt;&gt;|A help file describing the Page templating mechanism|
 |&lt;&lt;STETabInsert PluginManager&gt;&gt;|This shadow tiddler provides access to the plugin manager|
 |RecentChanges|Auto-generated list of the most recent changes|

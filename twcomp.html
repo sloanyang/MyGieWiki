@@ -4,7 +4,7 @@
 <script id="versionArea" type="text/javascript">
 //<![CDATA[
 var version = { title: "TiddlyWiki", major: 2, minor: 4, revision: 1, date: new Date("Aug 4, 2008"), extensions: {}};
-var giewikiVersion = '1.16.1';
+var giewikiVersion = '1.16.3';
 //]]>
 </script>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
@@ -461,6 +461,7 @@ body {font-size:0.8em;}
 &lt;/div&gt;
 &lt;div id='leftSidebar'&gt;
 &lt;div id='mainMenu' refresh='content' tiddler='MainMenu'&gt;&lt;/div&gt;
+&lt;div id='leftBottom'&gt;&lt;/div&gt;
 &lt;/div&gt;
 &lt;div id='wideArea'&gt;&lt;/div&gt;
 &lt;div id='sidebar'&gt;
@@ -536,6 +537,13 @@ body {font-size:0.8em;}
 <pre>&lt;!--{{{--&gt;
 &lt;div class='toolbar' macro='toolbar [[ToolbarCommands::MiniToolbar]]'&gt;&lt;/div&gt;
 &lt;div class='title' macro='view title'&gt;&lt;/div&gt;
+&lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
+&lt;div class='tagClear'&gt;&lt;/div&gt;
+&lt;!--}}}--&gt;
+</pre>
+</div>
+<div title="TextOnlyTemplate">
+<pre>&lt;!--{{{--&gt;
 &lt;div class='viewer' macro='view text wikified'&gt;&lt;/div&gt;
 &lt;div class='tagClear'&gt;&lt;/div&gt;
 &lt;!--}}}--&gt;
@@ -618,10 +626,7 @@ macro|pasteTiddler|
 &lt;&lt;downloadAsTiddlyWiki&gt;&gt;
 </pre>
 </div>
-<div title="LoginDialog" viewTemplate="ViewOnlyTemplate">
-	<pre>&lt;&lt;loginDialog&gt;&gt;</pre>
-</div>
-<div title="NoAccessMessage" viewTemplate="ViewOnlyTemplate" tags="excludeLists excludeSearch">
+<div title="NoAccessMessage" viewTemplate="TextOnlyTemplate" tags="excludeLists excludeSearch">
 	<pre>Please &lt;&lt;login&gt;&gt; to read this page.</pre>
 </div>
 <div title="SiteMap" viewTemplate="ViewOnlyTemplate">
