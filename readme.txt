@@ -1,7 +1,14 @@
-This is (or was) giewiki release 1.16.1.
+This is (or was) giewiki release 1.16.3.
 
 Starting point:
 	http://giewiki.appspot.com
+
+Changes in 1.16.3:
+	Tiddlers are now displayed with a triangular button left of the title, that allows the user to collapse it to show only the title.
+	The custom field space may now be set to eg. wideArea (in stead of tiddlerDisplay), causing the tiddler to be rendered above both
+	the middle and right colums.
+	Beware that several special tiddlers (ViewTemplate, EditTemplate, PageTemplate, StyleSheetLayout)  have changed in an
+	inter-dependant way, which could cause odd behavior if you have changed any of them.
 
 Changes in 1.16.1:
 	* <<input type name ..>> changed to <<input name type ..>> for consistency & interop with: <<edit name type ..>>
