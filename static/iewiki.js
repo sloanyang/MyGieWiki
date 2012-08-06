@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.16.3
+   version:	1.16.4
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -201,8 +201,8 @@ config.macros = {
     giewikiversion: {},
     search: {
         sizeTextbox: 15,
-        label: "search",
-        prompt: "Search this TiddlyWiki",
+        label: "search page",
+        prompt: "Search this page only",
         accessKey: "F",
         successMsg: "%0 tiddlers found matching %1",
         failureMsg: "No tiddlers found matching %0"
@@ -530,7 +530,7 @@ config.shadowTiddlers = {
     TabMoreMissing: '<<list missing>>',
     TabMoreOrphans: '<<list orphans>>',
     TabMoreShadowed: '<<list shadowed>>',
-    TopRightCorner: "",
+    TopRightCorner: "[[Search site|SearchText]]",
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
     ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler copyTiddler cutTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history copyTiddler|\n|~TextToolbar|preview tag attributes diff help|',
@@ -5157,7 +5157,6 @@ Story.prototype.setTiddlerTag = function(title, tag, mode) {
 Story.prototype.closeTiddler = function(title, animate, unused) {
     var tiddlerElem = this.getTiddler(title);
     if (tiddlerElem) {
-        //clearMessage();
         this.scrubTiddler(tiddlerElem);
         if (config.options.chkAnimate && animate && anim && typeof Slider == "function")
             anim.startAnimating(new Slider(tiddlerElem, false, null, "tiddler"));
@@ -9472,6 +9471,53 @@ CommonTasks = {
 		cul.removeChild(src.parentNode);
 	}
 }
+
+function SearchSite(text,offs) {
+	debugger;
+	var form = forms['SearchText'];
+	if (text === undefined) {
+		var q = { text: form.text.toLowerCase() };
+	}
+	else {
+		var q = { text: text, offset: offs };
+		//var tc = null;
+	}
+	var tc = form.controls.text;
+	var srtt = "SearchResult: " + q.text;
+	story.closeTiddler(srtt, true);
+	var res = http.searchText(q);
+	if (res.success) {
+		var offset = parseInt(res.offset);
+		var limit = parseInt(res.limit);
+		var hits = parseInt(res.hits);
+		var last = Math.min(offset + limit,hits);
+		r = [ "(" + (1 + offset) +  "-" + last + " of "  + hits + " hits):", "|page|title|"];
+		for (var i = 0; i < res.result.length; i++) {
+			var ri = res.result[i];
+			var link =  ri.title;
+			if (ri.page != location.pathname)
+				link = link + '|' + ri.page + "#" + encodeURIComponent(String.encodeTiddlyLink(ri.title));
+			r.push('|' + ri.page + '|[[' + link + ']]|')
+		}
+		if (last < hits || offset > 0) {
+			var cl = '|';
+			if (offset > 0) {
+				cl += '<script label="prev">SearchSite(' + q.text.toJSONString() + ',"' + res.prevpage + '")</script> ';
+			}
+			if (last < hits) {
+				offset += limit;
+				cl += '| <script label="next">SearchSite(' + q.text.toJSONString() + ',"' + offset + '")</script> |';
+			}
+			else
+				cl += '||';
+
+			r.push(cl);
+		}
+		var srt = new Tiddler(srtt, 0, r.join('\n'));
+		story.displayTiddler(tc, srt, 'ViewOnlyTemplate', true);
+	}
+}
+
 
 // adapted from http://muffinresearch.co.uk/archives/2006/04/29/getelementsbyclassname-deluxe-edition/
 // v1.03 Copyright (c) 2006 Stuart Colville

@@ -1,7 +1,11 @@
-This is (or was) giewiki release 1.16.3.
+This is (or was) giewiki release 1.16.4.
 
 Starting point:
 	http://giewiki.appspot.com
+
+Changes in 1.16.4:
+	This version introduces Full-text search using the new search feature of App Engine 1.7, which is only supported when using the
+	High-replication data store. Tiddlers are indexed only if they are public, ie. on a page that offers at least read access to anonymous users.
 
 Changes in 1.16.3:
 	Tiddlers are now displayed with a triangular button left of the title, that allows the user to collapse it to show only the title.

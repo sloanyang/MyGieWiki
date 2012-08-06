@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.16.3
+# ver.:  1.16.4
 
 import cgi
 import codecs
@@ -28,6 +28,7 @@ from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.api import mail
 from google.appengine.api import namespace_manager
+from google.appengine.api import search
 from google.appengine.api import app_identity
 
 from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
@@ -35,8 +36,10 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.16.3'
+giewikiVersion = '1.16.4'
 TWComp = 'twcomp.html'
+
+_INDEX_NAME = 'tiddlers'
 
 # status codes, COM style:
 S_OK = 0
@@ -77,6 +80,7 @@ getMessages\n\
 getTiddler\n\
 getTiddlers\n\
 listTiddlersTagged\n\
+searchText\n\
 fileList\n\
 replaceExistingFile\n\
 recycleBin\n\
@@ -97,7 +101,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 16, revision: 3, date: new Date("May 28, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 16, revision: 4, date: new Date("May 28, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -155,6 +159,24 @@ def jsEncodeStr(s):
 
 def jsEncodeBool(b):
 	return 'true' if b else 'false'
+
+def CreateDocument(tiddler):
+	"""Creates a search.Document from content, title and tags."""
+	return search.Document(
+		doc_id=tiddler.id,
+		fields=[search.TextField(name='title', value=tiddler.title),
+				search.TextField(name='text', value=tiddler.text),
+				search.TextField(name='tags', value=tiddler.tags),
+				search.TextField(name='page', value=tiddler.page),
+				search.DateField(name='date', value=tiddler.modified.date())])
+
+def PutTiddler(tlr):
+	tlr.put()
+	index = search.Index(name=_INDEX_NAME)
+	index.remove(tlr.id)
+	logging.info("Put " + tlr.id + "," + str(tlr.current) + "," + str(tlr.public))
+	if tlr.current and tlr.public:
+		index.add(CreateDocument(tlr))
 
 class library():
 	libraryPath = 'library/'
@@ -1060,7 +1082,7 @@ class MainPage(webapp.RequestHandler):
 		if tlr.text is None:
 			tlr.text = ''
 		tlr.public = page.anonAccess > page.NoAccess
-		tlr.put() #  <-- This is where it gets put()
+		PutTiddler(tlr) # <-- This is where it gets put()
 		for tl in TagLink.all().filter('tlr',tlr.id):
 			if tl.tag not in taglist:
 				tl.delete()
@@ -1232,6 +1254,51 @@ class MainPage(webapp.RequestHandler):
 	else:
 		return self.warn("Tag index is empty; visit <a href='/build_tag_index'>/build_tag_index</a> to build it", rply)
 	
+
+  def searchText(self):
+	text = self.request.get('text')
+	limit = self.request.get('limit')
+	offset = self.request.get('offset',None)
+	csr = self.request.get('cursor',None)
+	mckey = "Cursor:" + text
+	if offset is None:
+		offset = 0
+	else:
+		offset = int(offset)
+
+	logging.info("Search('" + str(text) + "," + str(offset) + ")")
+	try:
+		srlimit = int(limit)
+	except Exception,x:
+		srlimit = 4
+	# sort results by author descending
+	expr_list = [search.SortExpression(
+		expression='page', default_value='',
+		direction=search.SortExpression.ASCENDING)]
+	# construct the sort options 
+	sort_opts = search.SortOptions(expressions=expr_list)
+	query_options = search.QueryOptions( sort_options=sort_opts, limit=srlimit, offset=offset ) 
+	query_obj = search.Query(query_string=text, options=query_options)
+	results = search.Index(name=_INDEX_NAME).search(query=query_obj)
+	if results.cursor is None:
+		memcache.delete(mckey)
+	else:
+		memcache.set(mckey,results.cursor)
+	logging.info("Got " + str(len(results.results)))
+	rv = list()
+	for sd in results.results:
+		fv = dict()
+		fv['id'] = sd.doc_id
+		# fv['cursor'] = sd.cursor.web_safe_string
+		for f in sd.fields:
+			fv[f.name] = f.value
+		rv.append( fv )
+	prevpage = 0
+	if offset > srlimit:
+		prevpage = offset - srlimit;
+	rply = { 'query': text, 'hits': results.number_found, 'limit': min(srlimit,results.number_found), 'offset': offset, 'prevpage': prevpage, 'result': rv } # 'cursor': results.cursor.web_safe_string, 
+	return self.reply(rply)
+
   def tiddlerHistory(self):
 	"http tiddlerId"
 	xd = self.initXmlResponse()
@@ -1393,7 +1460,7 @@ class MainPage(webapp.RequestHandler):
 		if tpl.reverted != None:
 			tpc.modified = tpl.reverted
 			tpc.reverted = None
-		tpc.put()
+		PutTiddler(tpc)
 	else:
 		deleteTiddlerVersion(tid,cv)
 		tpl.vercnt = tpl.versionCount() - 1
@@ -1405,7 +1472,7 @@ class MainPage(webapp.RequestHandler):
 		tpl.reverted = tpl.modified
 	tpl.reverted_by = users.get_current_user()
 	tpl.modified = datetime.datetime.now()
-	tpl.put()
+	PutTiddler(tpl)
 	if addTL:
 		addTagLinks(tpl,tagStringToList(tpl.tags))
 	return tpl
@@ -1467,7 +1534,7 @@ class MainPage(webapp.RequestHandler):
 			tl.delete()
 		# setattr(ctlr,'isRecycled',True)
 		DeletionLog().Log(ctlr,self.request.remote_addr,self.request.get('comment'))
-		ctlr.put()
+		PutTiddler(ctlr)
 		self.reply()
 	else:
 		return self.fail("Oops: That tiddler doesn't exist!")
@@ -1498,7 +1565,7 @@ class MainPage(webapp.RequestHandler):
 			return self.fail("Already restored")
 		ctlr.current = True
 		# delattr(ctlr,'isRecycled')
-		ctlr.put()
+		PutTiddler(ctlr)
 		for dle in DeletionLog.all():
 			if str(dle.tiddler.key()) == rescue:
 				dle.delete()
