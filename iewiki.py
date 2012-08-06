@@ -168,15 +168,25 @@ def CreateDocument(tiddler):
 				search.TextField(name='text', value=tiddler.text),
 				search.TextField(name='tags', value=tiddler.tags),
 				search.TextField(name='page', value=tiddler.page),
+				search.TextField(name='uxl_', value=tiddler.UXL_),
 				search.DateField(name='date', value=tiddler.modified.date())])
 
-def PutTiddler(tlr):
+def PutTiddler(tlr,page = None):
+	if page is None:
+		page = Page.all().filter("path",tlr.page).get()
+	if page:
+		if tlr.public:
+			uxl = '_publ'
+		elif page.authAccess > page.NoAccess:
+			uxl = '_auth'
+		else:
+			uxl = page.groups
+		setattr(tlr,'UXL_',uxl)
 	tlr.put()
+
 	index = search.Index(name=_INDEX_NAME)
-	index.remove(tlr.id)
-	logging.info("Put " + tlr.id + "," + str(tlr.current) + "," + str(tlr.public))
-	if tlr.current and tlr.public:
-		index.add(CreateDocument(tlr))
+	logging.info("Put " + tlr.id + "," + str(tlr.current) + "," + str(tlr.public), ",",tlr.UXL_)
+	index.add(CreateDocument(tlr))
 
 class library():
 	libraryPath = 'library/'
@@ -1082,7 +1092,7 @@ class MainPage(webapp.RequestHandler):
 		if tlr.text is None:
 			tlr.text = ''
 		tlr.public = page.anonAccess > page.NoAccess
-		PutTiddler(tlr) # <-- This is where it gets put()
+		PutTiddler(tlr,page) # <-- This is where it gets put()
 		for tl in TagLink.all().filter('tlr',tlr.id):
 			if tl.tag not in taglist:
 				tl.delete()
@@ -1221,7 +1231,7 @@ class MainPage(webapp.RequestHandler):
 			if ' ' in atg:
 				atg = '[[' + atg + ']]'
 			tlr.tags = tlr.tags + " " + atg
-	tlr.put()
+	PutTiddler(tlr)
 	addTagLinks(tlr,taglist)
 	return self.reply({'tags': tlr.tags})
 	
@@ -1260,11 +1270,20 @@ class MainPage(webapp.RequestHandler):
 	limit = self.request.get('limit')
 	offset = self.request.get('offset',None)
 	csr = self.request.get('cursor',None)
-	mckey = "Cursor:" + text
 	if offset is None:
 		offset = 0
 	else:
 		offset = int(offset)
+
+	cu = users.get_current_user()
+	if cu is None:
+		ug = '_publ'
+	else:
+		ug = '_publ OR _auth'
+		for amg in GroupMember.all().filter('name',cu.nickname()):
+			ug = ug + " OR " + amg.group
+
+	text = text + " AND (uxl_:" + ug + ")"
 
 	logging.info("Search('" + str(text) + "," + str(offset) + ")")
 	try:
@@ -1280,10 +1299,6 @@ class MainPage(webapp.RequestHandler):
 	query_options = search.QueryOptions( sort_options=sort_opts, limit=srlimit, offset=offset ) 
 	query_obj = search.Query(query_string=text, options=query_options)
 	results = search.Index(name=_INDEX_NAME).search(query=query_obj)
-	if results.cursor is None:
-		memcache.delete(mckey)
-	else:
-		memcache.set(mckey,results.cursor)
 	logging.info("Got " + str(len(results.results)))
 	rv = list()
 	for sd in results.results:
