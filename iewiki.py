@@ -160,16 +160,27 @@ def jsEncodeStr(s):
 def jsEncodeBool(b):
 	return 'true' if b else 'false'
 
+def MakeTextField(name,value):
+	try:
+		return search.TextField(name=name,value=value)
+	except Exception,x:
+		logging.info("Failed to make text field for " + name + ":" + str(type(value)))
+		return search.TextField(name=name,value='')
+
 def CreateDocument(tiddler):
-	"""Creates a search.Document from content, title and tags."""
-	return search.Document(
-		doc_id=tiddler.id,
-		fields=[search.TextField(name='title', value=tiddler.title),
-				search.TextField(name='text', value=tiddler.text),
-				search.TextField(name='tags', value=tiddler.tags),
-				search.TextField(name='page', value=tiddler.page),
-				search.TextField(name='uxl_', value=tiddler.UXL_),
-				search.DateField(name='date', value=tiddler.modified.date())])
+	"""Creates a search.Document from content, title, tags and fields"""
+	fields=[MakeTextField(name='title', value=tiddler.title),
+			MakeTextField(name='text', value=tiddler.text),
+			MakeTextField(name='tags', value=tiddler.tags),
+			MakeTextField(name='page', value=tiddler.page),
+			MakeTextField(name='author', value=tiddler.author.nickname() if tiddler.author else tiddler.author_ip),
+			MakeTextField(name='uxl_', value=tiddler.UXL_),
+			search.DateField(name='date', value=tiddler.modified.date())]
+	xcl = ['title','text','tags','page','author','author_ip','UXL_','date','created','modified','version','vercnt','currentVer','current','public','locked','id','reverted','reverted_by','comments','messages','notes','edittemplate','viewtemplate','edittemplatespecial','historyview']
+	for fn,atr in tiddler.__dict__['_entity'].iteritems():
+		if not fn in xcl:
+			fields.append(MakeTextField(name=fn,value=atr))
+	return search.Document(doc_id=tiddler.id,fields=fields)
 
 def PutTiddler(tlr,page = None):
 	if page is None:
@@ -185,8 +196,10 @@ def PutTiddler(tlr,page = None):
 	tlr.put()
 
 	index = search.Index(name=_INDEX_NAME)
-	logging.info("Put " + tlr.id + "," + str(tlr.current) + "," + str(tlr.public), ",",tlr.UXL_)
-	index.add(CreateDocument(tlr))
+	if tlr.current:
+		index.add(CreateDocument(tlr))
+	else:
+		index.remove(tlr.id)
 
 class library():
 	libraryPath = 'library/'
