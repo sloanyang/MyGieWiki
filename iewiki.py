@@ -31,7 +31,7 @@ from google.appengine.api import namespace_manager
 from google.appengine.api import search
 from google.appengine.api import app_identity
 
-from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob
+from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob,SearchHistory
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, noSuchTiddlers
 
 from javascripts import javascriptDict
@@ -1281,11 +1281,12 @@ class MainPage(webapp.RequestHandler):
 	else:
 		ug = '_publ OR _auth'
 		for amg in GroupMember.all().filter('name',cu.nickname()):
-			ug = ug + " OR " + amg.group
+			if amg.group:
+				ug = ug + " OR " + amg.group
 
-	text = text + " AND (uxl_:" + ug + ")"
+	q = text + " AND (uxl_:" + ug + ")"
 
-	logging.info("Search('" + str(text) + "," + str(offset) + ")")
+	logging.info("Search('" + str(q) + "'," + str(offset) + ")")
 	try:
 		srlimit = int(limit)
 	except Exception,x:
@@ -1297,9 +1298,21 @@ class MainPage(webapp.RequestHandler):
 	# construct the sort options 
 	sort_opts = search.SortOptions(expressions=expr_list)
 	query_options = search.QueryOptions( sort_options=sort_opts, limit=srlimit, offset=offset ) 
-	query_obj = search.Query(query_string=text, options=query_options)
+	query_obj = search.Query(query_string=q, options=query_options)
+	started = datetime.datetime.now()
 	results = search.Index(name=_INDEX_NAME).search(query=query_obj)
+	time = datetime.datetime.now() - started
 	logging.info("Got " + str(len(results.results)))
+
+	she = SearchHistory()
+	she.what = text
+	she.who = users.get_current_user()
+	she.scope = ug
+	she.limit = srlimit
+	she.found = results.number_found
+	she.time = time.microseconds + (time.seconds * 1000000)
+	she.put()
+
 	rv = list()
 	for sd in results.results:
 		fv = dict()

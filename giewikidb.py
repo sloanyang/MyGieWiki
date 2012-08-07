@@ -316,6 +316,15 @@ class CronJob(db.Model):
 		self.tiddler = tiddler.id
 		self.put()
 
+class SearchHistory(db.Model):
+	when = db.DateTimeProperty(auto_now_add=True)
+	what = db.StringProperty()
+	who = db.UserProperty()
+	scope = db.StringProperty()
+	limit = db.IntegerProperty()
+	found = db.IntegerProperty()
+	time = db.IntegerProperty()
+
 def dropCronJob(tiddler):
 	for cj in CronJob.all().filter('tiddler',tiddler.id):
 		cj.delete()
