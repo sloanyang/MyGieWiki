@@ -201,7 +201,9 @@ config.macros = {
     giewikiversion: {},
     search: {
         sizeTextbox: 15,
-        label: "search page",
+        pageLabel: "Page",
+        areaLabel: "Area",
+        siteLabel: "Site",
         prompt: "Search this page only",
         accessKey: "F",
         successMsg: "%0 tiddlers found matching %1",
@@ -530,14 +532,15 @@ config.shadowTiddlers = {
     TabMoreMissing: '<<list missing>>',
     TabMoreOrphans: '<<list orphans>>',
     TabMoreShadowed: '<<list shadowed>>',
-    TopRightCorner: "[[Search site|SearchText]]",
+    TopRightCorner: "",
     AdvancedOptions: '<<options>>',
     PluginManager: '<script label="Reload with PluginManager">window.location = UrlInclude("PluginManager.xml")</script>',
     ToolbarCommands: '|~ViewToolbar|closeTiddler closeOthers +editTiddler rescueTiddler > reload copyTiddler excludeTiddler fields syncing permalink references jump|\n|~MiniToolbar|closeTiddler|\n|~EditToolbar|+saveTiddler -cancelTiddler lockTiddler copyTiddler cutTiddler deleteTiddler revertTiddler truncateTiddler|\n|~SpecialEditToolbar|preview +applyChanges -cancelChanges attributes history copyTiddler|\n|~TextToolbar|preview tag attributes diff help|',
     DefaultTiddlers: "[[PageSetup]]",
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
-    SideBarOptions: '<<login edit UserMenu "My stuff" m>><<search>><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
+    SideBarOptions: '<<login edit UserMenu "My stuff" m>><<slider chkSliderSearchPanel SearchPanel "search \u00bb" "Search page or site">><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
+	SearchPanel: '<<search>>',
     SideBarTabs: '<<tabs txtMainTab "When" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~js:config.deprecatedCount~Deprecated" "Deprecated tiddlers" "js;DeprecatedTiddlers" "~.." "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
@@ -2777,23 +2780,78 @@ config.macros.newJournal.handler = function(place, macroName, params, wikifier, 
 //-- Search macro
 //--
 
-config.macros.search.handler = function(place, macroName, params) {
-    var searchTimeout = null;
-    var btn = createTiddlyButton(place, this.label, this.prompt, this.onClick, "searchButton");
-    var txt = createTiddlyElement(place, "input", null, "txtOptionInput searchField");
-    if (params[0])
-        txt.value = params[0];
-    txt.onkeyup = this.onKeyPress;
-    txt.onfocus = this.onFocus;
-    txt.setAttribute("size", this.sizeTextbox);
-    txt.setAttribute("accessKey", this.accessKey);
-    txt.setAttribute("autocomplete", "off");
-    txt.setAttribute("lastSearchText", "");
-    if (config.browser.isSafari) {
-        txt.setAttribute("type", "search");
-        txt.setAttribute("results", "5");
-    }
+config.macros.search.handler = function (place, macroName, params) {
+	var searchTimeout = null;
+	var txt = createTiddlyElement(place, "input", null, "txtOptionInput searchField");
+	config.macros.search.inputBox = txt;
+	createTiddlyText(place, "Search ");
+	var btn = createTiddlyButton(place, this.pageLabel, this.prompt, this.onClick, "searchButton");
+	var bt2 = createTiddlyButton(place, this.areaLabel, "Sibling pages and folders", this.searchSite, "searchButton");
+	var bt3 = createTiddlyButton(place, this.siteLabel, "All pages and folders", this.searchSite, "searchButton");
+	createTiddlyText(place, " | ");
+	var bto = createTiddlyButton(place, "options", "Search options", this.onClick, "searchButton");
+	if (params[0])
+		txt.value = params[0];
+	txt.onkeyup = this.onKeyPress;
+	txt.onfocus = this.onFocus;
+	txt.setAttribute("size", this.sizeTextbox);
+	txt.setAttribute("accessKey", this.accessKey);
+	txt.setAttribute("autocomplete", "off");
+	txt.setAttribute("lastSearchText", "");
+	if (config.browser.isSafari) {
+		txt.setAttribute("type", "search");
+		txt.setAttribute("results", "5");
+	}
 };
+
+config.macros.search.searchSite = function (tot, offs, path) {
+	debugger;
+	if (typeof (tot) == 'string')
+		var q = { text: tot, offset: offs, path: path };
+	else {
+		var target = resolveTarget(tot || window.event);
+		var q = {
+			text: config.macros.search.inputBox.value.toLowerCase(),
+			path: target.innerText == config.macros.search.areaLabel ? window.location.pathname : "/"
+		};
+	}
+	var srtt = "SearchResult: " + q.text;
+	story.closeTiddler(srtt, true);
+	var res = http.searchText(q);
+	if (res.success) {
+		var offset = parseInt(res.offset);
+		var limit = parseInt(res.limit);
+		var hits = parseInt(res.hits);
+		var last = Math.min(offset + limit, hits);
+		r = ["(" + (1 + offset) + "-" + last + " of " + hits + " hits in " + res.path + "):", "|page|title|"];
+		for (var i = 0; i < res.result.length; i++) {
+			var ri = res.result[i];
+			var link = ri.title;
+			if (ri.page.startsWith('/ '))
+				ri.page = ri.page.substring(1).replace(/ /g, '/');
+			if (ri.page != location.pathname)
+				link = link + '|' + ri.page + "#" + encodeURIComponent(String.encodeTiddlyLink(ri.title));
+			r.push('|' + ri.page + '|[[' + link + ']]|')
+		}
+		if (last < hits || offset > 0) {
+			var cl = '|';
+			if (offset > 0) {
+				cl += '<script label="prev">config.macros.search.searchSite(' + q.text.toJSONString() + ',' + res.prevpage + ',"' + res.path + '")</script> ';
+			}
+			if (last < hits) {
+				offset += limit;
+				cl += '| <script label="next">config.macros.search.searchSite(' + q.text.toJSONString() + ',' + offset + ',"' + res.path + '")</script> |';
+			}
+			else
+				cl += '||';
+
+			r.push(cl);
+		}
+		var srt = new Tiddler(srtt, 0, r.join('\n'));
+		story.displayTiddler(null, srt, 'ViewOnlyTemplate', true);
+	}
+};
+
 
 // Global because there's only ever one outstanding incremental search timer
 config.macros.search.timeout = null;
@@ -2806,7 +2864,7 @@ config.macros.search.doSearch = function(txt) {
 };
 
 config.macros.search.onClick = function(e) {
-    config.macros.search.doSearch(this.nextSibling);
+	config.macros.search.doSearch(config.macros.search.inputBox);
     return false;
 };
 
@@ -9471,53 +9529,6 @@ CommonTasks = {
 		cul.removeChild(src.parentNode);
 	}
 }
-
-function SearchSite(text,offs) {
-	debugger;
-	var form = forms['SearchText'];
-	if (text === undefined) {
-		var q = { text: form.text.toLowerCase() };
-	}
-	else {
-		var q = { text: text, offset: offs };
-		//var tc = null;
-	}
-	var tc = form.controls.text;
-	var srtt = "SearchResult: " + q.text;
-	story.closeTiddler(srtt, true);
-	var res = http.searchText(q);
-	if (res.success) {
-		var offset = parseInt(res.offset);
-		var limit = parseInt(res.limit);
-		var hits = parseInt(res.hits);
-		var last = Math.min(offset + limit,hits);
-		r = [ "(" + (1 + offset) +  "-" + last + " of "  + hits + " hits):", "|page|title|"];
-		for (var i = 0; i < res.result.length; i++) {
-			var ri = res.result[i];
-			var link =  ri.title;
-			if (ri.page != location.pathname)
-				link = link + '|' + ri.page + "#" + encodeURIComponent(String.encodeTiddlyLink(ri.title));
-			r.push('|' + ri.page + '|[[' + link + ']]|')
-		}
-		if (last < hits || offset > 0) {
-			var cl = '|';
-			if (offset > 0) {
-				cl += '<script label="prev">SearchSite(' + q.text.toJSONString() + ',"' + res.prevpage + '")</script> ';
-			}
-			if (last < hits) {
-				offset += limit;
-				cl += '| <script label="next">SearchSite(' + q.text.toJSONString() + ',"' + offset + '")</script> |';
-			}
-			else
-				cl += '||';
-
-			r.push(cl);
-		}
-		var srt = new Tiddler(srtt, 0, r.join('\n'));
-		story.displayTiddler(tc, srt, 'ViewOnlyTemplate', true);
-	}
-}
-
 
 // adapted from http://muffinresearch.co.uk/archives/2006/04/29/getelementsbyclassname-deluxe-edition/
 // v1.03 Copyright (c) 2006 Stuart Colville

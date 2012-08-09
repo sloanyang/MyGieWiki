@@ -169,31 +169,34 @@ def MakeTextField(name,value):
 
 def CreateDocument(tiddler):
 	"""Creates a search.Document from content, title, tags and fields"""
-	fields=[MakeTextField(name='title', value=tiddler.title),
-			MakeTextField(name='text', value=tiddler.text),
-			MakeTextField(name='tags', value=tiddler.tags),
-			MakeTextField(name='page', value=tiddler.page),
+	fields=[MakeTextField(name='page', value='/'+tiddler.page.replace('/',' ')),
 			MakeTextField(name='author', value=tiddler.author.nickname() if tiddler.author else tiddler.author_ip),
 			MakeTextField(name='uxl_', value=tiddler.UXL_),
 			search.DateField(name='date', value=tiddler.modified.date())]
-	xcl = ['title','text','tags','page','author','author_ip','UXL_','date','created','modified','version','vercnt','currentVer','current','public','locked','id','reverted','reverted_by','comments','messages','notes','edittemplate','viewtemplate','edittemplatespecial','historyview']
+	xcl = ['page','author','author_ip','UXL_','date','created','modified','version','vercnt','currentVer','current','public','locked','id','reverted','reverted_by','comments','messages','notes','edittemplate','viewtemplate','edittemplatespecial','historyview']
 	for fn,atr in tiddler.__dict__['_entity'].iteritems():
 		if not fn in xcl:
 			fields.append(MakeTextField(name=fn,value=atr))
 	return search.Document(doc_id=tiddler.id,fields=fields)
 
-def PutTiddler(tlr,page = None):
+def PutTiddler(tlr, page = None, put = True):
 	if page is None:
 		page = Page.all().filter("path",tlr.page).get()
 	if page:
+		owner = page.ownername if page.owner is None else page.owner.nickname()
+		logging.info("PutTiddler(" + tlr.page + " / " + tlr.title + " , for " + owner)
 		if tlr.public:
 			uxl = '_publ'
 		elif page.authAccess > page.NoAccess:
 			uxl = '_auth'
 		else:
 			uxl = page.groups
-		setattr(tlr,'UXL_',uxl)
-	tlr.put()
+		setattr(tlr,'UXL_',uxl + " usr|" + owner)
+	else:
+		logging.info("PutTiddler(" + tlr.page + " / " + tlr.title + " , for ?")
+
+	if put:
+		tlr.put()
 
 	index = search.Index(name=_INDEX_NAME)
 	if tlr.current:
@@ -1282,6 +1285,7 @@ class MainPage(webapp.RequestHandler):
 	text = self.request.get('text')
 	limit = self.request.get('limit')
 	offset = self.request.get('offset',None)
+	path = self.request.get('path','/')
 	csr = self.request.get('cursor',None)
 	if offset is None:
 		offset = 0
@@ -1292,12 +1296,14 @@ class MainPage(webapp.RequestHandler):
 	if cu is None:
 		ug = '_publ'
 	else:
-		ug = '_publ OR _auth'
+		ug = '_publ OR _auth OR usr|' + cu.nickname()
 		for amg in GroupMember.all().filter('name',cu.nickname()):
 			if amg.group:
 				ug = ug + " OR " + amg.group
 
-	q = text + " AND (uxl_:" + ug + ")"
+	q = text + ("" if text == "" else " AND ") + "(uxl_:" + ug + ")"
+	if path != '/':
+		q = q + ' AND ' + 'page:"/ ' + path.replace('/',' ').strip() + '"'
 
 	logging.info("Search('" + str(q) + "'," + str(offset) + ")")
 	try:
@@ -1330,14 +1336,13 @@ class MainPage(webapp.RequestHandler):
 	for sd in results.results:
 		fv = dict()
 		fv['id'] = sd.doc_id
-		# fv['cursor'] = sd.cursor.web_safe_string
 		for f in sd.fields:
 			fv[f.name] = f.value
 		rv.append( fv )
 	prevpage = 0
 	if offset > srlimit:
 		prevpage = offset - srlimit;
-	rply = { 'query': text, 'hits': results.number_found, 'limit': min(srlimit,results.number_found), 'offset': offset, 'prevpage': prevpage, 'result': rv } # 'cursor': results.cursor.web_safe_string, 
+	rply = { 'query': text, 'path': path, 'hits': results.number_found, 'limit': min(srlimit,results.number_found), 'offset': offset, 'prevpage': prevpage, 'result': rv } # 'cursor': results.cursor.web_safe_string, 
 	return self.reply(rply)
 
   def tiddlerHistory(self):
@@ -3388,6 +3393,13 @@ class MainPage(webapp.RequestHandler):
 			done = True
 	self.response.out.write(''.join(["Id ", id,' ','deleted' if done else 'not deleted']))
 
+  def buildIndex(self):
+	n = 0
+	for t in Tiddler.all().filter('current',True):
+		PutTiddler(t,put=True)
+		n = n + 1
+	self.response.out.write(str(n) + " tiddlers indexed")
+
   def task(self,method):
 	if method == 'cleanup':
 		return self.cleanup()
@@ -3856,8 +3868,10 @@ class MainPage(webapp.RequestHandler):
 		elif method == 'authenticate':
 			if self.authenticateAndSaveUploadedTiddlers(): # and proceed
 				return # or not
-		elif method == "deleteLink":
+		elif method == 'deleteLink':
 			return self.deleteLink(self.request.get('id'))
+		elif method == 'buildIndex':
+			return self.buildIndex()
 		else:
 			return self.post()
 
