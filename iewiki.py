@@ -1303,7 +1303,10 @@ class MainPage(webapp.RequestHandler):
 
 	q = text + ("" if text == "" else " AND ") + "(uxl_:" + ug + ")"
 	if path != '/':
-		q = q + ' AND ' + 'page:"/ ' + path.replace('/',' ').strip() + '"'
+		pap = path[0:path.rfind('/')+1]
+		q = q + ' AND ' + 'page:"/ ' + pap.replace('/',' ').strip() + '"'
+	else:
+		pap = '/'
 
 	logging.info("Search('" + str(q) + "'," + str(offset) + ")")
 	try:
@@ -1342,7 +1345,7 @@ class MainPage(webapp.RequestHandler):
 	prevpage = 0
 	if offset > srlimit:
 		prevpage = offset - srlimit;
-	rply = { 'query': text, 'path': path, 'hits': results.number_found, 'limit': min(srlimit,results.number_found), 'offset': offset, 'prevpage': prevpage, 'result': rv } # 'cursor': results.cursor.web_safe_string, 
+	rply = { 'query': text, 'path': pap, 'hits': results.number_found, 'limit': min(srlimit,results.number_found), 'offset': offset, 'prevpage': prevpage, 'result': rv } # 'cursor': results.cursor.web_safe_string, 
 	return self.reply(rply)
 
   def tiddlerHistory(self):

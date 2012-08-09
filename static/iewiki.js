@@ -2823,7 +2823,10 @@ config.macros.search.searchSite = function (tot, offs, path) {
 		var limit = parseInt(res.limit);
 		var hits = parseInt(res.hits);
 		var last = Math.min(offset + limit, hits);
-		r = ["(" + (1 + offset) + "-" + last + " of " + hits + " hits in " + res.path + "):", "|page|title|"];
+		var status = (hits ? "(" + (1 + offset) + "-" + last + " of " + hits : "(No") + " hits in " + res.path + ")"
+		r = [status];
+		if (hits)
+			r.push("|page|title|");
 		for (var i = 0; i < res.result.length; i++) {
 			var ri = res.result[i];
 			var link = ri.title;
