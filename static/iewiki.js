@@ -2814,6 +2814,16 @@ config.macros.search.searchSite = function (tot, offs, path) {
 			text: config.macros.search.inputBox.value.toLowerCase(),
 			path: target.innerText == config.macros.search.areaLabel ? window.location.pathname : "/"
 		};
+		var qq = q.text.split('"');
+		if (qq.length % 2 == 0)
+			return displayMessage("Unmatched \" found!");
+		for (var pi = 0; pi < qq.length; pi += 2) {// check segments outside of "
+			if (qq[pi].indexOf(',') >= 0)
+				if (qq.length == 1) // no quotes already, so just quote all
+					q.text = '"' + q.text + '"';
+				else
+					return displayMessage("Query containing ',' must be in quotes");
+		}
 	}
 	var srtt = "SearchResult: " + q.text;
 	story.closeTiddler(srtt, true);

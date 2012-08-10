@@ -1340,9 +1340,13 @@ class MainPage(webapp.RequestHandler):
 	# construct the sort options 
 	sort_opts = search.SortOptions(expressions=expr_list)
 	query_options = search.QueryOptions( sort_options=sort_opts, limit=srlimit, offset=offset ) 
-	query_obj = search.Query(query_string=q, options=query_options)
+	try:
+		query_obj = search.Query(query_string=q, options=query_options)
+	except Exception,x:
+		return self.fail("Query(" + q + ")<br>failed: " + str(x))
 	started = datetime.datetime.now()
 	results = search.Index(name=_INDEX_NAME).search(query=query_obj)
+
 	time = datetime.datetime.now() - started
 	logging.info("Got " + str(len(results.results)))
 
