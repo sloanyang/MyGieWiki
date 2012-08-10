@@ -167,6 +167,26 @@ def MakeTextField(name,value):
 		logging.info("Failed to make text field for " + name + ":" + str(type(value)))
 		return search.TextField(name=name,value='')
 
+def textParseHack(t): # needed by SDK 1.7, but seemingly not production environment
+	if os.environ['SERVER_SOFTWARE'] == "Development/1.0":
+		also = []
+		pos = t.find(',')
+		while pos > 0 and pos < len(t):
+			pre = pos - 1
+			word = ""
+			while pre >= 0:
+				if t[pre:pos].isalnum():
+					word = t[pre:pos]
+					pre = pre - 1
+				else:
+					break
+			if word:
+				also.append(word)
+			pos = t.find(',',pos + 1)
+		if len(also):
+			return t + '\n\n' + ' '.join(also)
+	return t
+
 def CreateDocument(tiddler):
 	"""Creates a search.Document from content, title, tags and fields"""
 	fields=[MakeTextField(name='page', value='/'+tiddler.page.replace('/',' ')),
@@ -176,7 +196,7 @@ def CreateDocument(tiddler):
 	xcl = ['page','author','author_ip','UXL_','date','created','modified','version','vercnt','currentVer','current','public','locked','id','reverted','reverted_by','comments','messages','notes','edittemplate','viewtemplate','edittemplatespecial','historyview']
 	for fn,atr in tiddler.__dict__['_entity'].iteritems():
 		if not fn in xcl:
-			fields.append(MakeTextField(name=fn,value=atr))
+			fields.append(MakeTextField(name=fn,value=textParseHack(atr)))
 	return search.Document(doc_id=tiddler.id,fields=fields)
 
 def PutTiddler(tlr, page = None, put = True):
@@ -190,7 +210,7 @@ def PutTiddler(tlr, page = None, put = True):
 		elif page.authAccess > page.NoAccess:
 			uxl = '_auth'
 		else:
-			uxl = page.groups
+			uxl = page.groups or ''
 		setattr(tlr,'UXL_',uxl + " usr|" + owner)
 	else:
 		logging.info("PutTiddler(" + tlr.page + " / " + tlr.title + " , for ?")
@@ -200,7 +220,7 @@ def PutTiddler(tlr, page = None, put = True):
 
 	index = search.Index(name=_INDEX_NAME)
 	if tlr.current:
-		index.add(CreateDocument(tlr))
+		index.add(CreateDocument(tlr))	
 	else:
 		index.remove(tlr.id)
 
@@ -3396,8 +3416,20 @@ class MainPage(webapp.RequestHandler):
 			done = True
 	self.response.out.write(''.join(["Id ", id,' ','deleted' if done else 'not deleted']))
 
-  def buildIndex(self):
+  def buildIndex(self,purge,path):
 	n = 0
+	if purge:
+		index = search.Index(name=_INDEX_NAME)
+		while True:
+			dl = index.list_documents(ids_only=True,limit=1000)
+			if len(dl) == 0:
+				break
+			else:
+				ids = []
+				for d in dl:
+					ids.append(d.doc_id)
+				index.remove(ids)
+
 	for t in Tiddler.all().filter('current',True):
 		PutTiddler(t,put=True)
 		n = n + 1
@@ -3874,7 +3906,7 @@ class MainPage(webapp.RequestHandler):
 		elif method == 'deleteLink':
 			return self.deleteLink(self.request.get('id'))
 		elif method == 'buildIndex':
-			return self.buildIndex()
+			return self.buildIndex(self.request.get('purge'),self.request.get('path'))
 		else:
 			return self.post()
 
