@@ -115,8 +115,11 @@ merge(config.options, {
     chkForceMinorUpdate: false,
     chkRequireDeleteConfirm: true,
     chkRequireDeleteReason: true,
+    chkSearchViewDate: false,
+    chkSearchViewSnippets: false,
+    chkShowManyResults: false,
     chkInsertTabs: false,
-	chkListPrevious: true,
+    chkListPrevious: true,
     chkUsePreForStorage: true, // Whether to use <pre> format for storage
     chkDisplayInstrumentation: false,
     txtEditorFocus: "text",
@@ -138,6 +141,7 @@ config.optionsDesc = {
     chkRegExpSearch: "Enable regular expressions for searches",
     chkCaseSensitiveSearch: "Case-sensitive searching",
     chkIncrementalSearch: "Incremental key-by-key searching",
+	chkSearchViewSnippets: "Get snippets of results",
     chkAnimate: "Enable animations",
     chkOpenInNewWindow: "Open external links in a new window",
     chkToggleLinks: "Clicking on links to open tiddlers causes them to close",
@@ -206,6 +210,7 @@ config.macros = {
         siteLabel: "Site",
         prompt: "Search this page only",
         accessKey: "F",
+        optionsPanel: "SearchOptionsPanel",
         successMsg: "%0 tiddlers found matching %1",
         failureMsg: "No tiddlers found matching %0"
         },
@@ -540,7 +545,8 @@ config.shadowTiddlers = {
     MainMenu: "[[PageSetup]]\n[[SiteMap]]\n[[RecentChanges]]\n[[RecentComments]]",
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<slider chkSliderSearchPanel SearchPanel "search \u00bb" "Search page or site">><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
-	SearchPanel: '<<search>>',
+    SearchPanel: '<<search>>',
+    SearchOptionsPanel: "!!!Page search:\n<<option chkRegExpSearch>> Use regular expression\n<<option chkCaseSensitiveSearch>> Case-sensitive\n<<option chkIncrementalSearch>> Key-by-key search\n!!!Area or Site search:\n<<option chkSearchViewSnippets>> Show snippets of results\n<<option chkSearchViewDate>>Show date in results\n<<option chkShowManyResults>>Show many results",
     SideBarTabs: '<<tabs txtMainTab "When" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~js:config.deprecatedCount~Deprecated" "Deprecated tiddlers" "js;DeprecatedTiddlers" "~.." "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };
@@ -2784,12 +2790,14 @@ config.macros.search.handler = function (place, macroName, params) {
 	var searchTimeout = null;
 	var txt = createTiddlyElement(place, "input", null, "txtOptionInput searchField");
 	config.macros.search.inputBox = txt;
-	createTiddlyText(place, "Search ");
-	var btn = createTiddlyButton(place, this.pageLabel, this.prompt, this.onClick, "searchButton");
-	var bt2 = createTiddlyButton(place, this.areaLabel, "Sibling pages and folders", this.searchSite, "searchButton");
-	var bt3 = createTiddlyButton(place, this.siteLabel, "All pages and folders", this.searchSite, "searchButton");
+	createTiddlyElement(place, 'br');
+	createTiddlyText(place, "in ");
+	createTiddlyButton(place, this.pageLabel, this.prompt, this.onClick, "searchButton");
+	if (location.pathname.indexOf('/',1) > 0)
+		createTiddlyButton(place, this.areaLabel, "Sibling pages and folders", this.searchSite, "searchButton");
+	createTiddlyButton(place, this.siteLabel, "All pages and folders", this.searchSite, "searchButton");
 	createTiddlyText(place, " | ");
-	var bto = createTiddlyButton(place, "options", "Search options", this.onClick, "searchButton");
+	var bto = createTiddlyButton(place, "options", "Search options", this.onOptions, "searchButton");
 	if (params[0])
 		txt.value = params[0];
 	txt.onkeyup = this.onKeyPress;
@@ -2804,12 +2812,11 @@ config.macros.search.handler = function (place, macroName, params) {
 	}
 };
 
-config.macros.search.searchSite = function (tot, offs, path) {
-	debugger;
-	if (typeof (tot) == 'string')
-		var q = { text: tot, offset: offs, path: path };
+config.macros.search.searchSite = function (toe, offs, path) {
+	if (typeof (toe) == 'string')
+		var q = { text: toe, offset: offs, path: path };
 	else {
-		var target = resolveTarget(tot || window.event);
+		var target = resolveTarget(toe || window.event);
 		var q = {
 			text: config.macros.search.inputBox.value.toLowerCase(),
 			path: target.innerText == config.macros.search.areaLabel ? window.location.pathname : "/"
@@ -2825,6 +2832,11 @@ config.macros.search.searchSite = function (tot, offs, path) {
 					return displayMessage("Query containing ',' must be in quotes");
 		}
 	}
+	q.snippets = config.options.chkSearchViewSnippets;
+	q.date = config.options.chkSearchViewDate;
+	if (config.options.chkShowManyResults)
+		q.limit = 40;
+	q.many = config.options.chkShowManyResults;
 	var srtt = "SearchResult: " + q.text;
 	story.closeTiddler(srtt, true);
 	var res = http.searchText(q);
@@ -2834,9 +2846,17 @@ config.macros.search.searchSite = function (tot, offs, path) {
 		var hits = parseInt(res.hits);
 		var last = Math.min(offset + limit, hits);
 		var status = (hits ? "(" + (1 + offset) + "-" + last + " of " + hits : "(No") + " hits in " + res.path + ")"
-		r = [status];
+		var r = [status];
+		var sniprow = '|>|>|<html>';
+		var tht = "|page|title|";
+		var tft = '|>| '
+		if (config.options.chkSearchViewDate) {
+			tht = "|date" + tht;
+			tft = '|>' + tft;
+			sniprow = '|>' + sniprow;
+		}
 		if (hits)
-			r.push("|page|title|");
+			r.push(tht);
 		for (var i = 0; i < res.result.length; i++) {
 			var ri = res.result[i];
 			var link = ri.title;
@@ -2844,27 +2864,39 @@ config.macros.search.searchSite = function (tot, offs, path) {
 				ri.page = ri.page.substring(1).replace(/ /g, '/');
 			if (ri.page != location.pathname)
 				link = link + '|' + ri.page + "#" + encodeURIComponent(String.encodeTiddlyLink(ri.title));
-			r.push('|' + ri.page + '|[[' + link + ']]|')
+			var dcd = config.options.chkSearchViewDate ? '|' + ri.date : "";
+			r.push(dcd + '|' + ri.page + '|[[' + link + ']]|')
+			if (ri.text_snippet !== undefined) {
+				r.push(sniprow + ri.text_snippet.replace(/\n/g, '<br>') + '</html>|')
+			}
 		}
 		if (last < hits || offset > 0) {
-			var cl = '|';
 			if (offset > 0) {
-				cl += '<script label="prev">config.macros.search.searchSite(' + q.text.toJSONString() + ',' + res.prevpage + ',"' + res.path + '")</script> ';
+				tft += '<script label="previous">config.macros.search.searchSite(' + q.text.toJSONString() + ',' + res.prevpage + ',"' + res.path + '")</script> ';
 			}
 			if (last < hits) {
 				offset += limit;
-				cl += '| <script label="next">config.macros.search.searchSite(' + q.text.toJSONString() + ',' + offset + ',"' + res.path + '")</script> |';
+				tft += ' <script label="next">config.macros.search.searchSite(' + q.text.toJSONString() + ',' + offset + ',"' + res.path + '")</script> ';
 			}
-			else
-				cl += '||';
-
-			r.push(cl);
+			tft += '|';
+			r.push(tft);
 		}
 		var srt = new Tiddler(srtt, 0, r.join('\n'));
 		story.displayTiddler(null, srt, 'ViewOnlyTemplate', true);
 	}
 };
 
+config.macros.search.onOptions = function (ev) {
+	var target = resolveTarget(ev || window.event);
+	var p = target.parentElement;
+	var panid = config.macros.search.optionsPanel;
+	var panel = document.getElementById(panid);
+	if (panel == null) {
+		var panel = createTiddlyElement(p, "div", panid);
+		//p.removeChild(target);
+		wikify(store.getTiddlerText(config.macros.search.optionsPanel, ""), panel);
+	}
+}
 
 // Global because there's only ever one outstanding incremental search timer
 config.macros.search.timeout = null;

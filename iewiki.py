@@ -1306,6 +1306,8 @@ class MainPage(webapp.RequestHandler):
 	limit = self.request.get('limit')
 	offset = self.request.get('offset',None)
 	path = self.request.get('path','/')
+	date = self.request.get('date')
+	snippets = self.request.get('snippets')
 	csr = self.request.get('cursor',None)
 	if offset is None:
 		offset = 0
@@ -1328,7 +1330,7 @@ class MainPage(webapp.RequestHandler):
 	else:
 		pap = '/'
 
-	logging.info("Search('" + str(q) + "'," + str(offset) + ")")
+	logging.info("Search('" + str(q) + "'," + str(offset) + ", snippets:" + snippets + ", date:" + date + ")")
 	try:
 		srlimit = int(limit)
 	except Exception,x:
@@ -1339,13 +1341,32 @@ class MainPage(webapp.RequestHandler):
 		direction=search.SortExpression.ASCENDING)]
 	# construct the sort options 
 	sort_opts = search.SortOptions(expressions=expr_list)
-	query_options = search.QueryOptions( sort_options=sort_opts, limit=srlimit, offset=offset ) 
+	return_list = ['page','title']
+	if date:
+		return_list.append('date')
+
+	text_snippet = 'snippet("' + text + '", text)'
+	# logging.info("Snippet: " + text_snippet)
+	return_expressions = [] # search.FieldExpression(name='score',expression='_score')]
+	if snippets and snippets != 'false':
+		return_expressions.append( search.FieldExpression(name='text_snippet',expression=text_snippet) )
+
+	query_options = search.QueryOptions( 
+		sort_options=sort_opts, 
+		limit=srlimit, 
+		offset=offset,
+		returned_expressions=return_expressions,
+		returned_fields=return_list)
 	try:
 		query_obj = search.Query(query_string=q, options=query_options)
 	except Exception,x:
-		return self.fail("Query(" + q + ")<br>failed: " + str(x))
+		return self.fail("Query syntax error(" + q + "):<br>" + str(x))
 	started = datetime.datetime.now()
-	results = search.Index(name=_INDEX_NAME).search(query=query_obj)
+	try:
+		results = search.Index(name=_INDEX_NAME).search(query=query_obj)
+	except ZeroDivisionError,zde: # workaround SDK bug:
+		query_obj = search.Query(query_string=text, options=query_options)
+		results = search.Index(name=_INDEX_NAME).search(query=query_obj)
 
 	time = datetime.datetime.now() - started
 	logging.info("Got " + str(len(results.results)))
@@ -1365,6 +1386,9 @@ class MainPage(webapp.RequestHandler):
 		fv['id'] = sd.doc_id
 		for f in sd.fields:
 			fv[f.name] = f.value
+		for e in sd.expressions:
+			logging.info("RX " + e.name + '=' + e.value)
+			fv[e.name] = e.value
 		rv.append( fv )
 	prevpage = 0
 	if offset > srlimit:
