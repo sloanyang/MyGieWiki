@@ -546,7 +546,7 @@ config.shadowTiddlers = {
     SiteUrl: "http://giewiki.appspot.com/",
     SideBarOptions: '<<login edit UserMenu "My stuff" m>><<slider chkSliderSearchPanel SearchPanel "search \u00bb" "Search page or site">><<closeAll>><<menu edit EditingMenu "Editing menu" e "!readOnly && config.owner">><<slider chkSliderOptionsPanel OptionsPanel "options \u00bb" "Change TiddlyWiki advanced options">>',
     SearchPanel: '<<search>>',
-    SearchOptionsPanel: "!!!Page search:\n<<option chkRegExpSearch>> Use regular expression\n<<option chkCaseSensitiveSearch>> Case-sensitive\n<<option chkIncrementalSearch>> Key-by-key search\n!!!Area or Site search:\n<<option chkSearchViewSnippets>> Show snippets of results\n<<option chkSearchViewDate>>Show date in results\n<<option chkShowManyResults>>Show many results",
+    SearchOptionsPanel: "!!!Page search:\n<<option chkRegExpSearch>> Use regular expression\n<<option chkCaseSensitiveSearch>> Case-sensitive\n<<option chkIncrementalSearch>> Key-by-key search\n!!!Area or Site search:\n<<option chkSearchViewSnippets>> Show snippets of results\n<<option chkSearchViewDate>> Show date in results\n<<option chkShowManyResults>> Show many results\nView SearchHistory",
     SideBarTabs: '<<tabs txtMainTab "When" "Timeline" TabTimeline "All" "All tiddlers" TabAll "Tags" "All tags" TabTags "~js:config.deprecatedCount~Deprecated" "Deprecated tiddlers" "js;DeprecatedTiddlers" "~.." "More lists" TabMore>>',
     TabMore: '<<tabs txtMoreTab "Missing" "Missing tiddlers" TabMoreMissing "Orphans" "Orphaned tiddlers" TabMoreOrphans "Special" "Special tiddlers" TabMoreShadowed>>'
 };

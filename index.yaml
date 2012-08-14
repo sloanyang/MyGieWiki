@@ -34,6 +34,12 @@ indexes:
   - name: sub
   - name: path
 
+- kind: SearchHistory
+  properties:
+  - name: who
+  - name: when
+    direction: desc
+
 - kind: Tiddler
   properties:
   - name: current

@@ -31,6 +31,8 @@ from google.appengine.api import namespace_manager
 from google.appengine.api import search
 from google.appengine.api import app_identity
 
+from google.appengine.runtime import apiproxy_errors
+
 from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob,SearchHistory
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, noSuchTiddlers
 
@@ -81,6 +83,7 @@ getTiddler\n\
 getTiddlers\n\
 listTiddlersTagged\n\
 searchText\n\
+searchHistory\n\
 fileList\n\
 replaceExistingFile\n\
 recycleBin\n\
@@ -217,12 +220,14 @@ def PutTiddler(tlr, page = None, put = True):
 
 	if put:
 		tlr.put()
-
-	index = search.Index(name=_INDEX_NAME)
-	if tlr.current:
-		index.add(CreateDocument(tlr))	
-	else:
-		index.remove(tlr.id)
+	try:
+		index = search.Index(name=_INDEX_NAME)
+		if tlr.current:
+			index.add(CreateDocument(tlr))	
+		else:
+			index.remove(tlr.id)
+	except apiproxy_errors.CallNotFoundError:
+		logging.info("Search service not supported; tiddler not indexed.")
 
 class library():
 	libraryPath = 'library/'
@@ -1367,18 +1372,21 @@ class MainPage(webapp.RequestHandler):
 	except ZeroDivisionError,zde: # workaround SDK bug:
 		query_obj = search.Query(query_string=text, options=query_options)
 		results = search.Index(name=_INDEX_NAME).search(query=query_obj)
+	except apiproxy_errors.CallNotFoundError,cnfe:
+		return self.fail("Site search is supported only for sites using the 'High Replication' data store");
 
 	time = datetime.datetime.now() - started
 	logging.info("Got " + str(len(results.results)))
 
-	she = SearchHistory()
-	she.what = text
-	she.who = users.get_current_user()
-	she.scope = ug
-	she.limit = srlimit
-	she.found = results.number_found
-	she.time = time.microseconds + (time.seconds * 1000000)
-	she.put()
+	if users.get_current_user() != None:
+		she = SearchHistory()
+		she.what = text
+		she.who = users.get_current_user()
+		she.scope = path
+		she.limit = srlimit
+		she.found = results.number_found
+		she.time = time.microseconds + (time.seconds * 1000000)
+		she.put()
 
 	rv = list()
 	for sd in results.results:
@@ -1395,6 +1403,22 @@ class MainPage(webapp.RequestHandler):
 		prevpage = offset - srlimit;
 	rply = { 'query': text, 'path': pap, 'hits': results.number_found, 'limit': min(srlimit,results.number_found), 'offset': offset, 'prevpage': prevpage, 'result': rv } # 'cursor': results.cursor.web_safe_string, 
 	return self.reply(rply)
+
+  def searchHistory(self):
+	offs = int(self.request.get('offs'))
+	hist = ["|When|What|Where|Found|In (ms)|"]
+	first = 0
+	last = offs + 10
+	ended = False
+	for she in SearchHistory.all().filter('who',users.get_current_user()).order('-when'):
+		if first >= offs:
+			hist.append("|" + str(she.when) + '|' + str(she.what) + '|' + str(she.scope) + '|' + str(she.found) + '|' + str(int((she.time + 1) / 1000)) + '|')
+		first = first + 1
+		if first == last:
+			ended = True
+			break
+
+	return self.reply( { 'history': '\n'.join(hist), 'ended': ended })
 
   def tiddlerHistory(self):
 	"http tiddlerId"

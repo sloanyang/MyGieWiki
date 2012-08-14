@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<tiddlers>
+  <tiddler title="SearchHistory" viewtemplate="ViewOnlyTemplate" tags="excludeLists">
+    <pre>
+      &lt;script&gt;
+window.searchHistory = function(offs) {
+  var h = http.searchHistory({offs: offs, limit: 10});
+  var we = document.getElementById('tiddlerSearchHistory');
+  var cnl = getElementsByClassName('viewer','div',we);
+  wikify(h.history,cnl);
+  if (h.ended) {
+    createTiddlyButton(cnl,'&lt;&lt;',"Earlier searches", 
+      function(ev) {
+        var ce = clearParent(resolveTarget(ev || window.event),'div');
+        window.searchHistory(offs + 10);
+      });
+  }
+  if (offs >= 10) {
+    createTiddlyButton(cnl,'&gt;&gt;','Later searches', 
+      function(ev) {
+        var ce = clearParent(resolveTarget(ev || window.event),'div');
+        window.searchHistory(offs - 10);
+      });
+  }
+}
+window.searchHistory(0);
+    &lt;/script&gt;
+    </pre>
+  </tiddler>
+</tiddlers>
