@@ -41,11 +41,6 @@ window.searchHistory = function (offs) {
     </pre>
   </tiddler>
   <tiddler title="SearchHistory" viewtemplate="ViewOnlyTemplate" tags="excludeLists">
-    <pre>
-      /% Content built by SearchHistoryScript %/
-      &lt;script&gt;
-window.searchHistory(0);
-    &lt;/script&gt;
-    </pre>
+    <pre>/% Content built by SearchHistoryScript %/ &lt;script&gt; window.searchHistory(0); &lt;/script&gt; </pre>
   </tiddler>
 </tiddlers>

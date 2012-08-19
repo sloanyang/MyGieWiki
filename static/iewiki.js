@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.16.4
+   version:	1.16.5
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -8127,7 +8127,7 @@ function JsoFromXml(rce) {
 			v = [];
 			for (var ae = 0; ae < rce.childNodes.length; ae++) {
 				var ace = rce.childNodes[ae];
-				v[ae] = ace.firstChild ? ace.firstChild.nodeValue : ace;
+				v[ae] = ace.firstChild ? ace.firstChild.nodeValue : "";
 			}
 			break;
 		case 'object':

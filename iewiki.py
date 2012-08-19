@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.16.4
+# ver.:  1.16.5
 
 import cgi
 import codecs
@@ -38,7 +38,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.16.4'
+giewikiVersion = '1.16.5'
 TWComp = 'twcomp.html'
 
 _INDEX_NAME = 'tiddlers'
@@ -104,7 +104,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 16, revision: 4, date: new Date("May 28, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 16, revision: 5, date: new Date("May 28, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -3871,7 +3871,7 @@ class MainPage(webapp.RequestHandler):
 				if posTitleS != -1 and posTitleE > posTitleS:
 					twdtext = ''.join([twdtext[0:posTitleS + 7], page.title, ' - ' if len(page.title) and len(page.subtitle) else '', page.subtitle, twdtext[posTitleE:] ])
 			if metaData:
-				eoS = '<!--- injection point A --->'
+				eoS = '<!-- injection point A -->'
 				psPos = twdtext.rfind(eoS)
 				if psPos == -1:
 					psPos = twdtext.rfind('<!--POST-SCRIPT-START-->')
