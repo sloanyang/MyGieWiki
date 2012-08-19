@@ -1415,6 +1415,8 @@ class MainPage(webapp.RequestHandler):
 	last = offs + 10
 	ended = False
 	for she in SearchHistory.all().filter('who',users.get_current_user()).order('-when'):
+		if she.what == '':
+			continue;
 		if first >= offs:
 			hist.append("|" + str(she.when) + '||' + str(she.scope) + '|' + str(she.found) + '|' + str(int((she.time + 1) / 1000)) + '|')
 			what.append(str(she.what))
