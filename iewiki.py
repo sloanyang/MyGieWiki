@@ -534,6 +534,8 @@ def KillTiddlerVersion(t):
 		if u != None:
 			u.clipTiddler = None
 			u.put()
+	index = search.Index(name=_INDEX_NAME)
+	index.remove(t.id)
 	t.delete()
 
 def initHist(shadowTitle,format):
