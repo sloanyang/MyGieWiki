@@ -44,6 +44,8 @@ config.macros.STETabInsert = {
 |RecentChanges|Auto-generated list of the most recent changes|
 |RecentComments|Auto-genertated list of the most recent comments|
 |Recycle bin|Auto-generated list of 'deleted' tiddlers|
+|&lt;&lt;STETabInsert SearchHistory&gt;&gt;|Presents your search history using ~SearchHistoryScript (LoD)|
+|&lt;&lt;STETabInsert SearchHistoryScript&gt;&gt;|Script for presenting your search history (LoD)|
 |&lt;&lt;STETabInsert SearchPanel&gt;&gt;|Invokes the search macro to display the search dialog|
 |&lt;&lt;STETabInsert SearchOptionsPanel&gt;&gt;|The user interface to setting search options|
 |&lt;&lt;STETabInsert SideBarOptions&gt;&gt;|This shadow tiddler is used as the contents of the option panel in the right-hand sidebar|

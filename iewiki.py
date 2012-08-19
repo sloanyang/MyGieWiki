@@ -1407,18 +1407,22 @@ class MainPage(webapp.RequestHandler):
   def searchHistory(self):
 	offs = int(self.request.get('offs'))
 	hist = ["|When|What|Where|Found|In (ms)|"]
+	what = []
+	wher = []
 	first = 0
 	last = offs + 10
 	ended = False
 	for she in SearchHistory.all().filter('who',users.get_current_user()).order('-when'):
 		if first >= offs:
-			hist.append("|" + str(she.when) + '|' + str(she.what) + '|' + str(she.scope) + '|' + str(she.found) + '|' + str(int((she.time + 1) / 1000)) + '|')
+			hist.append("|" + str(she.when) + '||' + str(she.scope) + '|' + str(she.found) + '|' + str(int((she.time + 1) / 1000)) + '|')
+			what.append(str(she.what))
+			wher.append(str(she.scope))
 		first = first + 1
 		if first == last:
 			ended = True
 			break
 
-	return self.reply( { 'history': '\n'.join(hist), 'ended': ended })
+	return self.reply( { 'history': '\n'.join(hist), 'whats': what, 'wheres': wher, 'ended': ended })
 
   def tiddlerHistory(self):
 	"http tiddlerId"
