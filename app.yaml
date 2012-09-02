@@ -1,4 +1,4 @@
-application: giewiki
+application: giewiki-hrd
 version: 1-16-5
 runtime: python
 api_version: 1

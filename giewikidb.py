@@ -325,6 +325,9 @@ class SearchHistory(db.Model):
 	found = db.IntegerProperty()
 	time = db.IntegerProperty()
 
+class IndexQueue(db.Model):
+	tiddler = db.ReferenceProperty(Tiddler)
+
 def dropCronJob(tiddler):
 	for cj in CronJob.all().filter('tiddler',tiddler.id):
 		cj.delete()

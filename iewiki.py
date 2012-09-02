@@ -33,7 +33,7 @@ from google.appengine.api import app_identity
 
 from google.appengine.runtime import apiproxy_errors
 
-from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob,SearchHistory
+from giewikidb import Tiddler,TagLink,SiteInfo,ShadowTiddler,EditLock,Page,MCPage,PageTemplate,DeletionLog,Comment,Include,Note,Message,Group,GroupMember,UrlImport,UploadedFile,UserProfile,PenName,SubDomain,LogEntry,CronJob,SearchHistory,IndexQueue
 from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccessToPage, AccessToPage, IsSoleOwner, Upgrade, CopyIntoNamespace, dropCronJob, noSuchTiddlers
 
 from javascripts import javascriptDict
@@ -84,6 +84,8 @@ getTiddlers\n\
 listTiddlersTagged\n\
 searchText\n\
 searchHistory\n\
+buildIndex\n\
+listIndex\n\
 fileList\n\
 replaceExistingFile\n\
 recycleBin\n\
@@ -197,9 +199,11 @@ def CreateDocument(tiddler):
 			MakeTextField(name='uxl_', value=tiddler.UXL_),
 			search.DateField(name='date', value=tiddler.modified.date())]
 	xcl = ['page','author','author_ip','UXL_','date','created','modified','version','vercnt','currentVer','current','public','locked','id','reverted','reverted_by','comments','messages','notes','edittemplate','viewtemplate','edittemplatespecial','historyview']
+	ref = re.compile('^[A-Za-z][A-Za-z0-9_]*$')
 	for fn,atr in tiddler.__dict__['_entity'].iteritems():
 		if not fn in xcl:
-			fields.append(MakeTextField(name=fn,value=textParseHack(atr)))
+			if ref.match(fn):
+				fields.append(MakeTextField(name=fn,value=textParseHack(atr)))
 	return search.Document(doc_id=tiddler.id,fields=fields)
 
 def PutTiddler(tlr, page = None, put = True):
@@ -217,6 +221,7 @@ def PutTiddler(tlr, page = None, put = True):
 		setattr(tlr,'UXL_',uxl + " usr|" + owner)
 	else:
 		logging.info("PutTiddler(" + tlr.page + " / " + tlr.title + " , for ?")
+		setattr(tlr,'UXL_','_publ')
 
 	if put:
 		tlr.put()
@@ -3439,7 +3444,7 @@ class MainPage(webapp.RequestHandler):
 	td = t.dynamic_properties()
 	#logging.info(unicode(len(td)) + " dps")
 	for m in td:
-		if xsvr and m[:7] == 'server.': 
+		if m == 'UXL_' or m == '_uxl' or (xsvr and m[:7] == 'server.'): 
 			pass # the 'server:..' fields should not have been saved in the first place, but
 		else:
 			try:
@@ -3476,8 +3481,12 @@ class MainPage(webapp.RequestHandler):
 			done = True
 	self.response.out.write(''.join(["Id ", id,' ','deleted' if done else 'not deleted']))
 
-  def buildIndex(self,purge,path):
+  def buildIndex(self):
+	purge = self.request.get('purge')
+	done = self.request.get('done',None)
+	total = self.request.get('total')
 	n = 0
+	liq = []
 	if purge:
 		index = search.Index(name=_INDEX_NAME)
 		while True:
@@ -3489,11 +3498,35 @@ class MainPage(webapp.RequestHandler):
 				for d in dl:
 					ids.append(d.doc_id)
 				index.remove(ids)
+		return self.response.out.write("Index purged")
 
-	for t in Tiddler.all().filter('current',True):
-		PutTiddler(t,put=True)
-		n = n + 1
-	self.response.out.write(str(n) + " tiddlers indexed")
+	if done is None:
+		db.delete(IndexQueue.all(keys_only=True))
+		for t in Tiddler.all(keys_only=True).filter('current',True):
+			iq = IndexQueue(tiddler=t)
+			liq.append(iq)
+		db.put(liq)
+		return self.reply({'total': len(liq), 'done': 0 })
+	else:
+		done = int(done)
+		max = 5
+		for it in IndexQueue.all():
+			PutTiddler(it.tiddler,put=True)
+			it.delete()
+			n = n + 1
+			if n == max:
+				break
+		return self.reply({'total': total, 'done': n + done })
+
+  def listIndex(self):
+	name = self.request.get('name',None)
+	if name is None:
+		indexes = dict()
+		for idx in search.list_indexes(fetch_schema=True):
+			indexes[idx.name] = []
+			for sn in idx.schema:
+				indexes[idx.name].append(str(sn))
+		return self.reply(indexes)
 
   def task(self,method):
 	if method == 'cleanup':
@@ -3966,7 +3999,7 @@ class MainPage(webapp.RequestHandler):
 		elif method == 'deleteLink':
 			return self.deleteLink(self.request.get('id'))
 		elif method == 'buildIndex':
-			return self.buildIndex(self.request.get('purge'),self.request.get('path'))
+			return self.buildIndex()
 		else:
 			return self.post()
 
