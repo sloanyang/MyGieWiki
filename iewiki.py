@@ -1423,7 +1423,7 @@ class MainPage(webapp.RequestHandler):
 		if she.what == '':
 			continue;
 		if first >= offs:
-			hist.append("|" + str(she.when) + '||' + str(she.scope) + '|' + str(she.found) + '|' + str(int((she.time + 1) / 1000)) + '|')
+			hist.append("|" + str(she.when)[:16] + '||' + str(she.scope) + '|' + str(she.found) + '|' + str(int((she.time + 1) / 1000)) + '|')
 			what.append(str(she.what))
 			wher.append(str(she.scope))
 		first = first + 1

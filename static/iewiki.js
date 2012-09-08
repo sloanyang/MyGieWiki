@@ -2812,25 +2812,48 @@ config.macros.search.handler = function (place, macroName, params) {
 	}
 };
 
+config.macros.search.syntaxCheck = function (a) {
+	var qq = a.split('"');
+	if (qq.length % 2 == 0)
+		return displayMessage("Unmatched \" found!") && false;
+	for (var pi = 0; pi < qq.length; pi += 2) {// check segments outside of "
+		if (qq[pi].indexOf(',') >= 0)
+			if (qq.length == 1) // no quotes already, so just quote all
+				return '"' + a + '"';
+			else
+				return displayMessage("Query containing ',' must be in quotes") && false;
+	}
+	return a;
+};
+
 config.macros.search.searchSite = function (toe, offs, path) {
 	if (typeof (toe) == 'string')
 		var q = { text: toe, offset: offs, path: path };
+	else if (toe && toe.updateaccess) { // Advanced search
+		var qs = [];
+		var spath = toe.path;
+		for (var an in toe) {
+			if (!(an == 'controls' || an == 'updateaccess' || an == 'path')) {
+				var qrs = config.macros.search.syntaxCheck(toe[an]);
+				if (typeof (qrs) != 'string')
+					return;
+				else if (qrs.length)
+					qs.push(an + ':' + qrs);
+			}
+		}
+		var q = {
+			text: qs.join(' AND '),
+			path: path ? spath : '/'
+		}
+	}
 	else {
 		var target = resolveTarget(toe || window.event);
 		var q = {
-			text: config.macros.search.inputBox.value.toLowerCase(),
+			text: config.macros.search.syntaxCheck(config.macros.search.inputBox.value.toLowerCase()),
 			path: target.innerText == config.macros.search.areaLabel ? window.location.pathname : "/"
 		};
-		var qq = q.text.split('"');
-		if (qq.length % 2 == 0)
-			return displayMessage("Unmatched \" found!");
-		for (var pi = 0; pi < qq.length; pi += 2) {// check segments outside of "
-			if (qq[pi].indexOf(',') >= 0)
-				if (qq.length == 1) // no quotes already, so just quote all
-					q.text = '"' + q.text + '"';
-				else
-					return displayMessage("Query containing ',' must be in quotes");
-		}
+		if (typeof (q.text) != 'string')
+			return;
 	}
 	q.snippets = config.options.chkSearchViewSnippets;
 	q.date = config.options.chkSearchViewDate;
