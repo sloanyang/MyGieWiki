@@ -175,19 +175,20 @@ def MakeTextField(name,value):
 def textParseHack(t): # needed by SDK 1.7, but seemingly not production environment
 	if os.environ['SERVER_SOFTWARE'] == "Development/1.0":
 		also = []
-		pos = t.find(',')
-		while pos > 0 and pos < len(t):
+		tus = unicode(t)
+		pos = tus.find(',')
+		while pos > 0 and pos < len(tus):
 			pre = pos - 1
 			word = ""
 			while pre >= 0:
-				if t[pre:pos].isalnum():
-					word = t[pre:pos]
+				if tus[pre:pos].isalnum():
+					word = tus[pre:pos]
 					pre = pre - 1
 				else:
 					break
 			if word:
 				also.append(word)
-			pos = t.find(',',pos + 1)
+			pos = tus.find(',',pos + 1)
 		if len(also):
 			return t + '\n\n' + ' '.join(also)
 	return t
@@ -3525,7 +3526,9 @@ class MainPage(webapp.RequestHandler):
 		for idx in search.list_indexes(fetch_schema=True):
 			indexes[idx.name] = []
 			for sn in idx.schema:
-				indexes[idx.name].append(str(sn))
+				ssn = str(sn)
+				if not ssn in ['uxl_','page']:
+					indexes[idx.name].append(ssn)
 		return self.reply(indexes)
 
   def task(self,method):
