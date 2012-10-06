@@ -1,11 +1,17 @@
-This is (or was) giewiki release 1.16.4.
+This is (or was) giewiki release 1.17.0.
 
 Starting point:
 	http://giewiki.appspot.com
 
-Changes in 1.16.4:
-	This version introduces Full-text search using the new search feature of App Engine 1.7, which is only supported when using the
-	High-replication data store. Tiddlers are indexed only if they are public, ie. on a page that offers at least read access to anonymous users.
+New features in release in 1.17:
+	* This version introduces Full-text search using the new search feature of App Engine 1.7, which is only supported when using the
+	  High-replication data store. Tiddlers are indexed only if they are public, ie. on a page that offers at least read access to anonymous users.
+	  All user-defined attributes of a tiddler are searchable, either across the entire site or (when folders are used) within a area. An
+	  AdvancedSearch dialog allows searches to match specific attributes only.
+	* Additions to the PageProperties dialog are now possible, allowing custom fields to be defined on the page object. These are available as
+	  content using the new <<page fieldname>>.
+	* The '?highlight=text' syntax can be used to hightlight a specific text, via URL's like /Wonderland?highlight=Alice#%5B%5BFind%20Me%5D%5D
+	  and using pretty-links like [[Find Alice|Find Me?highlight=Alice]].
 
 Changes in 1.16.3:
 	Tiddlers are now displayed with a triangular button left of the title, that allows the user to collapse it to show only the title.

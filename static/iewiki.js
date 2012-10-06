@@ -47,6 +47,7 @@ var Type = {
 var TIDDLER_NOT_SAVED = -2; // Implies do not close the editor
 
 var pfxFields = 'fields/';
+var csqHighLight = '?highlight=';
 
 // Hashmap of alternative parsers for the wikifier
 config.parsers = {};
@@ -688,9 +689,8 @@ function main() {
 // Restarting
 function restart() {
 	store.fetchFromServer = true;
-	var q = "?highlight=";
-    if (window.location.search.startsWith(q))
-		highlightHack = new RegExp(decodeURIComponent(window.location.search.substring(q.length)).escapeRegExp(), "img");
+	if (window.location.search.startsWith(csqHighLight))
+		highlightHack = new RegExp(decodeURIComponent(window.location.search.substring(csqHighLight.length)).escapeRegExp(), "img");
 	invokeParamifier(params, "onstart");
 	highlightHack = null;
     if (story.isEmpty())
@@ -1352,13 +1352,16 @@ config.formatters = [
             var e;
             var text = lookaheadMatch[1];
             if (lookaheadMatch[3]) {
-                // Pretty bracketted link
+                // Pretty bracketed link
                 var link = lookaheadMatch[3];
-				if (link.indexOf('?highlight=') == 0)
-					e = createTiddlyLink(w.output, decodeURIComponent(text), false, null, w.isStatic, w.tiddler, false, decodeURIComponent(link.substring('?highlight='.length)));
+				var cpq = link.indexOf(csqHighLight);
+				if ((!lookaheadMatch[2]) && config.formatterHelpers.isExternalLink(link))
+					e = createExternalLink(w.output, link);
+				else if (cpq >= 0)
+					e = createTiddlyLink(w.output, decodeURIComponent(link.substring(0,cpq)), false, null, w.isStatic, w.tiddler, false, 
+										 decodeURIComponent(link.substring(cpq + csqHighLight.length)));
 				else
-					e = (!lookaheadMatch[2] && config.formatterHelpers.isExternalLink(link)) ?
-						createExternalLink(w.output, link) : createTiddlyLink(w.output, decodeURIComponent(link), false, null, w.isStatic, w.tiddler);
+					e = createTiddlyLink(w.output, decodeURIComponent(link), false, null, w.isStatic, w.tiddler);
             } else {
                 // Simple bracketted link
                 e = createTiddlyLink(w.output, decodeURIComponent(text), false, null, w.isStatic, w.tiddler);
@@ -2894,9 +2897,9 @@ config.macros.search.searchSite = function (toe, offs, path) {
 			if (ri.page.startsWith('/ '))
 				ri.page = ri.page.substring(1).replace(/ /g, '/');
 			if (ri.page != location.pathname)
-				link = link + '|' + ri.page + '?highlight=' + encodeURIComponent(q.text) + '#' + encodeURIComponent(String.encodeTiddlyLink(ri.title));
+				link = link + '|' + ri.page + csqHighLight + encodeURIComponent(q.text) + '#' + encodeURIComponent(String.encodeTiddlyLink(ri.title));
 			else
-				link = link + '|?highlight=' + encodeURIComponent(q.text);
+				link = link + '|' + link + csqHighLight + encodeURIComponent(q.text);
 
 			var dcd = config.options.chkSearchViewDate ? '|' + ri.date : "";
 			r.push(dcd + '|' + ri.page + '|[[' + link + ']]|')
