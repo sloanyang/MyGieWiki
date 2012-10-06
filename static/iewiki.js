@@ -690,7 +690,7 @@ function restart() {
 	store.fetchFromServer = true;
 	var q = "?highlight=";
     if (window.location.search.startsWith(q))
-		highlightHack = new RegExp(decodeURIComponent(window.location.search.substring(q.length)).escapeRegExp(), "mg");
+		highlightHack = new RegExp(decodeURIComponent(window.location.search.substring(q.length)).escapeRegExp(), "img");
 	invokeParamifier(params, "onstart");
 	highlightHack = null;
     if (story.isEmpty())
@@ -1354,8 +1354,11 @@ config.formatters = [
             if (lookaheadMatch[3]) {
                 // Pretty bracketted link
                 var link = lookaheadMatch[3];
-                e = (!lookaheadMatch[2] && config.formatterHelpers.isExternalLink(link)) ?
-                    createExternalLink(w.output, link) : createTiddlyLink(w.output, decodeURIComponent(link), false, null, w.isStatic, w.tiddler);
+				if (link.indexOf('?highlight=') == 0)
+					e = createTiddlyLink(w.output, decodeURIComponent(text), false, null, w.isStatic, w.tiddler, false, decodeURIComponent(link.substring('?highlight='.length)));
+				else
+					e = (!lookaheadMatch[2] && config.formatterHelpers.isExternalLink(link)) ?
+						createExternalLink(w.output, link) : createTiddlyLink(w.output, decodeURIComponent(link), false, null, w.isStatic, w.tiddler);
             } else {
                 // Simple bracketted link
                 e = createTiddlyLink(w.output, decodeURIComponent(text), false, null, w.isStatic, w.tiddler);
@@ -2891,7 +2894,10 @@ config.macros.search.searchSite = function (toe, offs, path) {
 			if (ri.page.startsWith('/ '))
 				ri.page = ri.page.substring(1).replace(/ /g, '/');
 			if (ri.page != location.pathname)
-				link = link + '|' + ri.page + "#" + encodeURIComponent(String.encodeTiddlyLink(ri.title));
+				link = link + '|' + ri.page + '?highlight=' + encodeURIComponent(q.text) + '#' + encodeURIComponent(String.encodeTiddlyLink(ri.title));
+			else
+				link = link + '|?highlight=' + encodeURIComponent(q.text);
+
 			var dcd = config.options.chkSearchViewDate ? '|' + ri.date : "";
 			r.push(dcd + '|' + ri.page + '|[[' + link + ']]|')
 			if (ri.text_snippet !== undefined) {
@@ -4058,7 +4064,7 @@ Tiddler.prototype.getAdaptor = function() {
     return serverType ? new config.adaptors[serverType]() : null;
 };
 
-Tiddler.prototype.display = function(target,fields,toggling) {
+Tiddler.prototype.display = function(target,fields,toggling,hiLite) {
     try {
         if (this.isTagged("javaScript") && !toggling) {
             try {
@@ -4077,7 +4083,7 @@ Tiddler.prototype.display = function(target,fields,toggling) {
             }
         }
         else
-            story.displayTiddler(target, this, null, true, null, fields, toggling);
+            story.displayTiddler(target, this, null, true, null, fields, toggling, null, hiLite);
     } catch (x) {
         displayMessage(x);
     }
@@ -4963,7 +4969,7 @@ Story.prototype.displayTiddlers = function(srcElement, titles, template, animate
 };
 
 Story.prototype.specialCases = [];
-Story.prototype.displayTiddler = function (srcElement, tiddler, template, animate, unused, customFields, toggle, animationSrc) {
+Story.prototype.displayTiddler = function (srcElement, tiddler, template, animate, unused, customFields, toggle, animationSrc, hiLite) {
 	if (tiddler instanceof Tiddler) {
 		var title = tiddler.title;
 		var fields = tiddler.fields;
@@ -4976,6 +4982,10 @@ Story.prototype.displayTiddler = function (srcElement, tiddler, template, animat
 	var sch = this.specialCases[title];
 	if (sch && sch(title))
 		return;
+	if (hiLite) {
+		var hlgs = highlightHack;
+		highlightHack = hiLite;
+	}
 	var tiddlerElem = this.getTiddler(title);
 	if (tiddlerElem) {
 		if (toggle)
@@ -4996,6 +5006,8 @@ Story.prototype.displayTiddler = function (srcElement, tiddler, template, animat
 		}
 		tiddlerElem = this.createTiddler(place, before, title, template, customFields, tiddler instanceof Tiddler ? tiddler : null);
 	}
+	if (hiLite)
+		highlightHack = hlgs;
 	var acas = [];
 	if (getElementsByClassName('cxtoggle', 'a', tiddlerElem, acas)) {
 		acas[0].onclick = function (ev) {
@@ -6118,7 +6130,7 @@ function createTiddlyButton(parent, text, tooltip, action, className, id, access
     return btn;
 }
 
-function createTiddlyLink(place, title, includeText, className, isStatic, linkedFromTiddler, noToggle) {
+function createTiddlyLink(place, title, includeText, className, isStatic, linkedFromTiddler, noToggle, hiLite) {
     var text = includeText ? title : null;
     var i = getTiddlyLinkInfo(title, className);
     var btn = isStatic ? createExternalLink(place, store.getTiddlerText("SiteUrl", null) + "#" + title) : createTiddlyButton(place, text, i.subTitle, i.href || onClickTiddlerLink, i.classes);
@@ -6126,6 +6138,8 @@ function createTiddlyLink(place, title, includeText, className, isStatic, linked
         btn.className += ' ' + className;
     btn.setAttribute("refresh", "link");
     btn.setAttribute("tiddlyLink", title);
+	if (hiLite !== undefined)
+		btn.setAttribute('hiLite',hiLite);
     if (noToggle)
         btn.setAttribute("noToggle", "true");
     if (linkedFromTiddler) {
@@ -6313,16 +6327,20 @@ function onClickTiddlerLink(ev) {
     var title = null;
     var fields = null;
     var noToggle = null;
+	var hiLite = null;
     do {
         title = link.getAttribute("tiddlyLink");
         fields = link.getAttribute("tiddlyFields");
         noToggle = link.getAttribute("noToggle");
+		hiLite = link.getAttribute('hiLite');
         link = link.parentNode;
     } while (title == null && link != null);
-	TiddlerLinkHandler(target,title,fields,noToggle,e);
+	if (hiLite != null)
+		hiLite = new RegExp(hiLite,'img');
+	TiddlerLinkHandler(target,title,fields,noToggle,e,hiLite);
 }
 
-function TiddlerLinkHandler(target,title,fields,noToggle,e)
+function TiddlerLinkHandler(target,title,fields,noToggle,e,hiLite)
 {
 	var meta = title.startsWith(pfxFields);
 	var tn = meta ?	title.substring(pfxFields.length) : title;
@@ -6391,7 +6409,7 @@ function TiddlerLinkHandler(target,title,fields,noToggle,e)
             story.displayTiddler(target, t, 'ViewOnlyTemplate');
 		}
 		else if (t)
-            t.display(target,fields,toggling);
+            t.display(target,fields,toggling,hiLite);
         else
             story.displayTiddler(target, title, null, true, null, null, toggling);
     }
