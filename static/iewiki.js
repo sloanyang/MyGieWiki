@@ -688,7 +688,11 @@ function main() {
 // Restarting
 function restart() {
 	store.fetchFromServer = true;
+	var q = "?highlight=";
+    if (window.location.search.startsWith(q))
+		highlightHack = new RegExp(decodeURIComponent(window.location.search.substring(q.length)).escapeRegExp(), "mg");
 	invokeParamifier(params, "onstart");
+	highlightHack = null;
     if (story.isEmpty())
         story.displayDefaultTiddlers();
     window.scrollTo(0, 0);
@@ -8271,6 +8275,14 @@ function HttpRequest(args,debug) {
 			alert(req.responseText);
 	}
 	return req;
+}
+
+config.macros.page = {
+	handler: function(place, macroName, params, wikifier, paramString, tiddler) {
+		var a = params[0];
+		if (a && !(config.pageAttributes[a] === undefined))
+			createTiddlyText(place,config.pageAttributes[a]);
+	}
 }
 
 config.macros.history = {

@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.16.5
+# ver.:  1.17.0
 
 import cgi
 import codecs
@@ -38,7 +38,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.16.5'
+giewikiVersion = '1.17.0'
 TWComp = 'twcomp.html'
 
 _INDEX_NAME = 'tiddlers'
@@ -106,7 +106,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 16, revision: 5, date: new Date("May 28, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 17, revision: 0, date: new Date("Sep 29, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -150,8 +150,14 @@ var config = {\n\
 	pages: [ <siblingPages> ],\n\
 	deprecatedCount: <deprecatedCount>,\n\
 	noSuchTiddlers: <noSuchTiddlers>,\n\
+	pageAttributes: { <pageAttributes> },\n\
 	options: {\n\
 		' # the rest is built dynamically
+
+reserved_page_attrs = ('','path','sub','owner','ownername','anonAccess','authAccess','groupAccess',
+	'titleModified','subtitleModified','systemInclude','gwversion','redirect','updateaccess','systeminclude','method','success',
+	'title','subtitle','tags','tiddlertags','locked','anonymous','authenticated','group','groups','scripts',
+	'viewbutton','viewprior','foldindex','showbyline','template')
 
 def isNameAnOption(name):
 	return name.startswith('txt') or name.startswith('chk')
@@ -1958,6 +1964,9 @@ class MainPage(webapp.RequestHandler):
 					page.scripts = '|'.join(ppts)
 			else:
 				page.template = None
+			for ra in self.request.arguments():
+				if not ra in reserved_page_attrs:
+					setattr(page,ra,self.request.get(ra))
 			page.put()
 			if saveTemplate:
 				self.saveTemplate(page)
@@ -1991,6 +2000,9 @@ class MainPage(webapp.RequestHandler):
 			reply['message'] = "The 'normal' template is empty"
 		elif self.path.startswith('/_templates/'):
 			reply['message'] = "NB: In use, template content is normally found only under the 'fromTemplate' tag.<br>Except if you apply the page tag 'include'."
+		for dpn in page.dynamic_properties():
+			if not dpn in reserved_page_attrs:
+				reply[dpn] = unicode(getattr(page,dpn))
 		self.reply(reply)
 
   def clipboard(self):
@@ -4223,6 +4235,11 @@ class MainPage(webapp.RequestHandler):
 				self.response.out.write('lazyLoadAll[' + jsEncodeStr(altitle) + '] = "' + altime.strftime('%Y%m%d%H%M%S') + '";\n')
 	
 	project = "" if self.subdomain is None else self.subdomain
+	apat = []
+	if page:
+		for dpn in page.dynamic_properties():
+			if not dpn in reserved_page_attrs:
+				apat.append(dpn + ': ' + jsEncodeStr(str(getattr(page,dpn))))
 
 	self.response.out.write( jsConfig\
 		.replace('<appid>', app_identity.get_application_id(),1)\
@@ -4249,6 +4266,7 @@ class MainPage(webapp.RequestHandler):
 		.replace('<allWarnings>',jsEncodeStr(warnings),1)\
 		.replace('<noSuchTiddlers>',jsEncodeStr('\n'.join(nsts)),1)\
 		.replace('<siblingPages>', ',\n'.join(pages),1)\
+		.replace('<pageAttributes>', ','.join(apat),1)\
 		.replace('<timestamp>', unicode(datetime.datetime.now()),1)) # time.strftime("%Y-%m-%d-%H:%M:%S"),1))
 	if isLoggedIn:
 		upr = UserProfile.all().filter('user',user).get() # my profile
