@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.16.5
+   version:	1.17.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -3275,17 +3275,30 @@ config.commands.editTiddler.copy = function(tsource, title) {
 function KeepTiddlers(st,title) {
 	var keeper = function(st) {
 		var t = new Tiddler();
+		fields = {};
+		delete st.success;
+		for (var name in st) {
+			switch (name) {
+				case "vercnt": 
+					t.vercnt = st.vercnt;
+					break;
+				case "currentVer":
+					break;
+				case "from": 
+					t.from = st.from;
+					break;
+				default:
+					if (!TiddlyWiki.isStandardField(name))
+						fields[name] = st[name];
+			}
+		}
 		t.assign(st.title, st.text, st.modifier,
 			Date.convertFromYYYYMMDDHHMM(st.modified), st.tags,
 			Date.convertFromYYYYMMDDHHMM(st.created),
-			null, parseInt(st.version));
+			fields, parseInt(st.currentVer || st.version));
 		t.templates[DEFAULT_VIEW_TEMPLATE] = st.viewtemplate;
 		t.templates[DEFAULT_EDIT_TEMPLATE] = st.edittemplate;
 		t.id = st.id;
-		for (a in st) {
-			if (a != 'success' && t[a] === undefined && t.fields[a] === undefined)
-				t.fields[a] = st[a];
-		}
 		store.addTiddler(t);
 		if (lazyLoadAll[title])
 			delete lazyLoadAll[title];
@@ -3920,8 +3933,11 @@ Tiddler.prototype.assign = function (title, text, modifier, modified, tags, crea
 		this.modified = modified;
 	if (created != undefined || created == null)
 		this.created = created;
-	if (fields != undefined)
+	if (fields != undefined) {
 		this.fields = fields;
+		if (fields.requires && !this.requires)
+			this.requires =  fields.requires;
+	}
 	if (version != undefined) {
 		this.currentVer = version;
 		if (version == 0)
@@ -4087,15 +4103,14 @@ function TiddlyWiki() {
     	if (!t && title)
 			if (this.fetchFromServer && !co) {
 				t = TryGetTiddler(title);
-				if (t && t.fields) {
-					var reqs = t.fields.requires;
-					if (reqs) {
-						reqs = reqs.readBracketedList();
-						for (var i = 0; i < reqs.length; i++)
-							store.fetchTiddler(reqs[i]);
-					}
-				}
 			}
+		if (t && t.requires) {
+			var reqs = t.requires.readBracketedList();
+			delete t.requires;
+			for (var i = 0; i < reqs.length; i++)
+				store.fetchTiddler(reqs[i]);
+			
+		}
     	return t instanceof Tiddler ? t : null;
     };
     this.deleteTiddler = function(title) {
