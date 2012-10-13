@@ -3984,7 +3984,12 @@ class MainPage(webapp.RequestHandler):
 		return hashlib.sha224(str(page.key().id())).hexdigest() if readAccess else ''
 	else:
 		return '1' if readAccess or (self.request.path == '/' and page is None and users.get_current_user() != None) else ''
-	
+
+  def ClearNoSuchTiddlersOfPage(self):
+	page = self.CurrentPage()
+	if page != None and page.owner == self.user:
+		self.CurrentPage().NoSuchTiddlersOfPage(True)
+
   def get(self): # this is where it all starts
 	self.user = users.get_current_user()
 	self.path = self.request.path
@@ -4015,6 +4020,8 @@ class MainPage(webapp.RequestHandler):
 			return self.deleteLink(self.request.get('id'))
 		elif method == 'buildIndex':
 			return self.buildIndex()
+		elif method == 'clearNoSuchTiddlers':
+			self.ClearNoSuchTiddlersOfPage()
 		else:
 			return self.post()
 
@@ -4279,14 +4286,18 @@ class MainPage(webapp.RequestHandler):
 		
 	optlist = []
 	for (fn,ft) in upr._properties.iteritems():
-		fv = getattr(upr,fn)
-		if fv != None:
-			if type(getattr(UserProfile,fn)) == db.BooleanProperty:
-				fv = 'true' if fv else 'false'
-			else:
-				fv = jsEncodeStr(fv)
-			if isNameAnOption(fn):
-				self.AppendConfigOption(optlist,fn, fv)
+		try:
+			fv = getattr(upr,fn)
+			if fv != None:
+				if type(getattr(UserProfile,fn)) == db.BooleanProperty:
+					fv = 'true' if fv else 'false'
+				else:
+					fv = jsEncodeStr(fv)
+				if isNameAnOption(fn):
+					self.AppendConfigOption(optlist,fn, fv)
+		except Exception,ex:
+			logging.warn("Cannot get attribute " + fn + " for " + upr.txtUserName)
+
 	for (fn,ft) in upr._dynamic_properties.iteritems():
 		fv = getattr(upr,fn)
 		if fv != None:

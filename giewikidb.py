@@ -177,10 +177,15 @@ class Page(db.Expando):
 		return "Edit access is restricted"
 	return None
 
-  def NoSuchTiddlersOfPage(self):
+  def NoSuchTiddlersOfPage(self,clear=False):
 	if hasattr(self,noSuchTiddlers):
-		nsts = self.noSuchTiddlers
-		return [] if nsts is None else nsts.split('\n')
+		if clear:
+			self.noSuchTiddlers = ''
+			self.put()
+			return []
+		else:
+			nsts = self.noSuchTiddlers
+			return [] if nsts is None else nsts.split('\n')
 	else:
 		return []
 
