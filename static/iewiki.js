@@ -9384,10 +9384,25 @@ config.macros.smugFetch = {
 		if (nrw > 0 && nrw <= 100)
 			rwp = Math.floor(nrw * rwp / 100);
 		var text = http.smugFetch({ url: params[0], width: rwp });
-		var images = text.images && text.images.split('\n');
+		var images = text.images.split('\n');
 		if (images) {
-			var n = Math.floor(Math.random() * images.length);
-			var imge = createTiddlyElement(place, 'img', null, 'smug', null, { src: images[n], width: relw });
+			if (relw == -1) {
+				for (var i = 0; i < images.length; i++) { // list all images
+					createTiddlyText(createExternalLink(place, images[i]), images[i]);
+					createTiddlyElement(place, 'br');
+				}
+			}
+			else {
+				var n = Math.floor(Math.random() * images.length); // pick a random image
+				var imge = createTiddlyElement(place, 'img', null, 'smug', null, { src: images.splice(n, 1)[0], width: relw });
+				if (params[2])
+					var otf = window.setInterval(function () {
+						if (images.length && story.findContainingTiddler(imge).parentElement)
+							imge.src = images.splice(Math.floor(Math.random() * images.length), 1)[0];
+						else
+							window.clearInterval(otf);
+					}, 1000 * parseInt(params[2]));
+			}
 		}
 	}
 }
