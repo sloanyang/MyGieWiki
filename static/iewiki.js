@@ -9368,12 +9368,27 @@ config.macros.myprojects = {
 }
 
 config.macros.urlFetch = {
-	handler: function(place, macroName, params)
-	{
-		var text = http.urlFetch(
-			{ url: params[0] } );
-		var output = createTiddlyElement(place, "span");
+	handler: function (place, macroName, params) {
+		var text = http.urlFetch({ url: params[0] });
+		var w = params.length == 1 ? "span" : params[1];
+		var output = createTiddlyElement(place, w);
 		output.innerHTML = text;
+	}
+}
+
+config.macros.smugFetch = {
+	handler: function (place, macroName, params) {
+		var relw = params[1] || '100%';
+		var nrw = parseInt(relw);
+		var rwp = place.offsetWidth;
+		if (nrw > 0 && nrw <= 100)
+			rwp = Math.floor(nrw * rwp / 100);
+		var text = http.smugFetch({ url: params[0], width: rwp });
+		var images = text.images && text.images.split('\n');
+		if (images) {
+			var n = Math.floor(Math.random() * images.length);
+			var imge = createTiddlyElement(place, 'img', null, 'smug', null, { src: images[n], width: relw });
+		}
 	}
 }
 

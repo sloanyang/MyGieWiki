@@ -101,6 +101,8 @@ evaluate\n\
 tiddlersFromUrl\n\
 openLibrary\n\
 listScripts\n\
+smugFetch\n\
+urlFetch\n\
 updateTemplate\n\
 getTemplates'
 
@@ -774,7 +776,39 @@ class MainPage(webapp.RequestHandler):
 	if p == None:
 		return self.request.remote_addr
 	return p.txtUserName
-  
+
+  def smugFetch(self):
+	result = urlfetch.fetch(self.request.get('url'))
+	width = int(self.request.get('width'))
+	if result.status_code == 200:
+		try:
+			rss = xml.dom.minidom.parseString(result.content)
+			if rss.documentElement.tagName == 'rss':
+				rp = { 'success': True }
+				for ce in rss.documentElement.childNodes:
+					if ce.nodeType == xml.dom.Node.ELEMENT_NODE and ce.tagName == 'channel':
+						rpc = []
+						for chce in ce.childNodes:
+							if chce.nodeType == xml.dom.Node.ELEMENT_NODE:
+								if chce.tagName == 'item':
+									medias = chce.getElementsByTagName('media:content')
+									amedia = medias[0];
+									for am in medias:
+										aw = int(am.getAttribute('width'))
+										if aw > width:
+											amedia = am
+											break
+									if amedia:
+										url = amedia.getAttribute('url')
+										rpc.append(url)
+						rp['images'] = '\n'.join(rpc)
+				return self.reply(rp)
+			else:
+				return self.warn("Root element is " + rss.documentElement.tagName)
+		except Exception, x:
+			logging.info("Failed to parse " + self.request.get('url') + " :\n", str(x));
+			self.fail(str(x));
+
   def SaveNewTiddler(self,page,name,value):
 	p = Tiddler()
 	p.page = page
