@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.17.0
+   version:	1.17.1
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -9376,14 +9376,17 @@ config.macros.urlFetch = {
 	}
 }
 
-config.macros.smugFetch = {
+config.macros.smugFeed = {
 	handler: function (place, macroName, params) {
 		var relw = params[1] || '100%';
 		var nrw = parseInt(relw);
 		var rwp = place.offsetWidth;
 		if (nrw > 0 && nrw <= 100)
 			rwp = Math.floor(nrw * rwp / 100);
-		var text = http.smugFetch({ url: params[0], width: rwp });
+		var text = http.smugFeed({ url: params[0], width: rwp, details: 'dim' });
+		var img = function(i) { return i.split(' ')[0] };
+		var imw = function(i) { return parseInt(i.split(' ')[1]) };
+		var imh = function(i) { return parseInt(i.split(' ')[2]) };
 		var images = text.images.split('\n');
 		if (images) {
 			if (relw == -1) {
@@ -9393,15 +9396,36 @@ config.macros.smugFetch = {
 				}
 			}
 			else {
-				var n = Math.floor(Math.random() * images.length); // pick a random image
-				var imge = createTiddlyElement(place, 'img', null, 'smug', null, { src: images.splice(n, 1)[0], width: relw });
-				if (params[2])
-					var otf = window.setInterval(function () {
-						if (images.length && story.findContainingTiddler(imge).parentElement)
-							imge.src = images.splice(Math.floor(Math.random() * images.length), 1)[0];
+				var wdiv = createTiddlyElement(place, 'div', 'smugframe', 'smug');
+				var wcw = wdiv.clientWidth;
+				var maxH = window.innerHeight * 9 / 10;
+				var mh = maxH;
+				var imge = null;
+				var otf = null;
+				var maxh = 0;
+				var sfunc = function () {
+						if (images.length) {
+							var pin = Math.floor(Math.random() * images.length);
+							var pick = images.splice(pin, 1)[0];
+							var ima = { src: img(pick) }; 
+							ima.width = Math.min(imw(pick),wcw);
+							ima.height = imh(pick) * ima.width / imw(pick);
+							if (ima.height > maxH) {
+								ima.height = maxH;
+								delete ima.width;
+							}
+							maxh = Math.max(maxh,ima.height);
+							wdiv.style.height = maxh + 'px';
+							if (imge)
+								wdiv.removeChild(imge);
+							imge = createTiddlyElement(wdiv, 'img', null, 'smug', null, ima);
+						}
 						else
 							window.clearInterval(otf);
-					}, 1000 * parseInt(params[2]));
+						return images.length;
+					};
+				if (sfunc() && params[2])
+					otf = window.setInterval(sfunc, 1000 * parseInt(params[2]));
 			}
 		}
 	}

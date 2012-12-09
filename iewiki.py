@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.17.0
+# ver.:  1.17.1
 
 import cgi
 import codecs
@@ -101,7 +101,7 @@ evaluate\n\
 tiddlersFromUrl\n\
 openLibrary\n\
 listScripts\n\
-smugFetch\n\
+smugFeed\n\
 urlFetch\n\
 updateTemplate\n\
 getTemplates'
@@ -777,9 +777,10 @@ class MainPage(webapp.RequestHandler):
 		return self.request.remote_addr
 	return p.txtUserName
 
-  def smugFetch(self):
+  def smugFeed(self):
 	result = urlfetch.fetch(self.request.get('url'))
 	width = int(self.request.get('width'))
+	details = self.request.get('details').split(',')
 	if result.status_code == 200:
 		try:
 			rss = xml.dom.minidom.parseString(result.content)
@@ -800,6 +801,8 @@ class MainPage(webapp.RequestHandler):
 											break
 									if amedia:
 										url = amedia.getAttribute('url')
+										if 'dim' in details:
+											url = url + ' ' + str(amedia.getAttribute('width')) + ' ' + str(amedia.getAttribute('height'))
 										rpc.append(url)
 						rp['images'] = '\n'.join(rpc)
 				return self.reply(rp)
