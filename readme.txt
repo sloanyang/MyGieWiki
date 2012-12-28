@@ -1,7 +1,17 @@
-This is (or was) giewiki release 1.17.0.
+This is (or was) giewiki release 1.17.1.
 
 Starting point:
 	http://giewiki.appspot.com
+
+Changes in release 1.17.1:
+	* This version has minor changes to adapt to changes in the Google App Engine search library.
+	* A new macro, smugFeed, allows users of the SmugMug photo hosting site to present a random image or a sequence of images
+	  to be presented, as defined by either of the RSS feeds that SmugMug makes available. The syntax is
+	  <<smugFeed rssurl width interval>>
+	  where width and interval are optional:
+	  width defaults to 100% (of the containing column width)
+	  interval is taken to be a number of seconds; if provided, the image is replaced with another random image from the same feed
+	  at the specified interval.
 
 New features in release in 1.17:
 	* This version introduces Full-text search using the new search feature of App Engine 1.7, which is only supported when using the

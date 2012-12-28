@@ -38,7 +38,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.17.0'
+giewikiVersion = '1.17.1'
 TWComp = 'twcomp.html'
 
 _INDEX_NAME = 'tiddlers'
@@ -108,7 +108,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 17, revision: 0, date: new Date("Sep 29, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 17, revision: 1, date: new Date("Dec 28, 2012"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -237,9 +237,9 @@ def PutTiddler(tlr, page = None, put = True):
 	try:
 		index = search.Index(name=_INDEX_NAME)
 		if tlr.current:
-			index.add(CreateDocument(tlr))	
+			index.put(CreateDocument(tlr))	
 		else:
-			index.remove(tlr.id)
+			index.delete(tlr.id)
 	except apiproxy_errors.CallNotFoundError:
 		logging.info("Search service not supported; tiddler not indexed.")
 
@@ -3572,7 +3572,7 @@ class MainPage(webapp.RequestHandler):
 	name = self.request.get('name',None)
 	if name is None:
 		indexes = dict()
-		for idx in search.list_indexes(fetch_schema=True):
+		for idx in search.get_indexes(fetch_schema=True):
 			indexes[idx.name] = []
 			for sn in idx.schema:
 				ssn = str(sn)
@@ -3965,6 +3965,7 @@ class MainPage(webapp.RequestHandler):
 				if psPos == -1:
 					psPos = twdtext.rfind('<!--POST-SCRIPT-START-->')
 				globalPatch = [ twdtext[0:psPos],'<script src="' + self.path + '.config.js" type="text/javascript"></script>\r\n<script src="/static/iewiki.js" type="text/javascript"></script>']
+				# globalPatch.append('<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>')
 				if not page is None:
 					scrdict = dict()
 					if hasattr(page,'scripts') and page.scripts != None:
