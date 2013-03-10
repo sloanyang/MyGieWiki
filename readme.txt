@@ -1,4 +1,4 @@
-This is (or was) giewiki release 1.17.1.
+This is (or was) giewiki release 1.17.2.
 
 Starting point:
 	http://giewiki.appspot.com
