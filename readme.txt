@@ -3,6 +3,9 @@ This is (or was) giewiki release 1.17.1.
 Starting point:
 	http://giewiki.appspot.com
 
+Changes in release 1.17.2:
+	* This is a bugfix release: Trying to import tiddlers from libraries would fail if the '#' character was used in a tiddler title.
+
 Changes in release 1.17.1:
 	* This version has minor changes to adapt to changes in the Google App Engine search library.
 	* A new macro, smugFeed, allows users of the SmugMug photo hosting site to present a random image or a sequence of images

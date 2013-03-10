@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.17.1
+# ver.:  1.17.2
 
 import cgi
 import codecs
@@ -38,7 +38,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.17.1'
+giewikiVersion = '1.17.2'
 TWComp = 'twcomp.html'
 
 _INDEX_NAME = 'tiddlers'
@@ -108,7 +108,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 17, revision: 1, date: new Date("Dec 28, 2012"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 17, revision: 2, date: new Date("Mar 10, 2013"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -237,7 +237,7 @@ def PutTiddler(tlr, page = None, put = True):
 	try:
 		index = search.Index(name=_INDEX_NAME)
 		if tlr.current:
-			index.put(CreateDocument(tlr))	
+			index.put(CreateDocument(tlr))
 		else:
 			index.delete(tlr.id)
 	except apiproxy_errors.CallNotFoundError:
@@ -1688,7 +1688,7 @@ class MainPage(webapp.RequestHandler):
 			return self.fail("You are not allowed to do this")
 
 	if tid.startswith('include-'):
-		urlparts = tid[8:].split('#')
+		urlparts = tid[8:].split('#',1)
 		url = urlparts[0] + '#'
 		part = urlparts[1]
 		siLines = page.systemInclude.split('\n')
@@ -2543,7 +2543,7 @@ class MainPage(webapp.RequestHandler):
   def getTiddler(self):
 	id = self.request.get("id",None)
 	if id != None:
-		urlParts = id.split('#')
+		urlParts = id.split('#',1)
 		if len(urlParts) == 2:
 			urlPath = urlParts[0]
 			urlPick = urlParts[1]
@@ -3035,7 +3035,7 @@ class MainPage(webapp.RequestHandler):
 				if select != "":
 					urls.remove(al) # to be replaced by select
 				else:
-					fromUrl = al.split('#')[1].split('||')
+					fromUrl = al.split('#',1)[1].split('||')
 	if select != "":
 		error = page.UpdateViolation()
 		if error != None:
@@ -3714,7 +3714,7 @@ class MainPage(webapp.RequestHandler):
 			includeDisabled = self.request.get('disable')
 			if includeDisabled != '*':
 				for sf in page.systemInclude.replace('\r','').split('\n'):
-					urlParts = sf.split('#')
+					urlParts = sf.split('#',1)
 					urlPath = urlParts[0]
 					if includeDisabled != urlPath:
 						urlPicks = None if len(urlParts) <= 1 else urlParts[1].split('||')
@@ -3965,7 +3965,6 @@ class MainPage(webapp.RequestHandler):
 				if psPos == -1:
 					psPos = twdtext.rfind('<!--POST-SCRIPT-START-->')
 				globalPatch = [ twdtext[0:psPos],'<script src="' + self.path + '.config.js" type="text/javascript"></script>\r\n<script src="/static/iewiki.js" type="text/javascript"></script>']
-				# globalPatch.append('<script type="text/javascript" src="https://apis.google.com/js/plusone.js"></script>')
 				if not page is None:
 					scrdict = dict()
 					if hasattr(page,'scripts') and page.scripts != None:
