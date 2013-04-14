@@ -3415,7 +3415,6 @@ class MainPage(webapp.RequestHandler):
 	r = method()
 	if self.trace != False:
 		LogEvent("tm:" + m,'\n'.join(self.trace))
-	return r
 
   def traceKey(self):
 	return "T:" + self.request.remote_addr
@@ -3492,7 +3491,6 @@ class MainPage(webapp.RequestHandler):
 		div.setAttribute('tags', unicode(t.tags))
 		
 	td = t.dynamic_properties()
-	#logging.info(unicode(len(td)) + " dps")
 	for m in td:
 		if m == 'UXL_' or m == '_uxl' or (xsvr and m[:7] == 'server.'): 
 			pass # the 'server:..' fields should not have been saved in the first place, but
