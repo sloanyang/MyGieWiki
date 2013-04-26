@@ -1,12 +1,13 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <!--
 	File:	UploadDialog.htm
-	ver.:	1.13.5
+	ver.:	1.17.3
 -->
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
-	<head>
-		<title>UploadDialog</title>
-		<script type="text/javascript">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<title>UploadDialog</title>
+<script type="text/javascript">
 function init()
 {
 	if (window.location.search.indexOf('?replace=') == 0)
@@ -15,16 +16,17 @@ function init()
 		var fn = decodeURIComponent(window.location.search.substr(9));
 		var fid = document.getElementById("filename");
 		fid.value = fn;
-		document.upldlg.MyFile.value = fn;
 		document.upldlg.method.value = 'replaceFile';
 	}
 	else
 		var bImg = window.location.search.length > 1;
 	if (bImg == false)
 		setStylesheet("*.imgctl { visibility: hidden }");
-		
-	var fid = document.getElementById("upldlg");
-	fid.setAttribute("action",window.location.hash.substr(1));
+
+	var rpid = document.getElementById("request_path");
+	var hash = window.location.hash && window.location.hash.substr(1);
+	if (hash)
+	    rpid.setAttribute("value", hash);
 
 	var pw = window.parent;
 	var pd = pw.document;
@@ -35,10 +37,10 @@ function init()
 	{
 		var ftype = upldftype.firstChild.nodeValue;
 		var fname = upldfndiv.firstChild.nodeValue;
-		if (ftype != ('U'+'FT') && fname != ('U'+'FL')) { // cloaked to avoid substitution in uploadFile(self)
+		if (ftype != ('U'+'FT') && fname != ('U'+'FL')) { // cloaked to avoid substitution in UploadHandler.py
 			var fnsp = fname.lastIndexOf(".");
 			var fnxt = fnsp > 0 ? fname.substr(0, fnsp) : fname;
-			var text = (ftype == "image/jpeg" ? "<<image '" + fname + "' < 50%>>" : "[[" + fname + "|" + fname + "]]");
+			var text = (ftype == "image/jpeg" || ftype =="image/pjpeg") ? "<<image '" + fname + "' < 50%>>" : "[[" + fname + "|" + fname + "]]";
 			var action = 'InsertTiddlerText("'.concat(fnxt, '","', text, '","', document.getElementById("uploadedFileMessage").innerHTML, '")');
 			pw.setTimeout(action, 1);
 			if (dud) {
@@ -138,19 +140,19 @@ function fileSelected()
 	fid.value = v;
 }
 
-		</script>
-	</head>
-	<body onload="init();" style="font-family: arial,helvetica; font-size: .75em; background-color: transparent;">
+	</script>
+</head>
+<body onload="init();" style="font-family: arial,helvetica; font-size: .75em; background-color: transparent;">
 	<div id="displayUploadResult" visible="false">ULR</div>
-	<form id="upldlg" name="upldlg" method="post" enctype="Multipart/Form-Data" onsubmit="return valid()">
+	<form action="<uploadHandler>" id="upldlg" name="upldlg" method="post" enctype="multipart/form-data" onsubmit="return valid()">
 		<table border=0>
 		<td colspan=3>
-		Select file to upload<br />
+		Select file to upload:<br />
 		<input name="MyFile" type="File" id="MyFile" size="70" onchange="valid()"/><br />
 		</td>
 		<tr>
 		<td>
-		Name the uploaded file<br />
+		Name the uploaded file: <br />
 		<input name="filename" type="text" id="filename" />
 		</td>
 		<!--td>or replace an<br><a href='javascript:;' id='listExisting'>Existing file</a-->		
@@ -161,10 +163,10 @@ function fileSelected()
 		<input name="SubmitNewFile" type="Submit" id="Submit1" value="Upload file" />
 		<!--&nbsp; Existing files:<select name="existing" id="SubmitNewFile" onchange="fileSelected()"><option></option>{1}</select>
 		<input name="SubmitNewVersion" type="Submit" id="SubmitNewVersion" value="Replace existing file" /> -->
-		<input name="method" type="hidden" id="method" value="uploadFile" />
+		<input name="path" type="hidden" id="request_path" value="<requestPath>" />
 	</form>
 	<div id="uploadedFilename" style="display: none">UFL</div>
 	<div id="uploadedFiletype" style="display: none">UFT</div>
 	<div id="uploadedFileMessage" style="display: none">UFM</div>
-	</body>
+</body>
 </html>

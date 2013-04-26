@@ -1,12 +1,13 @@
 # this: giewikidb.py
 # by:   Poul Staugaard (poul(dot)staugaard(at)gmail...)
 # URL:  http://code.google.com/p/giewiki
-# ver.: 1.17.0
+# ver.: 1.18.0
 
 import logging
 import datetime
 
 from google.appengine.ext import db
+from google.appengine.ext import blobstore
 from google.appengine.api import users
 from google.appengine.api import namespace_manager
 
@@ -272,8 +273,10 @@ class UploadedFile(db.Model):
   owner = db.UserProperty()
   path = db.StringProperty()
   mimetype = db.StringProperty()
-  data = db.BlobProperty()
+  data = db.BlobProperty() # not used but for pre-existing files
   date = db.DateTimeProperty(auto_now_add=True)
+  blob =  blobstore.BlobReferenceProperty()
+
   msg = "" # piggybacked data
 
 class UserProfile(db.Expando):

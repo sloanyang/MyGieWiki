@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.17.2
+# ver.:  1.18.0
 
 import cgi
 import codecs
@@ -24,6 +24,7 @@ from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp.util import run_wsgi_app
 from google.appengine.ext import db
+from google.appengine.ext import blobstore
 from google.appengine.api import memcache
 from google.appengine.api import urlfetch
 from google.appengine.api import mail
@@ -38,7 +39,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.17.2'
+giewikiVersion = '1.18.0'
 TWComp = 'twcomp.html'
 
 _INDEX_NAME = 'tiddlers'
@@ -2889,46 +2890,6 @@ class MainPage(webapp.RequestHandler):
 		self.response.out.write("Oops: " + unicode(x))
 		return
 
-  def uploadFile(self, replace = False):
-	filename = self.request.get("filename")
-	filedata = self.request.get("MyFile")
-	filetype = Filetype(filename)
-	mimetype = self.request.get("mimetype")
-	if mimetype == None or mimetype == "":
-		mimetype = MimetypeFromFiletype(filetype)
-	if filename == '_export.xml' and users.is_current_user_admin():
-		self.ImportDb(filedata)
-	elif filetype == 'twd':
-		return self.uploadTiddlyWikiDoc(filename,filedata)
-	else:
-		p = filename if filename[0] == '/' else CombinePath(self.path, filename)
-		f = UploadedFile()
-		f.owner = users.get_current_user()
-		f.path = p
-		f.mimetype = mimetype
-		f.data = db.Blob(filedata)
-		ef = UploadedFile.all().filter('path',p).get()
-		if ef != None:
-			if replace == False:
-				msg = p + "&lt;br&gt;is an already existing file - &lt;&lt;confirm_replace " + p + "&gt;&gt;";
-				f.msg = msg
-				memcache.set(p,f,300)
-			elif f.owner != ef.owner and not users.is_current_user_admin():
-				msg = "Not allowed"
-			else:
-				ef.data = f.data
-				ef.put()
-				msg = p + " replaced"
-		elif Page.all().filter("path",p).get():
-			msg = p + "&lt;br&gt;is an existing page URL. Pick a different name."
-		else:
-			msg = ""
-			f.put()
-		u = open('UploadDialog.htm')
-		ut = u.read().replace("UFL",leafOfPath(self.path) + self.request.get("filename")).replace("UFT",mimetype).replace("ULR","Uploaded:").replace("UFM",msg)
-		self.response.out.write(ut)
-		u.close()
-		
   def replaceFile(self):
 	return self.uploadFile(True)
 
@@ -2939,6 +2900,8 @@ class MainPage(webapp.RequestHandler):
 	else:
 		puf = UploadedFile.all().filter('path',tuf.path).get()
 		if puf != None:
+			if not puf.blob is None:
+				puf.blob.delete()
 			puf.delete()
 		tuf.put()
 		self.reply()
@@ -2990,6 +2953,8 @@ class MainPage(webapp.RequestHandler):
 			return self.fail("No such file: " + fn)
 		elif ufo.owner != users.get_current_user() and not users.is_current_user_admin():
 			return self.fail("Not allowed to delete " + fn)
+		if not ufo.blob == None:
+			ufo.blob.delete()
 		ufo.delete()
 		self.reply()
 	
@@ -4142,8 +4107,10 @@ class MainPage(webapp.RequestHandler):
 		else:
 			if self.path == '/UploadDialog.htm':
 				ftwd = open('UploadDialog.htm')
-				text = ftwd.read()
+				uplurl = blobstore.create_upload_url('/upload')
+				text = ftwd.read().replace('<uploadHandler>', uplurl, 1)
 				ftwd.close()
+
 				self.response.headers['Content-Type'] = 'text/html'
 			else:
 				# Not an existing page, perhaps an uploaded file ?
@@ -4155,8 +4122,12 @@ class MainPage(webapp.RequestHandler):
 						self.response.set_status(404)
 						return
 				else:
-					text = file.data
-					self.response.headers['Content-Type'] = file.mimetype
+					self.response.headers['Content-Type'] = str(file.mimetype)
+					if file.blob == None:
+						text = file.data
+					else:
+						self.response.headers['X-AppEngine-BlobKey'] = str(file.blob.key())
+						return
 			if page is None:
 				self.response.headers['Cache-Control'] = 'no-cache'
 				self.response.out.write(text)

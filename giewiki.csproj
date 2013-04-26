@@ -104,7 +104,9 @@
     <Content Include="PageProperties.xml">
       <SubType>Designer</SubType>
     </Content>
-    <Content Include="PagePropertiesScript.xml" />
+    <Content Include="PagePropertiesScript.xml">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="PageSearchFAQ.xml" />
     <Content Include="PageTemplateHelp.xml" />
     <Content Include="PluginManager.xml" />
@@ -140,6 +142,7 @@
       <SubType>Designer</SubType>
     </Content>
     <Content Include="page-setup-first.xml" />
+    <Content Include="UploadHandler.py" />
     <Content Include="UserProfile.xml" />
   </ItemGroup>
   <ItemGroup>
