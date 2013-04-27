@@ -1,7 +1,6 @@
 application: giewiki-hrd
-version: 1-18-0
-runtime: python27
-threadsafe: no
+version: 1-18-1
+runtime: python
 api_version: 1
 
 handlers:
@@ -31,7 +30,7 @@ handlers:
   script: every_hour.py
 
 - url: /upload
-  script: UploadHandler.application
+  script: UploadHandler.py
 
 - url: /.*
-  script: iewiki.application
+  script: iewiki.py

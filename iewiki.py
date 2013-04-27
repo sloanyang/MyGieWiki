@@ -109,7 +109,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 17, revision: 2, date: new Date("Mar 10, 2013"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 18, revision: 0, date: new Date("Apr 27, 2013"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\

@@ -1,7 +1,11 @@
-This is (or was) giewiki release 1.17.2.
+This is (or was) giewiki release 1.18.0.
 
 Starting point:
 	http://giewiki.appspot.com
+
+Changes in release 1.18.0:
+	* Uses blobstore for uploaded files allowing files larger than 1MB to be uploaded.
+	* Fixes an incompatibility with App Engine SDK 1.7.7.
 
 Changes in release 1.17.2:
 	* This is a bugfix release: Trying to import tiddlers from libraries would fail if the '#' character was used in a tiddler title.
