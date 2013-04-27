@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.17.2
+   version:	1.18.0
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -9216,10 +9216,10 @@ config.macros.fileList = {
 		if (fl.success) {
 			this.fn = tiddler.title;
 			forms[this.fn] = {};
-			var flt = "|!Path|!Date|!Type|"
+			var flt = "|!Path|!Date|!Type|!Size|"
 			for (var i = 0; i < fl.files.length; i++) {
 				forms[this.fn][fl.files[i].path] = false;
-				flt = [flt, '\n|<<input "', fl.files[i].path, '" checkbox false>> [[', fl.files[i].path, ']]|', fl.files[i].date.formatString('DD MMM YYYY 0hh:0mm'), '|', fl.files[i].mimetype, '|'].join('')
+				flt = [flt, '\n|<<input "', fl.files[i].path, '" checkbox false>> [[', fl.files[i].path, '|', fl.files[i].path, ']]|', fl.files[i].date.formatString('DD MMM YYYY 0hh:0mm'), '|', fl.files[i].mimetype, '|', fl.files[i].size,'|'].join('')
 			}
 			flt = flt + '\n<<submitButton true "Delete file(s)" "Delete selected files" config.macros.fileList.DeleteSelected()>>';
 			flt = flt + ' <<submitButton true "Replace file.." "Replace selected file" config.macros.fileList.ReplaceSelected()>>';

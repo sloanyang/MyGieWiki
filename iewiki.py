@@ -2337,6 +2337,7 @@ class MainPage(webapp.RequestHandler):
 		page.foldIndex = hasattr(page,'foldIndex') and page.foldIndex
 
 		page.put()
+		memcache.set(page.path,page,1)
 		self.reply( {'Url': url, 'success': True })
 	else:
 		self.fail("Page already exists: " + page.path)
@@ -2906,41 +2907,17 @@ class MainPage(webapp.RequestHandler):
 		tuf.put()
 		self.reply()
 
-  def uploadTiddlers(self):
-	filedata = self.request.get("MyFile")
-	filename = self.request.get("filename")
-	url = 'file:' + self.path + '/' + filename
-	urlimport = UrlImport().all().filter('url',url).get()
-	if urlimport == None:
-		urlimport = UrlImport()
-		urlimport.url = url
-	urlimport.data = db.Blob(filedata)
-	urlimport.put()
-	self.response.out.write(
-'<html>'
-'<header><title>Upload succeeded</title>'
-'<script>'
-'function main() { \n'
-'    act = "onUploadTiddlers(' + "'" + url + "'" + ')";'
-'    window.parent.setTimeout(act,100);\n'
-'}\n'
-'</script></header>'
-'<body style="margin: 0 0 0 0; text-align: center; font-family: Arial" onload="main()">'
-'<center><a href="/">success..</a></center>'
-'</body>'
-'</html>')
-
   def fileList(self):
 	files = UploadedFile.all()
-	owner = self.request.get("owner")
-	if owner != "":
-		files = files.filter("owner =",owner)
+	owner = self.request.get('owner')
+	if owner != '':
+		files = files.filter('owner',owner)
 		
-	path = self.request.get("path")
+	path = self.request.get('path')
 	far = []
 	for f in files.fetch(100):
 		if path == "" or f.path.find(path) == 0:
-			far.append( { 'date': f.date, 'mimetype': f.mimetype, 'owner': f.owner.nickname() if f.owner != None else '', 'path': f.path } ) 
+			far.append( { 'date': f.date, 'mimetype': f.mimetype, 'owner': f.owner.nickname() if f.owner != None else '', 'path': f.path, 'size': -1 if f.blob == None else f.blob.size } ) 
 	self.reply({ 'files': far })
 
   def deleteFile(self):
@@ -3014,6 +2991,7 @@ class MainPage(webapp.RequestHandler):
 				urls.append(newPick)
 			page.systemInclude = '\n'.join(urls)
 		page.put()
+		memcache.set(page.path,page,1)
 		return self.warn("Reload to get the requested tiddlers")
 
 	newlist = list()
@@ -3042,7 +3020,12 @@ class MainPage(webapp.RequestHandler):
 			if te == None:
 				return None
 			else:
-				xd = FixTWSyntaxAndParse(te.data)
+				if te.blob == None:
+					xd = FixTWSyntaxAndParse(te.data)
+				else:
+					blobReader = te.blob.open()
+					xd = FixTWSyntaxAndParse(blobReader.read())
+					blobReader.close()
 				url = None
 		elif scheme == 'static':
 			url = library.libraryPath + upr[2]
@@ -3073,7 +3056,13 @@ class MainPage(webapp.RequestHandler):
 		if sources == None or 'local' in sources:
 			importedFile = UrlImport.all().filter('url',url).get()
 			if importedFile != None:
-				return FixTWSyntaxAndParse(importedFile.data)
+				if importedFile.blob == None:
+					return FixTWSyntaxAndParse(importedFile.data)
+				else:
+					blobReader = importedFile.blob.open()
+					rv = FixTWSyntaxAndParse(blobReader.read())
+					blobReader.close()
+					return rv
 		if sources == None or 'remote' in sources:
 			content = memcache.get(url) if cache != None else None
 			if content == None:
@@ -3553,8 +3542,14 @@ class MainPage(webapp.RequestHandler):
 	self.trace.append(msg)
 	
   def CurrentPage(self):
+	pp = memcache.get(self.path)
+	if pp != None and type(pp) == Page:
+		logging.info("Page " + self.path + " found in memcache")
+		return pp
 	for page in Page.all().filter("path",self.path):
+		logging.info("Page " + self.path + " found.")
 		return page
+	logging.info("CurrentPage: " + self.path + " NOT found")
 	if self.subdomain != None and (not hasattr(self.sdo,"version") or self.sdo.version < giewikiVersion):
 		namespace_manager.set_namespace(None)
 		LogEvent('CurrentPage', "Upgrading page " + self.path + " of " + self.request.host)
@@ -4105,8 +4100,8 @@ class MainPage(webapp.RequestHandler):
 			pg.path = "/"
 			memcache.set(self.request.remote_addr,pg) # used by config.js request
 		else:
-			if self.path == '/UploadDialog.htm':
-				ftwd = open('UploadDialog.htm')
+			if self.path in ('/UploadDialog.htm','/UploadTiddlers.htm'):
+				ftwd = open(self.path[1:])
 				uplurl = blobstore.create_upload_url('/upload')
 				text = ftwd.read().replace('<uploadHandler>', uplurl, 1)
 				ftwd.close()
@@ -4114,8 +4109,9 @@ class MainPage(webapp.RequestHandler):
 				self.response.headers['Content-Type'] = 'text/html'
 			else:
 				# Not an existing page, perhaps an uploaded file ?
-				file = UploadedFile.all().filter("path =", urllib.unquote(self.path)).get()
-				#LogEvent("Get file", self.path)
+				uqp = urllib.unquote(self.request.path)
+				file = UploadedFile.all().filter("path =", uqp).get()
+				LogEvent("Get file", uqp)
 				if file is None:
 					page = Page.all().filter('path','/HTTP/404').get()
 					if page is None:

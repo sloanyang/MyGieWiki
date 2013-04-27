@@ -186,7 +186,7 @@ config.PageProperties.openLibrary = function (url) {
 
 config.PageProperties.promptForUpload = function() {
 	var delc = document.getElementById('libraryCatalog');
-	createUploadFrame(delc,'tiddlers','upoadTiddlerFrame', 28, '/static/UploadDialog.htm');
+	createUploadFrame(delc,'tiddlers','upoadTiddlerFrame', 28, '/UploadTiddlers.htm');
 };
 
 config.PageProperties.promptToDeletePage = function() {

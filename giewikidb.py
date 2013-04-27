@@ -268,6 +268,7 @@ class GroupMember(db.Model):
 class UrlImport(db.Model):
   url = db.StringProperty()
   data = db.BlobProperty()
+  blob = blobstore.BlobReferenceProperty()
 
 class UploadedFile(db.Model):
   owner = db.UserProperty()

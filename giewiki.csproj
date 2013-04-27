@@ -143,6 +143,7 @@
     </Content>
     <Content Include="page-setup-first.xml" />
     <Content Include="UploadHandler.py" />
+    <Content Include="UploadTiddlers.htm" />
     <Content Include="UserProfile.xml" />
   </ItemGroup>
   <ItemGroup>
