@@ -1,7 +1,11 @@
-This is (or was) giewiki release 1.18.0.
+This is (or was) giewiki release 1.18.2.
 
 Starting point:
 	http://giewiki.appspot.com
+
+Changes in release 1.18.2:
+	* Bugfix release: 'delete prior versions' and BuildIndex were still calling the old index.remove(), not index.delete().
+	  Also, the datastore link was wrong in hosted operation.
 
 Changes in release 1.18.0:
 	* Uses blobstore for uploaded files allowing files larger than 1MB to be uploaded.

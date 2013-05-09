@@ -1,7 +1,7 @@
 # this:  iewiki.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.18.0
+# ver.:  1.18.2
 
 import cgi
 import codecs
@@ -39,7 +39,7 @@ from giewikidb import truncateModel, truncateAllData, HasGroupAccess, ReadAccess
 
 from javascripts import javascriptDict
 
-giewikiVersion = '1.18.0'
+giewikiVersion = '1.18.2'
 TWComp = 'twcomp.html'
 
 _INDEX_NAME = 'tiddlers'
@@ -109,7 +109,7 @@ getTemplates'
 
 jsProlog = '\
 // This file is auto-generated\n\
-var giewikiVersion = { title: "giewiki", major: 1, minor: 18, revision: 0, date: new Date("Apr 27, 2013"), extensions: {} };\n\
+var giewikiVersion = { title: "giewiki", major: 1, minor: 18, revision: 2, date: new Date("May 9, 2013"), extensions: {} };\n\
 http = {\n\
   _methods: [],\n\
   _addMethod: function(m) { this[m] = new Function("a","return HttpGet(a,\'" + m + "\')"); }\n\
@@ -550,7 +550,7 @@ def KillTiddlerVersion(t):
 			u.clipTiddler = None
 			u.put()
 	index = search.Index(name=_INDEX_NAME)
-	index.remove(t.id)
+	index.delete(t.id)
 	t.delete()
 
 def initHist(shadowTitle,format):
@@ -1656,16 +1656,19 @@ class MainPage(webapp.RequestHandler):
 
   def deleteVersions(self):
 	tlrs = Tiddler.all().filter('id',self.request.get('tiddlerId'))
+	cnt = 0
 	for t in tlrs:
 		if t.version < self.request.get('version') and (not t.current) and (t.author == users.get_current_user() or users.is_current_user_admin()):
 			KillTiddlerVersion(t)
-
+		else:
+			cnt = cnt + 1
+	logging.info("Now " + str(cnt) + " versions")
 	tlc = Tiddler.all().filter('id', self.request.get('tiddlerId')).filter('current',True).get()
 	if tlc != None:
-		tlc.vercnt = tlrs.count()
+		tlc.vercnt = cnt
 		tlc.put()
 	self.unlock(self.request.get('key'))
-	self.reply({'vercnt': tlc.vercnt }, versions = True)
+	self.reply({'vercnt': cnt }, versions = True)
 
   def deleteTiddler(self):
 	self.initXmlResponse()
@@ -3497,7 +3500,7 @@ class MainPage(webapp.RequestHandler):
 				ids = []
 				for d in dl:
 					ids.append(d.doc_id)
-				index.remove(ids)
+				index.delete(ids)
 		return self.response.out.write("Index purged")
 
 	if done is None:

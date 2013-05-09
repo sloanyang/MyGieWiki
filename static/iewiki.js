@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.18.0
+   version:	1.18.2
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -621,7 +621,7 @@ config.read = function () {
 		this.shadowTiddlers.SiteSubtitle = this.subtitle;
 	if (config.admin)
 		if (!config.serverType.startsWith('Development'))
-			this.shadowTiddlers.UserMenu = this.shadowTiddlers.UserMenu.replace("/_ah/admin","https://appengine.google.com/datastore/explorer?app_id=" + config.appId);
+			this.shadowTiddlers.UserMenu = this.shadowTiddlers.UserMenu.replace("http://localhost:8000/datastore?kind=Page", "https://appengine.google.com/datastore/explorer?app_id=" + config.appId);
 	if (this.noSuchTiddlers)
 		this.NoSuchTiddlers = this.NoSuchTiddlers.concat(this.noSuchTiddlers.split('\n'))
 }
@@ -3606,7 +3606,7 @@ config.commands.truncateTiddler.handler = function(event,src,title) {
 		var res = http.deleteVersions({ tiddlerId: tiddler.id, key: tiddler.key, version: tiddler.version, historyView: story.getHistoryView(tiddler)});
 		tiddler.versions = res.versions;
 		delete tiddler.key;
-		tiddler.fields.vercnt = res.vercnt;
+		tiddler.vercnt = res.vercnt;
 		story.setDirty(tiddler.title, false);
 		story.refreshTiddler(tiddler.title,null,true);
 	}
