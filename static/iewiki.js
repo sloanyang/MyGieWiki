@@ -1,7 +1,7 @@
 /* this:	iewiki.js
    by:  	Poul Staugaard
    URL: 	http://code.google.com/p/giewiki
-   version:	1.18.2
+   version:	1.18.3
 
 Giewiki is based on TiddlyWiki created by Jeremy Ruston (and others)
 
@@ -2245,30 +2245,34 @@ config.macros.comments.addCommentTableRow = function (tbe, className, after, whe
 
 CommentList = [];
 
-config.macros.comments.listComments = function(where,list,preserve,className,filter,after) {
-    var twe = findOrCreateChildElement(where, 'div',null,'tableWrapper',null,null,preserve);
-    if (!twe.firstChild)
-        twe.innerHTML = "<table class='commentTable'><col style='width:5.3em'/><col style='width: 4.5em'/></table>"; // IE fix
-    var tae = twe.firstChild;
+config.macros.comments.listComments = function (where, list, preserve, className, filter, after) {
+	var sarr = [];
+	if (getElementsByClassName('comments', null, where, sarr) == 1) {
+		var cte = sarr[0];
+		var twe = findOrCreateChildElement(cte, 'div', null, 'tableWrapper', null, null, preserve);
+		if (!twe.firstChild)
+			twe.innerHTML = "<table class='commentTable'><col style='width:5.3em'/><col style='width: 4.5em'/></table>"; // IE fix
+		var tae = twe.firstChild;
 
-    var tbe = findOrCreateChildElement(tae,'tbody',null,'commentTableBody',null,null,true);
-    var rc = 0;
-	var title = where.getAttribute('tiddler');
-	if (!CommentList[title])
-		CommentList[title] = []
+		var tbe = findOrCreateChildElement(tae, 'tbody', null, 'commentTableBody', null, null, true);
+		var rc = 0;
+		var title = where.getAttribute('tiddler');
+		if (!CommentList[title])
+			CommentList[title] = []
 
-	var lister = function(aco) {
-		if (typeof(aco) == 'object') {
-			CommentList[title][aco.id] = aco;
-			if (filter(aco)) {
-				var tde = config.macros.comments.addCommentTableRow(tbe, className, after, aco.created, aco.author, aco.refs, ++rc, aco.id, aco.ref);
-				wikify(aco.text,tde);
+		var lister = function (aco) {
+			if (typeof (aco) == 'object') {
+				CommentList[title][aco.id] = aco;
+				if (filter(aco)) {
+					var tde = config.macros.comments.addCommentTableRow(tbe, className, after, aco.created, aco.author, aco.refs, ++rc, aco.id, aco.ref);
+					wikify(aco.text, tde);
+				}
 			}
-		}
-	};
+		};
 
-	for (var i in list)
-		lister(list[i]);
+		for (var i in list)
+			lister(list[i]);
+	}
 }
 
 config.macros.comments.formatDateTime = function(dt) {

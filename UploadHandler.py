@@ -1,25 +1,42 @@
 ﻿# this:  UploadHandler.py
 # by:    Poul Staugaard [poul(dot)staugaard(at)gmail...]
 # URL:   http://code.google.com/p/giewiki
-# ver.:  1.18.0
+# ver.:  1.18.3
 
 import logging
 import codecs
 from google.appengine.api import users
 from google.appengine.api import memcache
+from google.appengine.api import namespace_manager
 from google.appengine.ext import webapp
 from google.appengine.ext import blobstore
 from google.appengine.ext.webapp import blobstore_handlers
 
-from giewikidb import UploadedFile,Page,UrlImport
+from giewikidb import UploadedFile,Page,UrlImport,SubDomain
 
 def CombinePath(path,fn):
 	if path.rfind('/') != len(path) - 1:
 		path = path + '/'
 	return path + fn
 
+def IsIPaddress(v):
+	if len(v) < 4:
+		return False
+	lix = len(v) - 1
+	if v[lix].find(':') > 0:
+		v[lix] = v[lix].split(':')[0]
+	for a in range(len(v)-4,len(v)):
+		try:
+			n = int(v[a])
+			if n < 0 or n > 255:
+				return False
+		except Exception:
+			return False
+	return True
+
 class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
   def post(self):
+	self.getSubdomain()
 	for (a,v) in self.request.POST.items():
 		logging.info("UploadH(" + str(a) + ")" + str(v))
 	upload_files = self.get_uploads()
@@ -86,6 +103,30 @@ class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 			ftwd.close()
 			self.response.out.write(text)
 		break
+
+  def getSubdomain(self):
+	hostc = self.request.host.split('.')
+	if len(hostc) > 3: # e.g. subdomain.giewiki.appspot.com
+		if IsIPaddress(hostc): # [sd.]n.n.n.n[:port]
+			pos = len(hostc) - 5
+		else:
+			pos = len(hostc) - 4
+	elif len(hostc) > 1 and hostc[len(hostc) - 1].startswith('localhost'): # e.g. sd.localhost:port
+		pos = len(hostc) - 2
+	# elif... support for app.org.tld domains -- TODO
+	else:
+		self.subdomain = None
+		self.sdo = None
+		#LogEvent("GetSubdomain", self.request.host)
+		return ""
+
+	if pos >= 0 and hostc[pos] != 'latest': # App engine uses this for alternate versions
+		self.subdomain = hostc[pos]
+		self.sdo = SubDomain.all().filter('preurl', self.subdomain).get()
+		namespace_manager.set_namespace(self.subdomain)
+		logging.info("Upload to subdomain " + self.subdomain)
+	else:
+		self.subdomain = None
 
 application = webapp.WSGIApplication([('/upload', UploadHandler)], debug=True)
 
