@@ -72,6 +72,7 @@ config.macros.STETabInsert = {
 |&lt;&lt;STETabInsert TopRightCorner&gt;&gt;|This special tiddler contains optional content to be displayed in the top-right corner|
 |&lt;&lt;STETabInsert ToolbarCommands&gt;&gt;|This shadow tiddler determines which commands are shown in tiddler toolbars|
 |&lt;&lt;STETabInsert UploadDialog&gt;&gt;|Presents a file upload dialog|
+|&lt;&lt;STETabInsert UploadImageDialog&gt;&gt;|Presents an image upload dialog, that is presented via the {{{&lt;&lt;image&gt;&gt;}}} macro|
 |&lt;&lt;STETabInsert UserMenu&gt;&gt;|Appears at the top of the right sidebar when (having logged in) you click your username|
 |&lt;&lt;STETabInsert UserProfile&gt;&gt;|Dialog for defining personal settings|
 |&lt;&lt;STETabInsert ViewOnlyTemplate&gt;&gt;|The HTML template in this shadow tiddler is used for presenting system dialogs|

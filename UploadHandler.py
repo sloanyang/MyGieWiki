@@ -38,7 +38,7 @@ class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
   def post(self):
 	self.getSubdomain()
 	for (a,v) in self.request.POST.items():
-		logging.info("UploadH(" + str(a) + ")" + str(v))
+		logging.info(unicode("UploadH(" + str(a) + ")") + unicode(v))
 	upload_files = self.get_uploads()
 	replace = False
 	for blob_info in upload_files:
@@ -71,6 +71,9 @@ class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 			f.owner = users.get_current_user()
 			logging.info("Uploaded " + filename)
 			p = filename if filename[0] == '/' else CombinePath(reqpath, filename)
+			query = self.request.get('query')
+			if query.startswith('image '):
+				query = "UpdateImageMacro('" + p + "','" + self.request.get('align') + "','" + self.request.get('width') + "'," + query[6:] + ")"
 			logging.info('Uploaded ' + p)
 			f.path = p
 			f.mimetype = blob_info.content_type
@@ -100,6 +103,7 @@ class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):
 			text = text.replace("UFT",unicode(f.mimetype))
 			text = text.replace("ULR",u"Uploaded:")
 			text = text.replace("UFM",unicode(msg))
+			text = text.replace("UFA",query);
 			ftwd.close()
 			self.response.out.write(text)
 		break

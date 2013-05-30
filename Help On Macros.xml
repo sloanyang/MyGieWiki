@@ -50,11 +50,10 @@ This list of macros may not be complete, as plug-ins (like giewiki's youtube plu
 {{{&lt;&lt;image filename &gt; XX%&gt;&gt;}}}
 whereas, to put an image on the left, you would write
 {{{&lt;&lt;image filename &lt; XX%&gt;&gt;}}}
-Either way, insert the image macro before the text that you want to appear next to it, specify a percentage in place of //XX//, and in place of //filename//, put the name of a file you have previously uploaded. Beware that there is currently a filesize limit somewhat less than 1 MB on what you can upload to giewiki through the 'upload file' facility. The suggested workarounds are:
-* To include large images, put them in the ''static'' subfolder (or a subfolder thereof) of your local giewiki folder prior to deploying the files to appspot.com - then, refer to them using the full path, e.g. /static/images/myimage.jpg
-* Reduce the image size prior to uploading, using whatever software you may have for this purpose. One way is to use dropbox ( a free software/cloud service, that automatically puts your images out on the web and produces suitably reduced filesize versions that you can download).
+Either way, insert the image macro before the text that you want to appear next to it, specify a percentage in place of //XX//, and in place of //filename//, put the name of a file you have previously uploaded. 
 To make the image fill the entire width of the story column, you need to include only the filename parameter. 
 In stead of just one filename, you may specify two, separated by a | character. The second filename (or URL) will be opened when the image is clicked.
+Using the image macro without any arguments and clicking preview will produce a butten, which when hit will open an image upload dialog where you can specify the arguments. When the upload completes, it will modify the text of your open tiddler, inserting the arguments, and update the preview tos show the result.
 Beware that the image macro is specific to giewiki; if you download the page as a TiddlyWiki, you will see an error message where the image macro is applied. If you were to use the [[TiddlyWiki-style|TiddlyWiki-style image markup]] {{{[img[filename]]}}} markup in stead (which is also supported), you would see either a broken link or the actual image, provided that you put it in the right place.
 </pre>
 </tiddler>

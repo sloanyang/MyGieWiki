@@ -8851,8 +8851,42 @@ function leaf(url)
 	return a[a.length-1];
 }
 
+function UpdateImageMacro(p, a, w, t) {
+	displayMessage(t);
+	var c = story.getTiddlerField(t, "text");
+	if (c) {
+		c.value = c.value.replace('<<image>>', ['<<image', p, a, w, '>>'].join(' '));
+		var t = story.getTiddler(t);
+		if (t) {
+			var children = t.getElementsByTagName("FIELDSET");
+			for (var i in children) {
+				var ci = children[i];
+				if (ci.id == 'preview') {
+					removeChildren(ci);
+					wikify(c.value, ci);
+					break;
+				}
+			}
+		}
+	}
+	story.closeTiddler(config.macros.image.dialogTitle);
+}
+
 config.macros.image = {
+	dialogTitle: "UploadImageDialog",
 	handler: function (place, macroName, params, wikifier, paramString, tiddler) {
+		if (params.length == 0) {
+			if (!readOnly)
+				createTiddlyButton(place, "upload image", "Click to upload the image to be displayed",
+					function () {
+						var upi = store.getTiddler(config.macros.image.dialogTitle);
+						var tel = story.findContainingTiddler(place);
+						var ctt = tel.getAttribute('tiddler');
+						upi.text = "<<uploadDialog image '" + ctt + "'>>";
+						story.displayTiddler(place, config.macros.image.dialogTitle, DEFAULT_VIEW_TEMPLATE)
+					});
+			return;
+		}
 		var span = createTiddlyElement(place, "span");
 		var hbw = params[3] ? params[3] : "5";
 		var vbw = hbw / 2; // heuristic choice
