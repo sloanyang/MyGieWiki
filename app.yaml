@@ -1,4 +1,4 @@
-application: giewiki-hrd
+application: sloanyanggiewiki 
 version: 1-18-3
 runtime: python27
 threadsafe: no
